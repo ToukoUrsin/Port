@@ -1,4 +1,4 @@
-// Pipeline orchestrates GATHER -> GENERATE -> REVIEW for submissions.
+// Pipeline orchestrates GATHER -> RESEARCH -> GENERATE -> REVIEW for submissions.
 //
 // Plan: 1_what/article_engine/spec/build/BACKEND_UPDATE_SPEC.md
 //
@@ -36,6 +36,7 @@ type PipelineService struct {
 	photoDescription PhotoDescriptionService
 	chunker          ChunkerService
 	embedding        EmbeddingService
+	researcher       ResearchService
 	semanticGrouper  *SemanticGrouper
 }
 
@@ -47,6 +48,7 @@ func NewPipelineService(
 	photoDescription PhotoDescriptionService,
 	chunker ChunkerService,
 	embedding EmbeddingService,
+	researcher ResearchService,
 ) *PipelineService {
 	return &PipelineService{
 		db:               db,
@@ -56,6 +58,7 @@ func NewPipelineService(
 		photoDescription: photoDescription,
 		chunker:          chunker,
 		embedding:        embedding,
+		researcher:       researcher,
 		semanticGrouper:  NewSemanticGrouper(embedding),
 	}
 }
@@ -113,6 +116,33 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
+	// RESEARCH (non-fatal — continue with empty context on failure)
+	var researchContext string
+	var researchResult *models.ResearchResult
+	if sub.Status == models.StatusRefining && sub.Meta.V.Research != nil {
+		// Refinement: reuse persisted research
+		researchContext = sub.Meta.V.Research.Context
+		researchResult = sub.Meta.V.Research
+	} else {
+		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "researching", Message: "Researching context..."}) {
+			return
+		}
+		p.db.Model(&sub).Update("status", models.StatusResearching)
+
+		rr, researchErr := p.researcher.Research(ctx, ResearchInput{
+			Transcript:        transcript,
+			Notes:             sub.Description,
+			PhotoDescriptions: photoDescs,
+			TownContext:       prompts.TownContext,
+		})
+		if researchErr != nil {
+			log.Printf("research failed for submission %s: %v", submissionID, researchErr)
+		} else if rr != nil {
+			researchContext = rr.Context
+			researchResult = rr
+		}
+	}
+
 	// GENERATE
 	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}) {
 		return
@@ -124,6 +154,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		Notes:             sub.Description,
 		PhotoDescriptions: photoDescs,
 		TownContext:       prompts.TownContext,
+		ResearchContext:   researchContext,
 	}
 
 	// If refinement, add previous article + direction
@@ -181,6 +212,9 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	meta.ArticleMarkdown = article
 	meta.ArticleMetadata = &genOutput.Metadata
 	meta.Review = reviewResult
+	if researchResult != nil {
+		meta.Research = researchResult
+	}
 	meta.Category = genOutput.Metadata.Category
 	meta.Summary = ExtractFirstParagraph(article)
 	meta.GeneratedAt = &now

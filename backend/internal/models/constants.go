@@ -12,6 +12,7 @@ const (
 	StatusArchived     int16 = 6 // hidden by owner or editor
 	StatusRefining     int16 = 7 // contributor submitted refinement, pipeline re-running
 	StatusAppealed     int16 = 8 // contributor appealed RED gate, awaiting human review
+	StatusResearching  int16 = 9 // researching context via web search
 )
 
 // --- Submission error codes (0 = no error) ---

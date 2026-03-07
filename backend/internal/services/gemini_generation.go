@@ -79,6 +79,12 @@ func buildGenerationUserPrompt(input GenerationInput) string {
 		b.WriteString("\n\n")
 	}
 
+	if input.ResearchContext != "" {
+		b.WriteString("Background research (verified via web search — use where relevant, always attribute): ")
+		b.WriteString(input.ResearchContext)
+		b.WriteString("\n\n")
+	}
+
 	tc := input.TownContext
 	if tc == "" {
 		tc = prompts.TownContext

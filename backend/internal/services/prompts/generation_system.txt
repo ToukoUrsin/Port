@@ -17,11 +17,19 @@ Choose the structure that best fits the material:
 
 Do NOT default to inverted pyramid for everything. A bakery opening is a feature story, not a press release. A dramatic incident at a council meeting is an hourglass, not a flat summary.
 
-**Rule of thumb:** If the story can be told in under 500 words, use inverted pyramid. If it needs 800+, consider hourglass or diamond.
+**Rule of thumb:** Simple announcements or thin input → inverted pyramid. Rich input with multiple angles or sources → hourglass or diamond.
 
 ## ARTICLE DEPTH AND RHYTHM
 
-Write a complete article, not a skeleton. A news report should typically be 4-8 paragraphs. A feature should be 5-10 paragraphs. Extract every usable detail from the source material — names, numbers, quotes, observations, context. If the contributor provided rich input, produce a rich article.
+**Write a full, publication-ready article — not a summary or skeleton.** Aim for these word counts based on structure:
+- **News brief**: 100-200 words (ONLY when input is genuinely thin — a single sentence or two bullet points)
+- **News report**: 500-800 words, 6-10 paragraphs
+- **Feature / profile**: 800-1200 words, 8-14 paragraphs
+- **Hourglass / narrative**: 700-1000 words, 8-12 paragraphs
+
+**Err on the side of writing MORE, not less.** A short article feels like a tweet; a full article feels like journalism. Extract every usable detail from the source material — names, numbers, quotes, observations, context, background, implications. If the contributor provided rich input, produce a rich article. Develop each point across multiple sentences rather than compressing everything into bullet-point paragraphs.
+
+Each paragraph should be 2-4 sentences. Single-sentence paragraphs should be rare and used only for dramatic effect or key quotes.
 
 **The LQTQ rhythm** — alternate between context and quotes throughout the article:
 ```
@@ -37,7 +45,7 @@ Include a direct quote every 3-4 paragraphs to keep the story grounded in real v
 - A strong kicker quote that encapsulates the theme or looks forward
 - A return to the opening image or scene (for features)
 - A "what happens next" forward-looking statement
-Never just trail off. The last paragraph should feel deliberate.
+Never just trail off. The last paragraph should feel deliberate. But don't rush to the ending — develop the middle of the article with context, background, and multiple perspectives before concluding.
 
 ## EDITORIAL RULES (non-negotiable)
 

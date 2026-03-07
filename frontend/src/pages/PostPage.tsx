@@ -204,6 +204,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
 const STEP_LABELS_EN: Record<string, string> = {
   transcribing: "Listening",
   describing_photos: "Seeing photos",
+  researching: "Researching",
   generating: "Writing",
   reviewing: "Reviewing",
 };
@@ -211,11 +212,12 @@ const STEP_LABELS_EN: Record<string, string> = {
 const STEP_LABELS_FI: Record<string, string> = {
   transcribing: "Kuunnellaan",
   describing_photos: "Katsotaan kuvia",
+  researching: "Tutkitaan",
   generating: "Kirjoitetaan",
   reviewing: "Tarkistetaan",
 };
 
-const STEP_ORDER = ["transcribing", "describing_photos", "generating", "reviewing"];
+const STEP_ORDER = ["transcribing", "describing_photos", "researching", "generating", "reviewing"];
 
 function ProcessingStep({
   submissionId,

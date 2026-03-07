@@ -113,6 +113,15 @@ func main() {
 		rerankerSvc = services.NewPassthroughReranker()
 	}
 
+	// Research service
+	var research services.ResearchService
+	if geminiClient != nil {
+		research = services.NewGeminiResearchService(geminiClient, cfg.GenerationModel)
+		log.Printf("Gemini research enabled (model=%s)", cfg.GenerationModel)
+	} else {
+		research = services.NewStubResearchService()
+	}
+
 	// Transcription service
 	var transcription services.TranscriptionService
 	if cfg.ElevenLabsAPIKey != "" {
@@ -124,7 +133,7 @@ func main() {
 
 	// Pipeline
 	chunker := services.NewStubChunkerService()
-	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embeddingSvc)
+	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embeddingSvc, research)
 
 	// Batch service (admin batch publishing)
 	var batchSvc *services.BatchService

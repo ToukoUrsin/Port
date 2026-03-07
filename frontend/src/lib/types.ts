@@ -55,6 +55,12 @@ export interface ReviewResult {
   web_sources?: WebSource[];
 }
 
+export interface ResearchResult {
+  context: string;
+  sources: WebSource[];
+  queries: string[];
+}
+
 // --- Article metadata (from generation) ---
 
 export interface ArticleMetadata {
@@ -88,6 +94,9 @@ export interface SubmissionMeta {
 
   // Review (new shape)
   review?: ReviewResult;
+
+  // Research context from pre-generation web search
+  research?: ResearchResult;
 
   // Kept from before
   summary?: string;
@@ -246,6 +255,7 @@ export const SubmissionStatus = {
   Archived: 6,
   Refining: 7,
   Appealed: 8,
+  Researching: 9,
 } as const;
 
 // --- Tag bitmask constants ---

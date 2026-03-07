@@ -71,6 +71,19 @@ func (m *mockPhotoDescription) Describe(_ context.Context, photoPath string) (st
 	return "A photo", nil
 }
 
+type mockResearch struct {
+	called bool
+	input  ResearchInput
+	result *models.ResearchResult
+	err    error
+}
+
+func (m *mockResearch) Research(_ context.Context, input ResearchInput) (*models.ResearchResult, error) {
+	m.called = true
+	m.input = input
+	return m.result, m.err
+}
+
 type mockChunker struct {
 	chunks []Chunk
 }
@@ -220,12 +233,20 @@ func collectEvents(events chan PipelineEvent) []PipelineEvent {
 	return result
 }
 
+func defaultResearchResult() *models.ResearchResult {
+	return &models.ResearchResult{
+		Context: "Background: The council met on March 4.",
+		Sources: []models.WebSource{{Title: "Kirkkonummi Council", URL: "https://kirkkonummi.fi"}},
+		Queries: []string{"kirkkonummi council"},
+	}
+}
+
 func buildPipeline(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription) *PipelineService {
-	return NewPipelineService(db, trans, gen, rev, photo, &mockChunker{}, &mockEmbedding{})
+	return NewPipelineService(db, trans, gen, rev, photo, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()})
 }
 
 func buildPipelineWithEmbedding(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription, chunker *mockChunker, emb *mockEmbedding) *PipelineService {
-	return NewPipelineService(db, trans, gen, rev, photo, chunker, emb)
+	return NewPipelineService(db, trans, gen, rev, photo, chunker, emb, &mockResearch{result: defaultResearchResult()})
 }
 
 // --- Pipeline tests ---
@@ -886,5 +907,141 @@ func TestPipeline_Refinement_PhotoPlaceholdersReplaced(t *testing.T) {
 	expectedURL := fmt.Sprintf("/api/media/%s/img1.jpg", sub.ID)
 	if !strings.Contains(article, expectedURL) {
 		t.Errorf("article should contain %q, got %q", expectedURL, article)
+	}
+}
+
+func TestPipeline_ResearchStep_EventEmitted(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "Research", Status: models.StatusDraft, Description: "notes about council meeting",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGeneration{result: defaultGenOutput()}
+	rev := &mockReview{result: defaultReviewResult()}
+	research := &mockResearch{result: defaultResearchResult()}
+
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	events := make(chan PipelineEvent, 20)
+	pipeline.Run(context.Background(), sub.ID, events)
+
+	evts := collectEvents(events)
+	var steps []string
+	for _, ev := range evts {
+		if ev.Step != "" {
+			steps = append(steps, ev.Step)
+		}
+	}
+
+	researchIdx := -1
+	generatingIdx := -1
+	for i, s := range steps {
+		if s == "researching" {
+			researchIdx = i
+		}
+		if s == "generating" {
+			generatingIdx = i
+		}
+	}
+	if researchIdx < 0 {
+		t.Error("missing 'researching' step")
+	}
+	if generatingIdx < 0 {
+		t.Error("missing 'generating' step")
+	}
+	if researchIdx >= generatingIdx {
+		t.Error("researching should come before generating")
+	}
+}
+
+func TestPipeline_ResearchFailure_NonFatal(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "ResearchFail", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGeneration{result: defaultGenOutput()}
+	rev := &mockReview{result: defaultReviewResult()}
+	research := &mockResearch{err: fmt.Errorf("Google Search API down")}
+
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	events := make(chan PipelineEvent, 20)
+	pipeline.Run(context.Background(), sub.ID, events)
+
+	evts := collectEvents(events)
+	last := evts[len(evts)-1]
+	if last.Event != "complete" {
+		t.Errorf("last event = %q, want 'complete' (research failure should be non-fatal)", last.Event)
+	}
+
+	// Generation should still have been called with empty research context
+	if !gen.called {
+		t.Error("generation should still be called after research failure")
+	}
+	if gen.input.ResearchContext != "" {
+		t.Errorf("ResearchContext = %q, want empty after research failure", gen.input.ResearchContext)
+	}
+}
+
+func TestPipeline_ResearchContext_PassedToGeneration(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "Context", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGeneration{result: defaultGenOutput()}
+	rev := &mockReview{result: defaultReviewResult()}
+	research := &mockResearch{result: &models.ResearchResult{
+		Context: "The council budget is EUR 245 million.",
+		Sources: []models.WebSource{{Title: "Budget", URL: "https://example.com"}},
+		Queries: []string{"kirkkonummi budget"},
+	}}
+
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	events := make(chan PipelineEvent, 20)
+	pipeline.Run(context.Background(), sub.ID, events)
+	collectEvents(events)
+
+	if gen.input.ResearchContext != "The council budget is EUR 245 million." {
+		t.Errorf("ResearchContext = %q, want research result context", gen.input.ResearchContext)
+	}
+}
+
+func TestPipeline_Refinement_SkipsResearch(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "Refine", Status: models.StatusRefining,
+		Meta: models.JSONB[models.SubmissionMeta]{V: models.SubmissionMeta{
+			Transcript:      "persisted transcript",
+			ArticleMarkdown: "# Old Article\n\nOld body.",
+			Research: &models.ResearchResult{
+				Context: "Cached research context.",
+				Sources: []models.WebSource{{Title: "Cached", URL: "https://cached.example.com"}},
+				Queries: []string{"cached query"},
+			},
+		}},
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGeneration{result: defaultGenOutput()}
+	rev := &mockReview{result: defaultReviewResult()}
+	research := &mockResearch{result: defaultResearchResult()}
+
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	events := make(chan PipelineEvent, 20)
+	pipeline.Run(context.Background(), sub.ID, events)
+	collectEvents(events)
+
+	if research.called {
+		t.Error("research service should NOT be called during refinement with cached research")
+	}
+	if gen.input.ResearchContext != "Cached research context." {
+		t.Errorf("ResearchContext = %q, want cached research context", gen.input.ResearchContext)
 	}
 }
