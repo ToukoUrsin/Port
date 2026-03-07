@@ -25,15 +25,29 @@ func (h *Handler) ListArticles(c *gin.Context) {
 
 	if locationIDs != "" {
 		ids := strings.Split(locationIDs, ",")
-		query = query.Where(
-			"location_id IN (SELECT l2.id FROM locations l1 JOIN locations l2 ON l2.id = l1.id OR l2.path LIKE l1.path || '/%' WHERE l1.id IN ?)",
-			ids,
-		)
+		// Resolve paths for all requested locations, then use constant-prefix
+		// LIKE queries so Postgres can use the text_pattern_ops btree index.
+		var locs []models.Location
+		h.db.Select("id", "path").Where("id IN ?", ids).Find(&locs)
+		if len(locs) > 0 {
+			conds := make([]string, 0, len(locs)*2)
+			args := make([]interface{}, 0, len(locs)*2)
+			for _, loc := range locs {
+				conds = append(conds, "location_id = ?")
+				args = append(args, loc.ID)
+				conds = append(conds, "location_id IN (SELECT id FROM locations WHERE path LIKE ?)")
+				args = append(args, loc.Path+"/%")
+			}
+			query = query.Where(strings.Join(conds, " OR "), args...)
+		}
 	} else if locationID != "" {
-		query = query.Where(
-			"location_id IN (SELECT l2.id FROM locations l1 JOIN locations l2 ON l2.id = l1.id OR l2.path LIKE l1.path || '/%' WHERE l1.id = ?)",
-			locationID,
-		)
+		var loc models.Location
+		if h.db.Select("id", "path").First(&loc, "id = ?", locationID).Error == nil {
+			query = query.Where(
+				"location_id IN (SELECT id FROM locations WHERE id = ? OR path LIKE ?)",
+				loc.ID, loc.Path+"/%",
+			)
+		}
 	}
 
 	// Filter by country: match locations whose path contains this country segment
@@ -61,6 +75,7 @@ func (h *Handler) ListArticles(c *gin.Context) {
 	var articles []models.Submission
 	query.Order("updated_at DESC").Limit(limit).Offset(offset).Find(&articles)
 
+	h.fillLocationNames(articles)
 	c.JSON(http.StatusOK, gin.H{"articles": articles, "total": total})
 }
 
@@ -86,8 +101,10 @@ func (h *Handler) GetArticle(c *gin.Context) {
 		return
 	}
 
-	h.cache.Set(c.Request.Context(), key, article)
-	c.JSON(http.StatusOK, article)
+	articles := []models.Submission{article}
+	h.fillLocationNames(articles)
+	h.cache.Set(c.Request.Context(), key, articles[0])
+	c.JSON(http.StatusOK, articles[0])
 }
 
 func (h *Handler) SimilarArticles(c *gin.Context) {
@@ -134,6 +151,7 @@ func (h *Handler) SimilarArticles(c *gin.Context) {
 		similar = []models.Submission{}
 	}
 
+	h.fillLocationNames(similar)
 	h.cache.Set(c.Request.Context(), key, similar)
 	c.JSON(http.StatusOK, gin.H{"articles": similar})
 }
@@ -184,4 +202,25 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 
 	h.db.First(&sub, "id = ?", id)
 	c.JSON(http.StatusOK, sub)
+}
+
+// fillLocationNames populates the LocationName field on each submission
+// by looking up location names from the locations table.
+func (h *Handler) fillLocationNames(articles []models.Submission) {
+	if len(articles) == 0 {
+		return
+	}
+	ids := make([]uuid.UUID, len(articles))
+	for i, a := range articles {
+		ids[i] = a.LocationID
+	}
+	var locs []models.Location
+	h.db.Select("id, name").Where("id IN ?", ids).Find(&locs)
+	nameMap := make(map[uuid.UUID]string, len(locs))
+	for _, l := range locs {
+		nameMap[l.ID] = l.Name
+	}
+	for i := range articles {
+		articles[i].LocationName = nameMap[articles[i].LocationID]
+	}
 }

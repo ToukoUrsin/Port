@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowUp } from "lucide-react";
 import { VoiceRecorder } from "./VoiceRecorder";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { GeneralRefinement } from "./types";
@@ -23,27 +24,36 @@ export function RefinementInput({ onRefine, disabled }: RefinementInputProps) {
     }
   }
 
-  const canSubmit = text.trim().length > 0 || voiceBlob !== null;
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey && canSubmit) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
+  const canSubmit = (text.trim().length > 0 || voiceBlob !== null) && !disabled;
 
   return (
     <div className="refinement-input">
+      <textarea
+        className="refinement-textarea"
+        placeholder={t("editor.typeResponse")}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        rows={1}
+        disabled={disabled}
+      />
       <div className="refinement-input-row">
         <VoiceRecorder onRecording={setVoiceBlob} compact />
-        <textarea
-          className="refinement-textarea"
-          placeholder={t("editor.typeResponse")}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={2}
-        />
+        <button
+          className="refinement-send"
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+        >
+          <ArrowUp size={18} />
+        </button>
       </div>
-      <button
-        className="btn btn-primary refinement-submit"
-        onClick={handleSubmit}
-        disabled={!canSubmit || disabled}
-      >
-        {t("editor.updateArticle")}
-      </button>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon } from "lucide-react";
+import { Clock, ImageIcon, MapPin } from "lucide-react";
 import { BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
 import "./ArticleCard.css";
 
@@ -36,25 +36,17 @@ export default function ArticleCard({ article, featured }: { article: Article; f
           </span>
         </div>
         <h2 className="article-card__title">
-          <span className="title-prefix">{article.category}</span>
-          <span className="title-sep"> | </span>
           {article.title}
         </h2>
         <p className="article-card__excerpt">{article.excerpt}</p>
         <div className="article-card__footer">
-          <span
-            className="article-card__author-link"
-            role="link"
-            tabIndex={0}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              navigate(`/profile/${authorSlug(article.author)}`);
-            }}
-          >
-            {article.author}
-          </span>
-          <span>&middot;</span>
+          {article.area && (
+            <>
+              <MapPin size={12} />
+              <span>{article.area}</span>
+              <span>&middot;</span>
+            </>
+          )}
           <Clock size={12} />
           <span>{article.timeAgo}</span>
         </div>

@@ -141,6 +141,7 @@ type Submission struct {
 	Reactions   JSONB[map[string]int] `gorm:"type:jsonb;default:'{}'" json:"reactions"`
 	Meta         JSONB[SubmissionMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
 	SearchVector string                `gorm:"type:tsvector" json:"-"`
+	LocationName string                `gorm:"-" json:"location_name,omitempty"`
 	Timestamps
 }
 

@@ -1,15 +1,22 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
+import { BubbleMenu, FloatingMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import Typography from "@tiptap/extension-typography";
+import CharacterCount from "@tiptap/extension-character-count";
+import TextAlign from "@tiptap/extension-text-align";
+import Highlight from "@tiptap/extension-highlight";
 import { Markdown } from "tiptap-markdown";
 import { AnnotationHighlight } from "./extensions/AnnotationHighlight";
+import { DragHandle } from "./extensions/DragHandle";
 import type { RedTrigger } from "@/lib/types";
 import type { ActiveAnnotation } from "./types";
 import {
   X, Bold, Italic, Strikethrough, Code, Quote, List, ListOrdered,
+  Link, Unlink, Highlighter, AlignLeft, AlignCenter, AlignRight,
+  Heading2, Heading3, ListIcon, CodeSquare, Minus,
 } from "lucide-react";
 
 type ArticleEditorProps = {
@@ -94,6 +101,9 @@ export function ArticleEditor({
   // Track the last markdown we sent up to avoid re-setting content from our own edits
   const lastEmittedMarkdown = useRef(markdown);
 
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -109,6 +119,11 @@ export function ArticleEditor({
       Placeholder.configure({ placeholder: "Start writing..." }),
       Markdown,
       AnnotationHighlight,
+      DragHandle,
+      Typography,
+      CharacterCount,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Highlight,
     ],
     content: initBody,
     onUpdate({ editor: ed }) {
@@ -188,6 +203,32 @@ export function ArticleEditor({
     [editor, onContentChange],
   );
 
+  const handleSetLink = useCallback(() => {
+    if (!editor) return;
+    if (editor.isActive("link")) {
+      editor.chain().focus().unsetLink().run();
+      return;
+    }
+    const prev = editor.getAttributes("link").href ?? "";
+    setLinkUrl(prev);
+    // Focus the input after render
+    setTimeout(() => linkInputRef.current?.focus(), 0);
+  }, [editor]);
+
+  const handleLinkSubmit = useCallback(() => {
+    if (!editor || linkUrl === null) return;
+    if (linkUrl.trim()) {
+      editor
+        .chain()
+        .focus()
+        .setLink({ href: linkUrl.trim() })
+        .run();
+    } else {
+      editor.chain().focus().unsetLink().run();
+    }
+    setLinkUrl(null);
+  }, [editor, linkUrl]);
+
   const wrapperRect = wrapperRef.current?.getBoundingClientRect();
 
   return (
@@ -207,6 +248,78 @@ export function ArticleEditor({
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="article-prose" onClick={handleEditorClick}>
         <EditorContent editor={editor} />
+
+        {/* Floating menu — shows on empty paragraphs */}
+        {editor && (
+          <FloatingMenu
+            editor={editor}
+            shouldShow={({ editor: ed }) =>
+              ed.isActive("paragraph") &&
+              ed.state.selection.empty &&
+              ed.state.doc.resolve(ed.state.selection.from).parent.content
+                .size === 0
+            }
+          >
+            <div className="floating-menu">
+              <button
+                onClick={() =>
+                  editor.chain().focus().toggleHeading({ level: 2 }).run()
+                }
+                type="button"
+                title="Heading 2"
+              >
+                <Heading2 size={16} />
+              </button>
+              <button
+                onClick={() =>
+                  editor.chain().focus().toggleHeading({ level: 3 }).run()
+                }
+                type="button"
+                title="Heading 3"
+              >
+                <Heading3 size={16} />
+              </button>
+              <button
+                onClick={() =>
+                  editor.chain().focus().toggleBlockquote().run()
+                }
+                type="button"
+                title="Blockquote"
+              >
+                <Quote size={16} />
+              </button>
+              <button
+                onClick={() =>
+                  editor.chain().focus().toggleBulletList().run()
+                }
+                type="button"
+                title="Bullet list"
+              >
+                <ListIcon size={16} />
+              </button>
+              <button
+                onClick={() =>
+                  editor.chain().focus().toggleCodeBlock().run()
+                }
+                type="button"
+                title="Code block"
+              >
+                <CodeSquare size={16} />
+              </button>
+              <button
+                onClick={() =>
+                  editor.chain().focus().setHorizontalRule().run()
+                }
+                type="button"
+                title="Horizontal rule"
+              >
+                <Minus size={16} />
+              </button>
+            </div>
+          </FloatingMenu>
+        )}
+
+        {/* Bubble menu — text formatting toolbar */}
         {editor && (
           <BubbleMenu
             editor={editor}
@@ -244,6 +357,28 @@ export function ArticleEditor({
               >
                 <Code size={15} />
               </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive("highlight") ? "is-active" : ""}`}
+                onClick={() =>
+                  editor.chain().focus().toggleHighlight().run()
+                }
+                type="button"
+                title="Highlight"
+              >
+                <Highlighter size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive("link") ? "is-active" : ""}`}
+                onClick={handleSetLink}
+                type="button"
+                title={editor.isActive("link") ? "Remove link" : "Add link"}
+              >
+                {editor.isActive("link") ? (
+                  <Unlink size={15} />
+                ) : (
+                  <Link size={15} />
+                )}
+              </button>
               <div className="bubble-menu__sep" />
               <button
                 className={`bubble-menu__btn ${editor.isActive("blockquote") ? "is-active" : ""}`}
@@ -266,10 +401,68 @@ export function ArticleEditor({
               >
                 <ListOrdered size={15} />
               </button>
+              <div className="bubble-menu__sep" />
+              <button
+                className={`bubble-menu__btn ${editor.isActive({ textAlign: "left" }) ? "is-active" : ""}`}
+                onClick={() =>
+                  editor.chain().focus().setTextAlign("left").run()
+                }
+                type="button"
+                title="Align left"
+              >
+                <AlignLeft size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive({ textAlign: "center" }) ? "is-active" : ""}`}
+                onClick={() =>
+                  editor.chain().focus().setTextAlign("center").run()
+                }
+                type="button"
+                title="Align center"
+              >
+                <AlignCenter size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive({ textAlign: "right" }) ? "is-active" : ""}`}
+                onClick={() =>
+                  editor.chain().focus().setTextAlign("right").run()
+                }
+                type="button"
+                title="Align right"
+              >
+                <AlignRight size={15} />
+              </button>
             </div>
+            {linkUrl !== null && (
+              <div className="bubble-menu-link-input">
+                <input
+                  ref={linkInputRef}
+                  type="url"
+                  placeholder="https://..."
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleLinkSubmit();
+                    if (e.key === "Escape") setLinkUrl(null);
+                  }}
+                />
+                <button onClick={handleLinkSubmit} type="button">
+                  Apply
+                </button>
+              </div>
+            )}
           </BubbleMenu>
         )}
       </div>
+
+      {/* Word count */}
+      {editor && (
+        <div className="word-count">
+          {editor.storage.characterCount.words()} words &middot;{" "}
+          {editor.storage.characterCount.characters()} characters
+        </div>
+      )}
+
       {activeAnnotation && wrapperRect && (
         <SuggestionCard
           trigger={activeAnnotation.trigger}
