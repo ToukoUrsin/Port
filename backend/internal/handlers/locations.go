@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,8 +19,22 @@ func (h *Handler) ListLocations(c *gin.Context) {
 		q = q.Where("path LIKE ? OR slug = ?", "%/"+country+"/%", country)
 	}
 	if level := c.Query("level"); level != "" {
-		if lvl, err := strconv.Atoi(level); err == nil {
-			q = q.Where("level = ?", lvl)
+		parts := strings.Split(level, ",")
+		levels := []int{}
+		for _, p := range parts {
+			if lvl, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
+				levels = append(levels, lvl)
+			}
+		}
+		if len(levels) == 1 {
+			q = q.Where("level = ?", levels[0])
+		} else if len(levels) > 1 {
+			q = q.Where("level IN ?", levels)
+		}
+	}
+	if minArticles := c.Query("min_articles"); minArticles != "" {
+		if ma, err := strconv.Atoi(minArticles); err == nil {
+			q = q.Where("article_count >= ?", ma)
 		}
 	}
 
