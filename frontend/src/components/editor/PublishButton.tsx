@@ -24,7 +24,7 @@ export function PublishButton({ gate, onPublish }: PublishButtonProps) {
     <button
       className="btn btn-primary"
       onClick={handleClick}
-      disabled={gate === "RED" || publishing}
+      disabled={publishing}
     >
       {publishing ? (
         <Loader2 size={16} className="spin" />

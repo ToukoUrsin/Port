@@ -338,10 +338,10 @@ function ProcessingStep({
         )}
 
         {/* Notes reveal */}
-        {notes && !transcript && (
+        {notes && (
           <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
             <div className="pipeline-data-label">
-              <Type size={14} /> Your notes
+              <Type size={14} /> {t("post.notes") || "Your notes"}
             </div>
             <p className="pipeline-data-text">{notes}</p>
           </div>
