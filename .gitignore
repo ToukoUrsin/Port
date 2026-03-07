@@ -19,6 +19,7 @@ backend/tmp/
 # Scripts
 scripts/.fb_session/
 scripts/fb_output/
+scripts/geonames_data/
 
 # Inspiration images (large binary files)
 1_what/article_engine/spec/inspiration/
