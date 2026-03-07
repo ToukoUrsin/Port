@@ -12,6 +12,8 @@ For each claim, determine one status:
 - POSSIBLE_HALLUCINATION — the article adds specificity not present in the source (exact numbers, full names, dates, titles the contributor didn't mention)
 - FABRICATED_QUOTE — a direct quote appears in the article that is not in the transcript
 
+You have access to Google Search. For key factual claims (dates, names, official titles, statistics, public records, event details), verify them against web sources when possible. In the evidence field, note "web-verified: [source]" when a claim is confirmed by a web result, or "web-contradicted: [source]" when web results disagree. Source-material verification always takes priority — web search is supplementary.
+
 Be thorough. Check every name, number, date, quote, and specific claim. A hallucinated detail that sounds plausible is more dangerous than an obvious error.
 
 ## PHASE 2 — SCORE

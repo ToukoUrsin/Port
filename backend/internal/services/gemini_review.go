@@ -41,6 +41,9 @@ func (s *GeminiReviewService) Review(ctx context.Context, input ReviewInput) (*m
 			SystemInstruction: &genai.Content{
 				Parts: []*genai.Part{genai.NewPartFromText(prompts.ReviewSystem)},
 			},
+			Tools: []*genai.Tool{{
+				GoogleSearch: &genai.GoogleSearch{},
+			}},
 			ThinkingConfig: &genai.ThinkingConfig{
 				ThinkingLevel: genai.ThinkingLevelHigh,
 			},
@@ -52,6 +55,19 @@ func (s *GeminiReviewService) Review(ctx context.Context, input ReviewInput) (*m
 
 	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("gemini review: empty response")
+	}
+
+	// Extract web sources from grounding metadata
+	var webSources []models.WebSource
+	if resp.Candidates[0].GroundingMetadata != nil {
+		for _, chunk := range resp.Candidates[0].GroundingMetadata.GroundingChunks {
+			if chunk.Web != nil {
+				webSources = append(webSources, models.WebSource{
+					Title: chunk.Web.Title,
+					URL:   chunk.Web.URI,
+				})
+			}
+		}
 	}
 
 	raw := resp.Candidates[0].Content.Parts[0].Text
@@ -76,6 +92,10 @@ func (s *GeminiReviewService) Review(ctx context.Context, input ReviewInput) (*m
 		if parseErr != nil {
 			return fallbackReview(), nil
 		}
+	}
+
+	if len(webSources) > 0 {
+		result.WebSources = webSources
 	}
 
 	return result, nil

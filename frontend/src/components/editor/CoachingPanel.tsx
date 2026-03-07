@@ -26,6 +26,19 @@ export function CoachingPanel({
     <div className="coaching-panel">
       <p className="coaching-celebration">{review.coaching.celebration}</p>
 
+      {review.web_sources && review.web_sources.length > 0 && (
+        <div className="web-sources">
+          <p className="web-sources__label">Verified against:</p>
+          <ul className="web-sources__list">
+            {review.web_sources.map((s, i) => (
+              <li key={i}>
+                <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || s.url}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {suggestions.length > 0 && (
         <ol className="coaching-suggestions">
           {suggestions.map((s, i) => (

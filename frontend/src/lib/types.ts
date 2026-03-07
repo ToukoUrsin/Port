@@ -40,6 +40,11 @@ export interface Coaching {
   suggestions: string[];
 }
 
+export interface WebSource {
+  title: string;
+  url: string;
+}
+
 export interface ReviewResult {
   verification: VerificationEntry[];
   scores: QualityScores;
@@ -47,6 +52,7 @@ export interface ReviewResult {
   red_triggers: RedTrigger[];
   yellow_flags: YellowFlag[];
   coaching: Coaching;
+  web_sources?: WebSource[];
 }
 
 // --- Article metadata (from generation) ---

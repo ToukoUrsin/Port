@@ -51,6 +51,11 @@ type Coaching struct {
 	Suggestions []string `json:"suggestions"`
 }
 
+type WebSource struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
 type ReviewResult struct {
 	Verification []VerificationEntry `json:"verification"`
 	Scores       QualityScores       `json:"scores"`
@@ -58,6 +63,7 @@ type ReviewResult struct {
 	RedTriggers  []RedTrigger        `json:"red_triggers"`
 	YellowFlags  []YellowFlag        `json:"yellow_flags"`
 	Coaching     Coaching            `json:"coaching"`
+	WebSources   []WebSource         `json:"web_sources,omitempty"`
 }
 
 type ArticleMetadata struct {
