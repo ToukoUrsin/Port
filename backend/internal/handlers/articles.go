@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services"
+	"gorm.io/gorm"
 )
 
 func (h *Handler) ListArticles(c *gin.Context) {
@@ -25,29 +26,9 @@ func (h *Handler) ListArticles(c *gin.Context) {
 
 	if locationIDs != "" {
 		ids := strings.Split(locationIDs, ",")
-		// Resolve paths for all requested locations, then use constant-prefix
-		// LIKE queries so Postgres can use the text_pattern_ops btree index.
-		var locs []models.Location
-		h.db.Select("id", "path").Where("id IN ?", ids).Find(&locs)
-		if len(locs) > 0 {
-			conds := make([]string, 0, len(locs)*2)
-			args := make([]interface{}, 0, len(locs)*2)
-			for _, loc := range locs {
-				conds = append(conds, "location_id = ?")
-				args = append(args, loc.ID)
-				conds = append(conds, "location_id IN (SELECT id FROM locations WHERE path LIKE ?)")
-				args = append(args, loc.Path+"/%")
-			}
-			query = query.Where(strings.Join(conds, " OR "), args...)
-		}
+		query = query.Where("location_id IN (?)", h.resolveLocationHierarchy(ids))
 	} else if locationID != "" {
-		var loc models.Location
-		if h.db.Select("id", "path").First(&loc, "id = ?", locationID).Error == nil {
-			query = query.Where(
-				"location_id IN (SELECT id FROM locations WHERE id = ? OR path LIKE ?)",
-				loc.ID, loc.Path+"/%",
-			)
-		}
+		query = query.Where("location_id IN (?)", h.resolveLocationHierarchy([]string{locationID}))
 	}
 
 	// Filter by country: match locations whose path contains this country segment
@@ -223,4 +204,22 @@ func (h *Handler) fillLocationNames(articles []models.Submission) {
 	for i := range articles {
 		articles[i].LocationName = nameMap[articles[i].LocationID]
 	}
+}
+
+// resolveLocationHierarchy returns a GORM subquery that selects all location
+// IDs matching the given IDs plus all their descendants via path prefix.
+// Produces a single SQL subquery: SELECT id FROM locations WHERE id IN (...)
+// OR path LIKE 'prefix1/%' OR path LIKE 'prefix2/%' ...
+// Uses text_pattern_ops btree index for each LIKE condition.
+func (h *Handler) resolveLocationHierarchy(ids []string) *gorm.DB {
+	// Fetch paths for the requested locations (single indexed query)
+	var locs []models.Location
+	h.db.Select("id", "path").Where("id IN ?", ids).Find(&locs)
+
+	// Build: SELECT id FROM locations WHERE id IN (...) OR path LIKE ...
+	sub := h.db.Model(&models.Location{}).Select("id").Where("id IN ?", ids)
+	for _, loc := range locs {
+		sub = sub.Or("path LIKE ?", loc.Path+"/%")
+	}
+	return sub
 }

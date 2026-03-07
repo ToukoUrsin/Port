@@ -150,6 +150,82 @@
   color: var(--color-text-secondary);
 }
 
+/* ========================================
+   ARTICLE REACTIONS (like / dislike bar)
+   ======================================== */
+.article-reactions {
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--color-border);
+}
+.article-reactions__buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.article-reactions__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.article-reactions__btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.article-reactions__btn--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+.article-reactions__btn--active:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: white;
+}
+.article-reactions__btn--dislike.article-reactions__btn--active {
+  background: var(--color-text-tertiary);
+  border-color: var(--color-text-tertiary);
+}
+.article-reactions__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.article-reactions__bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.article-reactions__bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-gray-100, #f0f0f0);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  max-width: 200px;
+}
+.article-reactions__bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+.article-reactions__percent {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
 /* Gate badge inline (article meta) */
 .gate-badge-inline {
   font-family: var(--font-sans);
