@@ -71,8 +71,11 @@ func (h *Handler) LocationArticles(c *gin.Context) {
 		return
 	}
 
+	// Include articles from descendant locations
+	expanded := h.expandLocationIDs([]string{loc.ID.String()})
+
 	var articles []models.Submission
-	h.db.Where("location_id = ? AND status = ?", loc.ID, models.StatusPublished).
+	h.db.Where("location_id IN ? AND status = ?", expanded, models.StatusPublished).
 		Order("updated_at DESC").Limit(limit).Offset(offset).
 		Find(&articles)
 

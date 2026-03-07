@@ -25,9 +25,11 @@ func (h *Handler) ListArticles(c *gin.Context) {
 
 	if locationIDs != "" {
 		ids := strings.Split(locationIDs, ",")
-		query = query.Where("location_id IN ?", ids)
+		expanded := h.expandLocationIDs(ids)
+		query = query.Where("location_id IN ?", expanded)
 	} else if locationID != "" {
-		query = query.Where("location_id = ?", locationID)
+		expanded := h.expandLocationIDs([]string{locationID})
+		query = query.Where("location_id IN ?", expanded)
 	}
 
 	category := c.Query("category")
@@ -158,4 +160,32 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 
 	h.db.First(&sub, "id = ?", id)
 	c.JSON(http.StatusOK, sub)
+}
+
+// expandLocationIDs takes a list of location IDs and expands any parent
+// locations to include all descendant location IDs (hierarchical filtering).
+func (h *Handler) expandLocationIDs(ids []string) []string {
+	result := make(map[string]bool)
+	for _, id := range ids {
+		result[id] = true
+	}
+
+	// Look up paths for provided IDs
+	var locs []models.Location
+	h.db.Where("id IN ?", ids).Find(&locs)
+
+	for _, loc := range locs {
+		// Find all descendants via path prefix
+		var descendants []models.Location
+		h.db.Where("path LIKE ? AND id != ?", loc.Path+"/%", loc.ID).Find(&descendants)
+		for _, d := range descendants {
+			result[d.ID.String()] = true
+		}
+	}
+
+	out := make([]string, 0, len(result))
+	for id := range result {
+		out = append(out, id)
+	}
+	return out
 }
