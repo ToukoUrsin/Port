@@ -143,15 +143,23 @@ function HeadlineItem({ article }: { article: Article }) {
    AD BANNER
    ======================================== */
 
+const AD_IMAGES = ["/Ad1.png", "/Ad 2.png", "/Ad 3.png", "/Ad 4.png"];
+
 function AdBanner() {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % AD_IMAGES.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <section className="ad-banner">
       <div className="ad-banner__inner">
         <span className="ad-banner__label">Ad</span>
-        <div className="ad-banner__placeholder">
-          <ImageIcon size={24} />
-          <span>Advertisement</span>
-        </div>
+        <img src={AD_IMAGES[current]} alt="Advertisement" />
       </div>
     </section>
   );
