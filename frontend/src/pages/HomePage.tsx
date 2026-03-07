@@ -299,21 +299,22 @@ export default function HomePage() {
     [locations],
   );
 
-  // Fetch articles, filtered by location when one is selected
+  // Fetch articles, filtered by location when one is selected.
+  // Always pass country so users only see articles in their language.
   const fetchArticles = useCallback(
     () => {
       if (selectedLocation) {
-        return getArticles({ limit: 100, location_id: selectedLocation.id });
+        return getArticles({ limit: 100, location_id: selectedLocation.id, country });
       }
       if (savedLocIds.length > 0) {
-        return getArticles({ limit: 100, location_ids: savedLocIds });
+        return getArticles({ limit: 100, location_ids: savedLocIds, country });
       }
       if (regionLocationIds.length > 0) {
-        return getArticles({ limit: 100, location_ids: regionLocationIds });
+        return getArticles({ limit: 100, location_ids: regionLocationIds, country });
       }
-      return getArticles({ limit: 100 });
+      return getArticles({ limit: 100, country });
     },
-    [selectedLocation?.id, savedLocIds, regionLocationIds],
+    [selectedLocation?.id, savedLocIds, regionLocationIds, country],
   );
   const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id, savedLocIds, regionLocationIds]);
   const allArticles = useMemo(

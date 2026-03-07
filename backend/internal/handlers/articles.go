@@ -32,6 +32,15 @@ func (h *Handler) ListArticles(c *gin.Context) {
 		query = query.Where("location_id IN ?", expanded)
 	}
 
+	// Filter by country: match locations whose path contains this country segment
+	country := c.Query("country")
+	if country != "" {
+		query = query.Where(
+			"location_id IN (SELECT id FROM locations WHERE path LIKE ? OR path LIKE ? OR slug = ?)",
+			"%/"+country+"/%", "%/"+country, country,
+		)
+	}
+
 	category := c.Query("category")
 	if category != "" {
 		query = query.Where("meta->>'category' = ?", category)
@@ -101,7 +110,18 @@ func (h *Handler) SimilarArticles(c *gin.Context) {
 		return
 	}
 
-	similar, err := h.search.SimilarArticles(c.Request.Context(), id, 5)
+	// Determine the country path from the article's location so similar
+	// articles are restricted to the same country/language.
+	var countryPath string
+	var loc models.Location
+	if h.db.First(&loc, "id = ?", article.LocationID).Error == nil {
+		parts := strings.SplitN(loc.Path, "/", 3) // e.g. "europe/finland/uusimaa/helsinki"
+		if len(parts) >= 2 {
+			countryPath = parts[0] + "/" + parts[1] // "europe/finland"
+		}
+	}
+
+	similar, err := h.search.SimilarArticles(c.Request.Context(), id, 5, countryPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
 		return

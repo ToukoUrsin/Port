@@ -12,7 +12,8 @@ import (
 
 // SimilarArticles returns published articles most similar to the given article
 // by computing a centroid of its chunk embeddings and querying pgvector.
-func (s *Service) SimilarArticles(ctx context.Context, articleID uuid.UUID, limit int) ([]models.Submission, error) {
+// When countryPath is non-empty, results are restricted to that country.
+func (s *Service) SimilarArticles(ctx context.Context, articleID uuid.UUID, limit int, countryPath string) ([]models.Submission, error) {
 	// Fetch all embeddings for this article
 	var embeddings []models.Embedding
 	if err := s.db.WithContext(ctx).
@@ -47,12 +48,20 @@ func (s *Service) SimilarArticles(ctx context.Context, articleID uuid.UUID, limi
 	// Fetch extra hits to allow dedup (multiple chunks per article)
 	fetchLimit := limit * 3
 	var hits []entityHit
-	if err := s.db.WithContext(ctx).
+	q := s.db.WithContext(ctx).
 		Table("embeddings e").
 		Select("e.entity_id, 1 - (e.embedding <=> ?) AS score", centroidVec).
 		Joins("JOIN submissions s ON s.id = e.entity_id").
 		Where("e.entity_category = ? AND s.status = ? AND e.entity_id != ?",
-			models.EntitySubmission, models.StatusPublished, articleID).
+			models.EntitySubmission, models.StatusPublished, articleID)
+
+	// Restrict to same country when path is provided
+	if countryPath != "" {
+		q = q.Joins("JOIN locations l ON l.id = s.location_id").
+			Where("l.path LIKE ? OR l.path = ?", countryPath+"/%", countryPath)
+	}
+
+	if err := q.
 		Order(s.db.Raw("e.embedding <=> ?", centroidVec)).
 		Limit(fetchLimit).
 		Find(&hits).Error; err != nil {
