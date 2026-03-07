@@ -1,8 +1,8 @@
 """
 Seed the database via the admin API.
 
-Reads seed_data*.json files, converts blocks to markdown, seeds missing
-locations + profile, then pushes articles via the existing batch endpoint.
+Reads seed_data*.json files, uploads images, converts blocks to markdown,
+seeds locations + profile, then pushes articles via the batch endpoint.
 
 Usage:
     ADMIN_API_TOKEN=your-token API_URL=https://news.minir.ai python scripts/seed_to_api.py
@@ -15,12 +15,14 @@ import json
 import os
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import requests
 
 SCRIPTS_DIR = Path(__file__).parent
 ARTICLES_DIR = SCRIPTS_DIR / "generated_articles"
+IMAGES_DIR = Path(__file__).parent.parent / "articles" / "images"
 SEED_FILES = ["seed_data.json", "seed_data_us.json", "seed_data_new_towns.json"]
 SEED_OWNER_ID = "00000000-0000-0000-0000-000000000001"
 
@@ -32,8 +34,36 @@ def auth_headers():
     return {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 
 
-def blocks_to_markdown(blocks, title=""):
+def auth_headers_upload():
+    return {"Authorization": f"Bearer {TOKEN}"}
+
+
+def upload_image(filepath, submission_id):
+    """Upload an image file to the server and return its URL."""
+    url = f"{API_URL}/api/admin/media/{submission_id}"
+    with open(filepath, "rb") as f:
+        resp = requests.post(url, files={"file": (filepath.name, f)}, headers=auth_headers_upload())
+    if resp.status_code == 200:
+        return resp.json().get("url", "")
+    print(f"    UPLOAD FAIL {filepath.name}: {resp.status_code} {resp.text[:100]}")
+    return ""
+
+
+def resolve_image_path(src):
+    """Resolve a seed data image src to an actual file on disk."""
+    if not src:
+        return None
+    # src looks like "articles/images/karkkila-xxx.jpg"
+    filename = src.split("/")[-1]
+    path = IMAGES_DIR / filename
+    if path.exists():
+        return path
+    return None
+
+
+def blocks_to_markdown(blocks, title="", image_urls=None):
     """Convert blocks format to markdown string."""
+    image_urls = image_urls or {}
     parts = []
     if title:
         parts.append(f"# {title}\n")
@@ -53,12 +83,15 @@ def blocks_to_markdown(blocks, title=""):
                 parts.append(f"> {content}")
         elif btype == "image":
             src = block.get("src", "")
-            # Only include images with real URLs, skip local file paths
-            if src and (src.startswith("http") or src.startswith("/api/")):
+            # Use uploaded URL if available, otherwise try direct URL
+            url = image_urls.get(src)
+            if not url and src.startswith("http"):
+                url = src
+            if url:
                 alt = block.get("alt", "")
                 caption = block.get("caption", "")
                 label = caption or alt or "Photo"
-                parts.append(f"![{label}]({src})")
+                parts.append(f"![{label}]({url})")
     return "\n\n".join(parts)
 
 
@@ -99,35 +132,58 @@ def seed_profile():
 
 def build_location_id_map(seed_locations_list, slug_map):
     """Map seed data location_id -> actual DB location_id using slug."""
-    seed_id_to_slug = {}
-    for loc in seed_locations_list:
-        seed_id_to_slug[loc["id"]] = loc["slug"]
-
+    seed_id_to_slug = {loc["id"]: loc["slug"] for loc in seed_locations_list}
     seed_id_to_db_id = {}
     for seed_id, slug in seed_id_to_slug.items():
         if slug in slug_map:
             seed_id_to_db_id[seed_id] = slug_map[slug]
         else:
-            # If the seed endpoint created it with the same ID, use that
             seed_id_to_db_id[seed_id] = seed_id
     return seed_id_to_db_id
 
 
 def seed_articles(submissions, id_map, batch_size=50):
-    """Convert submissions to batch format and POST via batch API."""
+    """Upload images, convert submissions to batch format, POST via batch API."""
     articles = []
     skipped = 0
+
     for sub in submissions:
         meta = sub.get("meta", {})
         blocks = meta.get("blocks", [])
         title = sub.get("title", "")
 
-        content = blocks_to_markdown(blocks, title)
+        # Create a temporary submission ID for image uploads
+        temp_sub_id = str(uuid.uuid4())
+
+        # Upload images referenced in blocks and featured_img
+        image_urls = {}  # src -> uploaded URL
+        image_srcs = []
+
+        # Collect all image sources
+        for b in blocks:
+            if b.get("type") == "image" and b.get("src"):
+                image_srcs.append(b["src"])
+        featured_src = meta.get("featured_img", "")
+        if featured_src:
+            image_srcs.append(featured_src)
+
+        # Upload each image
+        for src in image_srcs:
+            if src in image_urls:
+                continue
+            local_path = resolve_image_path(src)
+            if local_path:
+                url = upload_image(local_path, temp_sub_id)
+                if url:
+                    image_urls[src] = url
+
+        # Convert blocks to markdown with uploaded image URLs
+        content = blocks_to_markdown(blocks, title, image_urls)
         if not content.strip():
             skipped += 1
             continue
 
-        # Map location_id from seed data to actual DB id
+        # Map location_id
         loc_id = sub["location_id"]
         actual_loc_id = id_map.get(loc_id, loc_id)
 
@@ -141,13 +197,18 @@ def seed_articles(submissions, id_map, batch_size=50):
         }
         if meta.get("summary"):
             article["summary"] = meta["summary"]
-        # Use existing featured_img if it's a real URL, otherwise generate a placeholder
-        img = meta.get("featured_img", "")
-        if img and (img.startswith("http") or img.startswith("/api/")):
-            article["featured_img"] = img
+
+        # Set featured_img: uploaded version, or picsum fallback
+        if featured_src and featured_src in image_urls:
+            article["featured_img"] = image_urls[featured_src]
+        elif image_urls:
+            # Use any uploaded image as featured
+            article["featured_img"] = next(iter(image_urls.values()))
         else:
+            # Fallback to picsum placeholder
             slug = hashlib.md5(title.encode()).hexdigest()[:12]
             article["featured_img"] = f"https://picsum.photos/seed/{slug}/800/500"
+
         articles.append(article)
 
     if skipped:
@@ -203,13 +264,10 @@ def process_seed_file(filepath, slug_map):
     submissions = data.get("submissions", [])
     print(f"  {len(locations)} locations, {len(submissions)} articles")
 
-    # Seed missing locations first
     if locations:
         seed_locations(locations)
-        # Refresh slug map after seeding
         slug_map.update(get_location_slug_map())
 
-    # Build ID mapping: seed data location_id -> actual DB location_id
     id_map = build_location_id_map(locations, slug_map)
 
     if submissions:
@@ -234,15 +292,13 @@ def main():
 
     print(f"API: {API_URL}")
     print(f"Token: {'*' * 4}{TOKEN[-4:]}")
+    print(f"Images dir: {IMAGES_DIR} ({len(list(IMAGES_DIR.glob('*')))} files)")
 
-    # Seed the owner profile
     seed_profile()
 
-    # Get current locations from DB (slug -> id map)
     slug_map = get_location_slug_map()
     print(f"  {len(slug_map)} locations already in DB")
 
-    # Process each seed file
     files = sys.argv[1:] if len(sys.argv) > 1 else SEED_FILES
     total = 0
     for fname in files:
