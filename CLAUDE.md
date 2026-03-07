@@ -9,23 +9,23 @@ AI-powered local news platform that turns citizen contributions (audio, photos, 
 ## Repository Structure
 
 ```
-LOCAL_NEWS_PLATFORM.md   Product vision, market analysis, pitch structure
-TECH_SPEC.md             Technical spec — architecture, API endpoints, DB schema, pipeline details
-local-news-app.md        Early idea draft (superseded by above docs)
-archive/                 Previous project (Preflight) and research reports — reference only
+LOCAL_NEWS_PLATFORM.md      Product vision, market analysis, pitch structure
+3_how/TECH_SPEC.md          Technical spec — architecture, API endpoints, DB schema, pipeline details
+local-news-app.md           Early idea draft (superseded by above docs)
+archive/                    Previous project (Preflight) and research reports — reference only
 ```
 
 The `backend/` and `frontend/` directories don't exist yet — they need to be created following the structure defined in `TECH_SPEC.md`.
 
 ## Tech Stack
 
-- **Backend:** Python 3.12+, FastAPI, PostgreSQL, SQLAlchemy + Alembic
+- **Backend:** Go 1.22+, Gin, PostgreSQL, GORM + GORM migrations
 - **Frontend:** Vite + React (TypeScript, PWA), CSS custom properties (design tokens)
-- **AI:** ElevenLabs STT (transcription), Claude API via Anthropic SDK (article generation + review)
+- **AI:** ElevenLabs STT (transcription), Claude API via Anthropic Go SDK (article generation + review)
 
 ## Architecture
 
-Two frontend apps (contributor PWA + public reader site) talking to a single FastAPI backend. Core AI pipeline runs synchronously for the hackathon:
+Two frontend apps (contributor PWA + public reader site) talking to a single Gin backend. Core AI pipeline runs synchronously for the hackathon:
 
 ```
 POST /api/submissions → save files → return { submission_id }
@@ -36,17 +36,15 @@ GET  /api/submissions/{id}/stream → SSE connection:
   → save to DB            → event: complete { article, review }
 ```
 
-Two-request pattern: POST saves files and returns immediately, then frontend opens SSE stream for real-time pipeline progress (~20-30 seconds). See `TECH_SPEC.md` for detailed API endpoints, DB schema, and service structure.
+Two-request pattern: POST saves files and returns immediately, then frontend opens SSE stream for real-time pipeline progress (~20-30 seconds). See `3_how/TECH_SPEC.md` for detailed API endpoints, DB schema, and service structure.
 
 ## Build & Run Commands
 
 ```bash
 # Backend
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-uvicorn main:app --reload --port 8000
+go mod download
+go run cmd/server/main.go    # runs on :8000 (with hot-reload via air if installed)
 
 # Frontend
 cd frontend

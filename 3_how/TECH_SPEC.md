@@ -1,6 +1,6 @@
 # Local News Platform — Technical Specification
 
-**Stack:** Python (FastAPI) · PostgreSQL · Vite + React · ElevenLabs STT · Claude API
+**Stack:** Go (Gin) · PostgreSQL · Vite + React · ElevenLabs STT · Claude API
 **Target:** Hackathon MVP (48h build)
 
 ---
@@ -19,8 +19,8 @@
                             │ REST / JSON / SSE
                             v
              ┌──────────────────────────────────────┐
-             │     Backend (FastAPI)                 │
-             │     Python 3.12+                     │
+             │     Backend (Gin)                     │
+             │     Go 1.22+                         │
              ├──────────────────────────────────────┤
              │  POST /api/submissions               │
              │  GET  /api/submissions/{id}/stream    │ ← SSE
@@ -58,50 +58,62 @@ This means the backend is a pure function layer: request comes in → read/write
 
 ---
 
-## Backend — Python / FastAPI
+## Backend — Go / Gin
 
 ### Project Structure
 
 ```
 backend/
-├── main.py                  # FastAPI app, CORS, lifespan
-├── config.py                # env vars, API keys, DB URL
-├── db.py                    # SQLAlchemy engine + session
-├── models/
-│   ├── article.py           # Article ORM model
-│   ├── submission.py        # Raw submission (audio, photos, notes)
-│   └── location.py          # Location model (hierarchical)
-├── routers/
-│   ├── submissions.py       # POST raw content (audio + photos + notes)
-│   ├── articles.py          # GET/list published articles
-│   ├── review.py            # GET review results, POST approve/fix
-│   └── locations.py          # GET location newspaper data
-├── services/
-│   ├── transcription.py     # ElevenLabs STT integration
-│   ├── generation.py        # Claude API — article generation
-│   ├── review.py            # Claude API — editorial quality review
-│   └── media.py             # File upload handling
-├── alembic/                 # DB migrations
-│   └── versions/
-├── alembic.ini
-└── requirements.txt
+├── cmd/
+│   └── server/
+│       └── main.go              # Entrypoint, router setup, middleware
+├── internal/
+│   ├── config/
+│   │   └── config.go            # Env vars, API keys, DB URL
+│   ├── database/
+│   │   └── database.go          # GORM connection + auto-migrate
+│   ├── models/
+│   │   ├── location.go          # Location model (hierarchical)
+│   │   ├── profile.go           # Profile + auth models
+│   │   ├── submission.go        # Submission model
+│   │   ├── file.go              # File model
+│   │   ├── tag.go               # Tag + EntityTag models
+│   │   ├── follow.go            # Follow model
+│   │   ├── reply.go             # Reply model
+│   │   └── embedding.go         # Embedding model (pgvector)
+│   ├── handlers/
+│   │   ├── submissions.go       # POST raw content, GET stream (SSE)
+│   │   ├── articles.go          # GET/list published articles
+│   │   ├── search.go            # GET full-text search
+│   │   └── locations.go         # GET location newspaper data
+│   ├── services/
+│   │   ├── transcription.go     # ElevenLabs STT integration
+│   │   ├── generation.go        # Claude API — article generation
+│   │   ├── review.go            # Claude API — editorial quality review
+│   │   └── media.go             # File upload handling
+│   └── middleware/
+│       └── cors.go              # CORS configuration
+├── go.mod
+└── go.sum
 ```
 
 ### Dependencies
 
 ```
-# requirements.txt
-fastapi==0.115.*
-uvicorn[standard]==0.34.*
-sqlalchemy==2.0.*
-alembic==1.14.*
-psycopg2-binary==2.9.*
-python-multipart==0.0.*
-anthropic==0.49.*
-elevenlabs==1.*            # for Speech-to-Text
-python-dotenv==1.1.*
-httpx==0.28.*
-pillow==11.*              # image processing
+// go.mod
+module github.com/localnews/backend
+
+go 1.22
+
+require (
+    github.com/gin-gonic/gin          v1.10+
+    github.com/gin-contrib/cors        v1.7+
+    gorm.io/gorm                       v1.25+
+    gorm.io/driver/postgres            v1.5+
+    github.com/anthropics/anthropic-sdk-go  latest
+    github.com/joho/godotenv           v1.5+
+    github.com/google/uuid             v1.6+
+)
 ```
 
 ### Key Environment Variables
@@ -112,6 +124,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ELEVENLABS_API_KEY=...          # Speech-to-Text
 MEDIA_STORAGE_PATH=./uploads    # local for hackathon, S3 later
 ALLOWED_ORIGINS=http://localhost:5173
+PORT=8000
 ```
 
 ---
@@ -295,11 +308,13 @@ CREATE INDEX idx_embeddings_category ON embeddings (entity_category);
 CREATE INDEX idx_embeddings_vector ON embeddings USING ivfflat (embedding vector_cosine_ops);
 ```
 
-Manage migrations with Alembic. Run `alembic init alembic` once, then create revisions as the schema evolves.
+### Migrations
+
+GORM AutoMigrate handles schema creation during development. For production, use raw SQL migration files in `backend/migrations/` applied with a migration tool like `golang-migrate/migrate` or manual `psql` execution. The full-text search triggers and extensions (below) must be applied via raw SQL since GORM doesn't manage triggers.
 
 ### Full-Text Search
 
-PostgreSQL full-text search with precalculated `tsvector` columns and GIN indexes for efficient keyword search. Two extensions required:
+PostgreSQL full-text search with precalculated `tsvector` columns and GIN indexes for efficient keyword search. Extension required:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- trigram fuzzy matching
@@ -359,37 +374,46 @@ Query parameters:
 - `limit` — max results (default 20, max 100)
 - `offset` — pagination offset
 
-```python
-# routers/search.py
-from sqlalchemy import func
+```go
+// handlers/search.go
 
-@router.get("/api/search")
-async def search(q: str, type: str = None, location_id: UUID = None,
-                 limit: int = 20, offset: int = 0, db: Session = Depends(get_db)):
-    query = func.plainto_tsquery("english", q)
-    results = {}
+func (h *Handler) Search(c *gin.Context) {
+    q := c.Query("q")
+    searchType := c.Query("type")
+    locationID := c.Query("location_id")
+    limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+    offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-    if type in (None, "submissions"):
-        stmt = (
-            select(Submission, func.ts_rank(Submission.search_vector, query).label("rank"))
-            .where(Submission.search_vector.op("@@")(query))
-            .order_by(text("rank DESC"))
-            .limit(limit).offset(offset)
-        )
-        if location_id:
-            stmt = stmt.where(Submission.location_id == location_id)
-        results["submissions"] = db.execute(stmt).all()
+    if limit > 100 {
+        limit = 100
+    }
 
-    if type in (None, "profiles"):
-        stmt = (
-            select(Profile, func.ts_rank(Profile.search_vector, query).label("rank"))
-            .where(Profile.search_vector.op("@@")(query))
-            .order_by(text("rank DESC"))
-            .limit(limit).offset(offset)
-        )
-        results["profiles"] = db.execute(stmt).all()
+    results := map[string]any{}
+    query := "plainto_tsquery('english', ?)"
 
-    return results
+    if searchType == "" || searchType == "submissions" {
+        var submissions []models.Submission
+        stmt := h.db.Where("search_vector @@ plainto_tsquery('english', ?)", q).
+            Order("ts_rank(search_vector, plainto_tsquery('english', ?)) DESC", q).
+            Limit(limit).Offset(offset)
+        if locationID != "" {
+            stmt = stmt.Where("location_id = ?", locationID)
+        }
+        stmt.Find(&submissions)
+        results["submissions"] = submissions
+    }
+
+    if searchType == "" || searchType == "profiles" {
+        var profiles []models.Profile
+        h.db.Where("search_vector @@ plainto_tsquery('english', ?)", q).
+            Order("ts_rank(search_vector, plainto_tsquery('english', ?)) DESC", q).
+            Limit(limit).Offset(offset).
+            Find(&profiles)
+        results["profiles"] = profiles
+    }
+
+    c.JSON(http.StatusOK, results)
+}
 ```
 
 #### Fuzzy matching with pg_trgm
@@ -402,14 +426,13 @@ CREATE INDEX idx_submissions_headline_trgm ON submissions USING GIN (headline gi
 CREATE INDEX idx_profiles_name_trgm ON profiles USING GIN (display_name gin_trgm_ops);
 ```
 
-```python
-# Fuzzy search example (for autocomplete)
-stmt = (
-    select(Submission)
-    .where(func.similarity(Submission.headline, q) > 0.3)
-    .order_by(func.similarity(Submission.headline, q).desc())
-    .limit(10)
-)
+```go
+// Fuzzy search example (for autocomplete)
+var submissions []models.Submission
+h.db.Where("similarity(headline, ?) > 0.3", q).
+    Order("similarity(headline, ?) DESC", q).
+    Limit(10).
+    Find(&submissions)
 ```
 
 ---
@@ -427,7 +450,7 @@ Accepts `multipart/form-data`:
 Saves files to disk, creates a `submissions` row with status `pending`, returns immediately:
 
 ```json
-{ "submission_id": 7, "status": "pending" }
+{ "submission_id": "uuid-here", "status": "pending" }
 ```
 
 ### 2. Pipeline Stream (`GET /api/submissions/{id}/stream`)
@@ -454,33 +477,100 @@ event: error
 data: {"step": "generating", "message": "Failed to generate article"}
 ```
 
-FastAPI implementation uses `StreamingResponse` with `media_type="text/event-stream"`. The pipeline function yields SSE-formatted strings as each step completes.
+Gin implementation uses `c.Stream()` with `c.SSEvent()` for SSE. The handler runs the pipeline and flushes events as each step completes.
 
-### 3. Transcription (`services/transcription.py`)
+```go
+// handlers/submissions.go
 
-ElevenLabs Speech-to-Text API. Audio file in, transcript text out.
+func (h *Handler) StreamPipeline(c *gin.Context) {
+    id := c.Param("id")
 
-```python
-from elevenlabs.client import ElevenLabs
+    c.Header("Content-Type", "text/event-stream")
+    c.Header("Cache-Control", "no-cache")
+    c.Header("Connection", "keep-alive")
 
-def transcribe(audio_path: str) -> str:
-    client = ElevenLabs()
-    with open(audio_path, "rb") as f:
-        result = client.speech_to_text.convert(
-            file=f,
-            model_id="scribe_v1",
-        )
-    return result.text
+    c.Stream(func(w io.Writer) bool {
+        // Step 1: Transcribe
+        c.SSEvent("status", gin.H{"step": "transcribing", "message": "Transcribing audio..."})
+        c.Writer.Flush()
+        transcript, err := h.transcriptionService.Transcribe(audioPath)
+        if err != nil {
+            c.SSEvent("error", gin.H{"step": "transcribing", "message": err.Error()})
+            return false
+        }
+
+        // Step 2: Generate
+        c.SSEvent("status", gin.H{"step": "generating", "message": "Writing article..."})
+        c.Writer.Flush()
+        article, err := h.generationService.Generate(transcript, notes, photoCount)
+        if err != nil {
+            c.SSEvent("error", gin.H{"step": "generating", "message": err.Error()})
+            return false
+        }
+
+        // Step 3: Review
+        c.SSEvent("status", gin.H{"step": "reviewing", "message": "Editorial review..."})
+        c.Writer.Flush()
+        review, err := h.reviewService.Review(article, transcript, notes)
+        if err != nil {
+            c.SSEvent("error", gin.H{"step": "reviewing", "message": err.Error()})
+            return false
+        }
+
+        // Done
+        c.SSEvent("complete", gin.H{"article": article, "review": review})
+        return false // close stream
+    })
+}
 ```
 
-### 4. Article Generation (`services/generation.py`)
+### 3. Transcription (`services/transcription.go`)
+
+ElevenLabs Speech-to-Text API via HTTP. Audio file in, transcript text out.
+
+```go
+// services/transcription.go
+
+func (s *TranscriptionService) Transcribe(audioPath string) (string, error) {
+    file, err := os.Open(audioPath)
+    if err != nil {
+        return "", err
+    }
+    defer file.Close()
+
+    body := &bytes.Buffer{}
+    writer := multipart.NewWriter(body)
+    part, _ := writer.CreateFormFile("file", filepath.Base(audioPath))
+    io.Copy(part, file)
+    writer.WriteField("model_id", "scribe_v1")
+    writer.Close()
+
+    req, _ := http.NewRequest("POST", "https://api.elevenlabs.io/v1/speech-to-text", body)
+    req.Header.Set("xi-api-key", s.apiKey)
+    req.Header.Set("Content-Type", writer.FormDataContentType())
+
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        return "", err
+    }
+    defer resp.Body.Close()
+
+    var result struct {
+        Text string `json:"text"`
+    }
+    json.NewDecoder(resp.Body).Decode(&result)
+    return result.Text, nil
+}
+```
+
+### 4. Article Generation (`services/generation.go`)
 
 Single Claude call. System prompt defines the output format. User message contains the raw inputs.
 
-```python
-from anthropic import Anthropic
+```go
+// services/generation.go
 
-SYSTEM_PROMPT = """You are a local news editor. Given raw inputs from a community
+const systemPrompt = `You are a local news editor. Given raw inputs from a community
 contributor (transcript, notes, photos described), write a professional local news
 article. Output JSON:
 {
@@ -495,28 +585,40 @@ Rules:
 - Only use information from the provided inputs. Never invent facts or quotes.
 - Attribute all quotes to the speaker from the transcript.
 - Write in third person, neutral tone.
-- Structure: lead paragraph, body with context, quotes, closing."""
+- Structure: lead paragraph, body with context, quotes, closing.`
 
-def generate_article(transcript: str, notes: str, photo_count: int) -> dict:
-    client = Anthropic()
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2000,
-        system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"Transcript:\n{transcript}\n\nNotes:\n{notes}\n\nPhotos attached: {photo_count}"
-        }]
-    )
-    return json.loads(message.content[0].text)
+func (s *GenerationService) Generate(transcript, notes string, photoCount int) (*Article, error) {
+    message, err := s.client.Messages.New(context.Background(), anthropic.MessageNewParams{
+        Model:     anthropic.ModelClaudeSonnet4_6,
+        MaxTokens: 2000,
+        System:    []anthropic.TextBlockParam{{Text: systemPrompt}},
+        Messages: []anthropic.MessageParam{
+            anthropic.NewUserMessage(
+                anthropic.NewTextBlock(fmt.Sprintf(
+                    "Transcript:\n%s\n\nNotes:\n%s\n\nPhotos attached: %d",
+                    transcript, notes, photoCount,
+                )),
+            ),
+        },
+    })
+    if err != nil {
+        return nil, err
+    }
+
+    var article Article
+    err = json.Unmarshal([]byte(message.Content[0].Text), &article)
+    return &article, err
+}
 ```
 
-### 5. Quality Review (`services/review.py`)
+### 5. Quality Review (`services/review.go`)
 
 Second Claude call. Compares generated article against source inputs.
 
-```python
-REVIEW_PROMPT = """You are an editorial reviewer. Compare the article against the
+```go
+// services/review.go
+
+const reviewPrompt = `You are an editorial reviewer. Compare the article against the
 source transcript and notes. Return JSON:
 {
   "score": 1-10,
@@ -533,20 +635,31 @@ Flag if:
 - A factual claim seems extreme or isn't in the source
 - Important context is missing
 - Tone is inappropriate for local news
-- Anything potentially defamatory"""
+- Anything potentially defamatory`
 
-def review_article(article: dict, transcript: str, notes: str) -> dict:
-    client = Anthropic()
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1000,
-        system=REVIEW_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"Article:\n{json.dumps(article)}\n\nSource transcript:\n{transcript}\n\nSource notes:\n{notes}"
-        }]
-    )
-    return json.loads(message.content[0].text)
+func (s *ReviewService) Review(article *Article, transcript, notes string) (*ReviewResult, error) {
+    articleJSON, _ := json.Marshal(article)
+    message, err := s.client.Messages.New(context.Background(), anthropic.MessageNewParams{
+        Model:     anthropic.ModelClaudeSonnet4_6,
+        MaxTokens: 1000,
+        System:    []anthropic.TextBlockParam{{Text: reviewPrompt}},
+        Messages: []anthropic.MessageParam{
+            anthropic.NewUserMessage(
+                anthropic.NewTextBlock(fmt.Sprintf(
+                    "Article:\n%s\n\nSource transcript:\n%s\n\nSource notes:\n%s",
+                    string(articleJSON), transcript, notes,
+                )),
+            ),
+        },
+    })
+    if err != nil {
+        return nil, err
+    }
+
+    var review ReviewResult
+    err = json.Unmarshal([]byte(message.Content[0].Text), &review)
+    return &review, err
+}
 ```
 
 ### 6. Pipeline Orchestration
@@ -593,7 +706,7 @@ frontend/
 │   │   ├── ArticleCard.tsx     # card for newspaper feed
 │   │   └── LoadingPipeline.tsx # step indicator: transcribing → writing → reviewing
 │   └── styles/
-│       └── index.css           # Tailwind or plain CSS
+│       └── tokens.css          # CSS custom properties (design tokens)
 ```
 
 ### Setup
@@ -632,7 +745,7 @@ export async function submitContribution(formData: FormData) {
 
 // SSE stream for pipeline progress
 export function streamPipeline(
-  submissionId: number,
+  submissionId: string,
   onStatus: (step: string, message: string) => void,
   onComplete: (data: { article: Article, review: Review }) => void,
   onError: (step: string, message: string) => void,
@@ -659,7 +772,7 @@ export function streamPipeline(
   return source;  // caller can close early if needed
 }
 
-export async function publishArticle(articleId: number) {
+export async function publishArticle(articleId: string) {
   const res = await fetch(`${API_BASE}/api/articles/${articleId}/publish`, {
     method: "POST",
   });
@@ -687,7 +800,7 @@ export async function getArticles(locationSlug: string) {
 
 ### Prerequisites
 
-- Python 3.12+
+- Go 1.22+
 - Node.js 20+
 - PostgreSQL 16+
 
@@ -699,11 +812,9 @@ createdb localnews
 
 # 2. Backend
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
 cp .env.example .env          # fill in API keys
-alembic upgrade head
-uvicorn main:app --reload --port 8000
+go mod download
+go run cmd/server/main.go     # runs on :8000
 
 # 3. Frontend
 cd frontend
@@ -713,14 +824,17 @@ npm run dev                    # runs on :5173
 
 ### CORS
 
-Configure in `main.py`:
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[os.getenv("ALLOWED_ORIGINS", "http://localhost:5173")],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+Configure in `middleware/cors.go`:
+```go
+import "github.com/gin-contrib/cors"
+
+func SetupCORS(r *gin.Engine) {
+    r.Use(cors.New(cors.Config{
+        AllowOrigins: strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
+        AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
+    }))
+}
 ```
 
 ---
@@ -731,7 +845,7 @@ app.add_middleware(
 
 | Feature | Owner | Est. Hours |
 |---------|-------|-----------|
-| FastAPI skeleton + DB setup + models | Backend dev | 2-3h |
+| Gin skeleton + DB setup + GORM models | Backend dev | 2-3h |
 | Audio recording component (MediaRecorder) | Frontend dev | 2-3h |
 | ElevenLabs transcription + SSE pipeline | Backend dev | 2-3h |
 | Photo upload (capture + file) | Frontend dev | 1-2h |
@@ -761,7 +875,7 @@ app.add_middleware(
 ## Task Split (3-Person Team)
 
 **Person A — Backend Core**
-- FastAPI app, DB models, Alembic migrations
+- Gin app, GORM models, DB migrations
 - Submission endpoint (file upload + save)
 - ElevenLabs STT integration + SSE stream endpoint
 - Claude generation + review services
@@ -802,9 +916,9 @@ Negligible. No need to worry about API costs during the hackathon.
 
 For the hackathon demo, keep it simple:
 
-- **Backend:** Run locally on a laptop, or deploy to Railway / Render (free tier)
+- **Backend:** `go build -o server cmd/server/main.go` → run the binary, or deploy to Railway / Render / Fly.io
 - **Frontend:** `npm run build` → serve from the same machine, or Vercel
 - **Database:** Local PostgreSQL or Railway managed Postgres
-- **Domain:** Optional — a free `.vercel.app` or `.up.railway.app` subdomain works for judges scanning a QR code
+- **Domain:** Optional — a free `.vercel.app` or `.fly.dev` subdomain works for judges scanning a QR code
 
 Production deployment is a post-hackathon concern.
