@@ -49,9 +49,10 @@ func main() {
 	transcription := services.NewStubTranscriptionService()
 	generation := services.NewStubGenerationService()
 	review := services.NewStubReviewService()
+	photoDesc := services.NewStubPhotoDescriptionService()
 	chunker := services.NewStubChunkerService()
 	embedding := services.NewNoOpEmbeddingService()
-	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, chunker, embedding)
+	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embedding)
 
 	// Handler
 	h := handlers.NewHandler(db, c, authSvc, accessSvc, mediaSvc, pipelineSvc)
@@ -103,8 +104,10 @@ func main() {
 		authed.DELETE("/submissions/:id", h.DeleteSubmission)
 		authed.GET("/submissions/:id/stream", h.StreamPipeline)
 
-		// Publish
+		// Publish + refine + appeal
 		authed.POST("/submissions/:id/publish", h.PublishSubmission)
+		authed.POST("/submissions/:id/refine", h.RefineSubmission)
+		authed.POST("/submissions/:id/appeal", h.AppealSubmission)
 
 		// Profiles
 		authed.GET("/profiles/me", h.GetMyProfile)

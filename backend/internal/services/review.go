@@ -1,3 +1,9 @@
+// Review service for article quality assessment.
+//
+// Plan: 1_what/article_engine/spec/build/PROMPTS_SPEC.md
+//
+// Changes:
+// - 2026-03-07: Replace old interface with ReviewInput, return new ReviewResult
 package services
 
 import (
@@ -7,8 +13,15 @@ import (
 	"github.com/localnews/backend/internal/models"
 )
 
+type ReviewInput struct {
+	ArticleMarkdown   string
+	Transcript        string
+	Notes             string
+	PhotoDescriptions []string
+}
+
 type ReviewService interface {
-	Review(ctx context.Context, article *GeneratedArticle, transcript, notes string) (*models.ReviewResult, error)
+	Review(ctx context.Context, input ReviewInput) (*models.ReviewResult, error)
 }
 
 type StubReviewService struct{}
@@ -17,17 +30,28 @@ func NewStubReviewService() *StubReviewService {
 	return &StubReviewService{}
 }
 
-func (s *StubReviewService) Review(ctx context.Context, article *GeneratedArticle, transcript, notes string) (*models.ReviewResult, error) {
+func (s *StubReviewService) Review(ctx context.Context, input ReviewInput) (*models.ReviewResult, error) {
 	time.Sleep(2 * time.Second)
 	return &models.ReviewResult{
-		Score: 82,
-		Flags: []models.ReviewFlag{
-			{
-				Type:       "missing_context",
-				Text:       "The article mentions 'construction could begin as early as spring' but this timeline is not mentioned in the source transcript.",
-				Suggestion: "Remove the spring timeline or attribute it to a specific source if available.",
-			},
+		Verification: []models.VerificationEntry{
+			{Claim: "council convened Tuesday evening", Evidence: "contributor mentioned council meeting", Status: "SUPPORTED"},
 		},
-		Approved: true,
+		Scores: models.QualityScores{
+			Evidence:        0.75,
+			Perspectives:    0.5,
+			Representation:  0.6,
+			EthicalFraming:  0.9,
+			CulturalContext: 0.8,
+			Manipulation:    0.95,
+		},
+		Gate:        "GREEN",
+		RedTriggers: []models.RedTrigger{},
+		YellowFlags: []models.YellowFlag{
+			{Dimension: "PERSPECTIVES", Description: "Only one side of the budget debate is represented", Suggestion: "Did anyone speak in favor of the budget?"},
+		},
+		Coaching: models.Coaching{
+			Celebration: "The quote from Korhonen really captures the tension of the vote. Strong opening that leads with the news.",
+			Suggestions: []string{"Do you know what the budget specifically cuts?"},
+		},
 	}, nil
 }

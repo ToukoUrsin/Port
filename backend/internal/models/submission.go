@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Block is deprecated — kept for backward compat with existing DB rows.
 type Block struct {
 	Type    string `json:"type"`
 	Content string `json:"content,omitempty"`
@@ -16,16 +17,62 @@ type Block struct {
 	Author  string `json:"author,omitempty"`
 }
 
-type ReviewFlag struct {
-	Type       string `json:"type"`
-	Text       string `json:"text"`
-	Suggestion string `json:"suggestion"`
+type VerificationEntry struct {
+	Claim    string `json:"claim"`
+	Evidence string `json:"evidence"`
+	Status   string `json:"status"` // SUPPORTED | NOT_IN_SOURCE | POSSIBLE_HALLUCINATION | FABRICATED_QUOTE
+}
+
+type QualityScores struct {
+	Evidence        float64 `json:"evidence"`
+	Perspectives    float64 `json:"perspectives"`
+	Representation  float64 `json:"representation"`
+	EthicalFraming  float64 `json:"ethical_framing"`
+	CulturalContext float64 `json:"cultural_context"`
+	Manipulation    float64 `json:"manipulation"`
+}
+
+type RedTrigger struct {
+	Dimension  string   `json:"dimension"`
+	Trigger    string   `json:"trigger"`
+	Paragraph  int      `json:"paragraph"`
+	Sentence   string   `json:"sentence"`
+	FixOptions []string `json:"fix_options"`
+}
+
+type YellowFlag struct {
+	Dimension   string `json:"dimension"`
+	Description string `json:"description"`
+	Suggestion  string `json:"suggestion"`
+}
+
+type Coaching struct {
+	Celebration string   `json:"celebration"`
+	Suggestions []string `json:"suggestions"`
 }
 
 type ReviewResult struct {
-	Score    int          `json:"score"`
-	Flags    []ReviewFlag `json:"flags"`
-	Approved bool         `json:"approved"`
+	Verification []VerificationEntry `json:"verification"`
+	Scores       QualityScores       `json:"scores"`
+	Gate         string              `json:"gate"` // GREEN | YELLOW | RED
+	RedTriggers  []RedTrigger        `json:"red_triggers"`
+	YellowFlags  []YellowFlag        `json:"yellow_flags"`
+	Coaching     Coaching            `json:"coaching"`
+}
+
+type ArticleMetadata struct {
+	ChosenStructure string   `json:"chosen_structure"` // news_report | feature | photo_essay | brief | narrative
+	Category        string   `json:"category"`
+	Confidence      float64  `json:"confidence"`
+	MissingContext  []string `json:"missing_context"`
+}
+
+type ArticleVersion struct {
+	ArticleMarkdown  string          `json:"article_markdown"`
+	Metadata         ArticleMetadata `json:"metadata"`
+	Review           ReviewResult    `json:"review"`
+	ContributorInput string          `json:"contributor_input"`
+	Timestamp        time.Time       `json:"timestamp"`
 }
 
 type EditEntry struct {
@@ -36,10 +83,13 @@ type EditEntry struct {
 }
 
 type SubmissionMeta struct {
-	Blocks      []Block       `json:"blocks,omitempty"`
-	Review      *ReviewResult `json:"review,omitempty"`
-	Summary     string        `json:"summary,omitempty"`
-	Category    string        `json:"category,omitempty"`
+	ArticleMarkdown string           `json:"article_markdown,omitempty"`
+	ArticleMetadata *ArticleMetadata `json:"article_metadata,omitempty"`
+	Versions        []ArticleVersion `json:"versions,omitempty"`
+	Transcript      string           `json:"transcript,omitempty"`
+	Review          *ReviewResult    `json:"review,omitempty"`
+	Summary         string           `json:"summary,omitempty"`
+	Category        string           `json:"category,omitempty"`
 	Model       string        `json:"model,omitempty"`
 	GeneratedAt *time.Time    `json:"generated_at,omitempty"`
 	Slug        string        `json:"slug,omitempty"`
@@ -54,6 +104,7 @@ type SubmissionMeta struct {
 	Flagged     bool          `json:"flagged,omitempty"`
 	FlagReason  string        `json:"flag_reason,omitempty"`
 	EditHistory []EditEntry   `json:"edit_history,omitempty"`
+	Blocks      []Block       `json:"blocks,omitempty"` // deprecated — kept for existing DB rows
 }
 
 type Submission struct {

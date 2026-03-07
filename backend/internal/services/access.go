@@ -93,6 +93,23 @@ func (s *AccessService) CanPublishSubmission(actor Actor, sub *models.Submission
 	return sub.OwnerID == actor.ProfileID
 }
 
+func (s *AccessService) CanRefineSubmission(actor Actor, sub *models.Submission) bool {
+	return actor.ProfileID == sub.OwnerID && sub.Status == models.StatusReady
+}
+
+func (s *AccessService) CanAppealSubmission(actor Actor, sub *models.Submission) bool {
+	if actor.ProfileID != sub.OwnerID {
+		return false
+	}
+	if sub.Status != models.StatusReady {
+		return false
+	}
+	if sub.Meta.V.Review == nil || sub.Meta.V.Review.Gate != "RED" {
+		return false
+	}
+	return true
+}
+
 func (s *AccessService) isSubmissionContributor(submissionID, profileID uuid.UUID) bool {
 	var count int64
 	s.db.Model(&models.SubmissionContributor{}).

@@ -1,10 +1,17 @@
+// Pipeline orchestrates GATHER -> GENERATE -> REVIEW for submissions.
+//
+// Plan: 1_what/article_engine/spec/build/BACKEND_UPDATE_SPEC.md
+//
+// Changes:
+// - 2026-03-07: Parallel GATHER, markdown output, new review types, refinement support
 package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,12 +27,13 @@ type PipelineEvent struct {
 }
 
 type PipelineService struct {
-	db            *gorm.DB
-	transcription TranscriptionService
-	generation    GenerationService
-	review        ReviewService
-	chunker       ChunkerService
-	embedding     EmbeddingService
+	db               *gorm.DB
+	transcription    TranscriptionService
+	generation       GenerationService
+	review           ReviewService
+	photoDescription PhotoDescriptionService
+	chunker          ChunkerService
+	embedding        EmbeddingService
 }
 
 func NewPipelineService(
@@ -33,17 +41,24 @@ func NewPipelineService(
 	transcription TranscriptionService,
 	generation GenerationService,
 	review ReviewService,
+	photoDescription PhotoDescriptionService,
 	chunker ChunkerService,
 	embedding EmbeddingService,
 ) *PipelineService {
 	return &PipelineService{
-		db:            db,
-		transcription: transcription,
-		generation:    generation,
-		review:        review,
-		chunker:       chunker,
-		embedding:     embedding,
+		db:               db,
+		transcription:    transcription,
+		generation:       generation,
+		review:           review,
+		photoDescription: photoDescription,
+		chunker:          chunker,
+		embedding:        embedding,
 	}
+}
+
+// Transcription exposes the transcription service for use by handlers (e.g., refinement voice clips).
+func (p *PipelineService) Transcription() TranscriptionService {
+	return p.transcription
 }
 
 func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, events chan<- PipelineEvent) {
@@ -55,92 +70,209 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		return
 	}
 
-	// Find audio file for this submission
-	var audioFile models.File
-	hasAudio := p.db.Where("submission_id = ? AND file_type = ?", submissionID, 1).First(&audioFile).Error == nil
-
-	// Step 1: Transcribe
-	events <- PipelineEvent{Event: "status", Step: "transcribing", Message: "Transcribing audio..."}
-	p.db.Model(&sub).Update("status", models.StatusTranscribing)
-
-	var transcript string
-	if hasAudio {
-		var err error
-		transcript, err = p.transcription.Transcribe(ctx, audioFile.Name)
-		if err != nil {
-			p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrTranscription})
-			events <- PipelineEvent{Event: "error", Step: "transcribing", Message: fmt.Sprintf("Transcription failed: %v", err)}
-			return
-		}
-	} else {
-		transcript = sub.Description
+	// Validate starting state
+	if sub.Status != models.StatusDraft && sub.Status != models.StatusRefining {
+		events <- PipelineEvent{Event: "error", Step: "load", Message: "Submission is not in a valid state for pipeline processing"}
+		return
 	}
 
-	// Step 2: Generate
+	var transcript string
+	var photoDescs []string
+	var photoFileURLs []string
+
+	if sub.Status == models.StatusRefining && sub.Meta.V.Transcript != "" {
+		// Refinement: reuse persisted transcript, skip GATHER
+		transcript = sub.Meta.V.Transcript
+		// Photo descriptions were already incorporated in previous generation
+	} else {
+		// First run: full GATHER stage
+		var err error
+		transcript, photoDescs, photoFileURLs, err = p.gather(ctx, &sub, submissionID, events)
+		if err != nil {
+			return // gather already sent error event
+		}
+	}
+
+	// GENERATE
 	events <- PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}
 	p.db.Model(&sub).Update("status", models.StatusGenerating)
 
-	var fileCount int64
-	p.db.Model(&models.File{}).Where("submission_id = ? AND file_type = ?", submissionID, 2).Count(&fileCount)
+	genInput := GenerationInput{
+		Transcript:        transcript,
+		Notes:             sub.Description,
+		PhotoDescriptions: photoDescs,
+		TownContext:       townContext,
+	}
 
-	article, err := p.generation.Generate(ctx, transcript, sub.Description, int(fileCount))
+	// If refinement, add previous article + direction
+	if sub.Meta.V.ArticleMarkdown != "" {
+		genInput.PreviousArticle = sub.Meta.V.ArticleMarkdown
+		if len(sub.Meta.V.Versions) > 0 {
+			latest := sub.Meta.V.Versions[len(sub.Meta.V.Versions)-1]
+			genInput.Direction = latest.ContributorInput
+		}
+	}
+
+	genOutput, err := p.generation.Generate(ctx, genInput)
 	if err != nil {
 		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrGeneration})
 		events <- PipelineEvent{Event: "error", Step: "generating", Message: fmt.Sprintf("Generation failed: %v", err)}
 		return
 	}
 
-	// Step 3: Review
-	events <- PipelineEvent{Event: "status", Step: "reviewing", Message: "Editorial review..."}
+	// REVIEW
+	events <- PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}
 	p.db.Model(&sub).Update("status", models.StatusReviewing)
 
-	reviewResult, err := p.review.Review(ctx, article, transcript, sub.Description)
+	reviewResult, err := p.review.Review(ctx, ReviewInput{
+		ArticleMarkdown:   genOutput.ArticleMarkdown,
+		Transcript:        transcript,
+		Notes:             sub.Description,
+		PhotoDescriptions: photoDescs,
+	})
 	if err != nil {
 		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrReview})
 		events <- PipelineEvent{Event: "error", Step: "reviewing", Message: fmt.Sprintf("Review failed: %v", err)}
 		return
 	}
 
-	// Step 4: Embed (non-fatal)
-	events <- PipelineEvent{Event: "status", Step: "embedding", Message: "Indexing for search..."}
-
-	blocks := []models.Block{
-		{Type: "heading", Content: article.Headline, Level: 1},
-		{Type: "text", Content: article.Body},
+	// Replace photo placeholders with actual URLs
+	article := genOutput.ArticleMarkdown
+	for i, fileURL := range photoFileURLs {
+		placeholder := fmt.Sprintf("photo_%d", i+1)
+		article = strings.ReplaceAll(article, placeholder, fileURL)
 	}
-	chunks := p.chunker.ChunkBlocks(blocks, ChunkConfig{})
-	if err := p.embedding.EmbedChunks(ctx, submissionID, models.EntitySubmission, chunks); err != nil {
-		log.Printf("embedding failed for %s: %v", submissionID, err)
+
+	// Extract headline from markdown
+	headline := extractHeadline(article)
+
+	// Persist transcript on first run
+	meta := sub.Meta.V
+	if meta.Transcript == "" && transcript != "" {
+		meta.Transcript = transcript
 	}
 
 	// Save results
 	now := time.Now()
-	meta := sub.Meta.V
-	meta.Blocks = blocks
+	meta.ArticleMarkdown = article
+	meta.ArticleMetadata = &genOutput.Metadata
 	meta.Review = reviewResult
-	meta.Summary = article.Summary
-	meta.Category = article.Category
+	meta.Category = genOutput.Metadata.Category
+	meta.Summary = extractFirstParagraph(article)
 	meta.GeneratedAt = &now
 	meta.Model = "stub"
 
-	metaJSON, _ := json.Marshal(meta)
-	_ = metaJSON
-
 	p.db.Model(&sub).Updates(map[string]any{
-		"title":  article.Headline,
+		"title":  headline,
 		"status": models.StatusReady,
 		"error":  models.ErrNone,
 		"meta":   models.JSONB[models.SubmissionMeta]{V: meta},
 	})
 
-	// Reload full submission from DB so frontend gets the complete ApiSubmission shape
-	p.db.First(&sub, "id = ?", submissionID)
-
 	events <- PipelineEvent{
 		Event: "complete",
 		Data: map[string]any{
-			"article": sub,
-			"review":  reviewResult,
+			"article":  article,
+			"metadata": genOutput.Metadata,
+			"review":   reviewResult,
 		},
 	}
 }
+
+func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, submissionID uuid.UUID, events chan<- PipelineEvent) (transcript string, photoDescs []string, photoFileURLs []string, err error) {
+	var wg sync.WaitGroup
+	var transcriptErr, photoErr error
+
+	// Find audio file
+	var audioFile models.File
+	hasAudio := p.db.Where("submission_id = ? AND file_type = ?", submissionID, 1).First(&audioFile).Error == nil
+
+	// Find photo files
+	var photoFiles []models.File
+	p.db.Where("submission_id = ? AND file_type = ?", submissionID, 2).Find(&photoFiles)
+
+	// Transcription goroutine — only if audio exists
+	if hasAudio {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			events <- PipelineEvent{Event: "status", Step: "transcribing", Message: "Transcribing audio..."}
+			p.db.Model(sub).Update("status", models.StatusTranscribing)
+			transcript, transcriptErr = p.transcription.Transcribe(ctx, audioFile.Name)
+		}()
+	}
+
+	// Photo description goroutine — only if photos exist
+	if len(photoFiles) > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			events <- PipelineEvent{Event: "status", Step: "describing_photos", Message: "Analyzing photos..."}
+			photoDescs = make([]string, len(photoFiles))
+			photoFileURLs = make([]string, len(photoFiles))
+			for i, pf := range photoFiles {
+				photoFileURLs[i] = pf.Name
+				desc, descErr := p.photoDescription.Describe(ctx, pf.Name)
+				if descErr != nil {
+					photoErr = descErr
+					return
+				}
+				photoDescs[i] = desc
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	if transcriptErr != nil {
+		p.db.Model(sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrTranscription})
+		events <- PipelineEvent{Event: "error", Step: "transcribing", Message: fmt.Sprintf("Transcription failed: %v", transcriptErr)}
+		return "", nil, nil, transcriptErr
+	}
+	if photoErr != nil {
+		log.Printf("photo description failed for %s: %v", submissionID, photoErr)
+		// Non-fatal: continue without photo descriptions
+		photoDescs = nil
+	}
+
+	// If no audio, use notes as transcript fallback
+	if !hasAudio {
+		transcript = sub.Description
+	}
+
+	return transcript, photoDescs, photoFileURLs, nil
+}
+
+func extractHeadline(markdown string) string {
+	for _, line := range strings.Split(markdown, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "# ") {
+			return strings.TrimPrefix(line, "# ")
+		}
+	}
+	return ""
+}
+
+func extractFirstParagraph(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if len(line) > 200 {
+			return line[:200]
+		}
+		return line
+	}
+	return ""
+}
+
+const townContext = `Kirkkonummi (Finnish) / Kyrkslätt (Swedish) is a municipality in southern Finland, Uusimaa region, about 30 km west of Helsinki. Population approximately 41,000. Bilingual municipality (Finnish majority, ~15% Swedish-speaking).
+
+Key landmarks: Kirkkonummi town hall, Porkkala peninsula, Meiko nature reserve, Veikkola village center, Masala train station.
+Major roads: Turku motorway (E18), Upinniementie, Munkinmäentie.
+Local governance: Municipal council with 51 seats, chaired by the council chair. Executive board (kunnanhallitus) handles daily administration.
+Schools: Finnish-language and Swedish-language school systems. Kirkkonummen lukio (upper secondary).
+Recent context: Population growth from Helsinki spillover. Housing development debates. Commuter town dynamics.
+Local media: Kirkkonummen Sanomat (local paper), Länsiväylä (regional).`

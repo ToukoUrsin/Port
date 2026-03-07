@@ -10,6 +10,8 @@ const (
 	StatusReady        int16 = 4 // pipeline complete, awaiting publish decision
 	StatusPublished    int16 = 5 // publicly visible
 	StatusArchived     int16 = 6 // hidden by owner or editor
+	StatusRefining     int16 = 7 // contributor submitted refinement, pipeline re-running
+	StatusAppealed     int16 = 8 // contributor appealed RED gate, awaiting human review
 )
 
 // --- Submission error codes (0 = no error) ---

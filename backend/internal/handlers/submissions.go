@@ -269,6 +269,17 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 		return
 	}
 
+	// Gate check: RED gate blocks publishing
+	if sub.Meta.V.Review != nil && sub.Meta.V.Review.Gate == "RED" {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error":        "gate_red",
+			"gate":         sub.Meta.V.Review.Gate,
+			"coaching":     sub.Meta.V.Review.Coaching,
+			"red_triggers": sub.Meta.V.Review.RedTriggers,
+		})
+		return
+	}
+
 	now := time.Now()
 	meta := sub.Meta.V
 	meta.PublishedAt = &now
@@ -289,4 +300,123 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 
 	h.db.First(&sub, "id = ?", id)
 	c.JSON(http.StatusOK, sub)
+}
+
+func (h *Handler) RefineSubmission(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanRefineSubmission(actor, &sub) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	if sub.Status != models.StatusReady {
+		c.JSON(http.StatusConflict, gin.H{"error": "submission not in a refinable state"})
+		return
+	}
+
+	// Parse input: voice_clip (multipart) or text_note (JSON/form field)
+	var direction string
+
+	voiceFile, voiceErr := c.FormFile("voice_clip")
+	textNote := c.PostForm("text_note")
+
+	// Try JSON body if no form fields found
+	if voiceErr != nil && textNote == "" {
+		var req struct {
+			TextNote string `json:"text_note"`
+		}
+		if bindErr := c.ShouldBindJSON(&req); bindErr == nil {
+			textNote = req.TextNote
+		}
+	}
+
+	if voiceErr != nil && textNote == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provide voice_clip or text_note"})
+		return
+	}
+
+	// Transcribe voice clip if present
+	if voiceErr == nil {
+		path, _, saveErr := h.media.SaveUploadedFile(voiceFile, sub.ID)
+		if saveErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save voice clip"})
+			return
+		}
+		transcribed, transcribeErr := h.pipeline.Transcription().Transcribe(c.Request.Context(), path)
+		if transcribeErr != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to transcribe voice clip"})
+			return
+		}
+		direction = transcribed
+		if textNote != "" {
+			direction = direction + "\n\n" + textNote
+		}
+	} else {
+		direction = textNote
+	}
+
+	// Save current article as a version
+	meta := sub.Meta.V
+	if meta.ArticleMarkdown != "" && meta.ArticleMetadata != nil && meta.Review != nil {
+		version := models.ArticleVersion{
+			ArticleMarkdown:  meta.ArticleMarkdown,
+			Metadata:         *meta.ArticleMetadata,
+			Review:           *meta.Review,
+			ContributorInput: direction,
+			Timestamp:        time.Now(),
+		}
+		meta.Versions = append(meta.Versions, version)
+	}
+
+	h.db.Model(&sub).Updates(map[string]any{
+		"status": models.StatusRefining,
+		"meta":   models.JSONB[models.SubmissionMeta]{V: meta},
+	})
+
+	c.JSON(http.StatusOK, gin.H{"status": "ready_to_stream"})
+}
+
+func (h *Handler) AppealSubmission(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanAppealSubmission(actor, &sub) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	if sub.Status != models.StatusReady {
+		c.JSON(http.StatusConflict, gin.H{"error": "submission not in an appealable state"})
+		return
+	}
+
+	if sub.Meta.V.Review == nil || sub.Meta.V.Review.Gate != "RED" {
+		c.JSON(http.StatusConflict, gin.H{"error": "can only appeal RED-gated submissions"})
+		return
+	}
+
+	h.db.Model(&sub).Update("status", models.StatusAppealed)
+	c.JSON(http.StatusOK, gin.H{"status": "under_review"})
 }
