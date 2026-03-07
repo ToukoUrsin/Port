@@ -2,10 +2,62 @@
    HOME PAGE
    ======================================== */
 
+/* Mobile-only top utility bar (Sign in / Sign up) */
+.home-nav-topbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .home-nav-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+  }
+
+  .home-nav-topbar__brand {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    font-weight: var(--font-bold);
+    color: var(--color-text);
+    letter-spacing: 0.04em;
+    text-decoration: none;
+  }
+
+  .home-nav-topbar__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-tertiary);
+    padding: var(--space-2);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .home-nav-topbar__icon:hover {
+    color: var(--color-text);
+  }
+
+  .home-nav {
+    top: 0;
+    position: relative;
+  }
+
+  .home-nav__brand {
+    display: none;
+  }
+}
+
 /* Navigation — single-line masthead + icons */
 .home-nav {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-5);
   position: sticky;
@@ -38,12 +90,16 @@
 }
 
 .home-nav__brand {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-family: var(--font-heading);
   font-size: var(--text-3xl);
   font-weight: var(--font-bold);
   color: var(--color-text);
   letter-spacing: 0.04em;
   text-decoration: none;
+  pointer-events: auto;
 }
 
 .home-nav__icon-btn {
@@ -74,8 +130,9 @@
   .home-nav__post-btn {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
+    gap: var(--space-1);
+    height: 44px;
+    padding: 0 var(--space-4);
     background: var(--color-primary);
     color: var(--color-text-inverse);
     font-family: var(--font-sans);
@@ -83,6 +140,7 @@
     font-weight: var(--font-semibold);
     letter-spacing: 0.01em;
     text-decoration: none;
+    border-radius: var(--radius-md);
     border: 1px solid var(--color-primary);
     transition: background var(--transition-fast), border-color var(--transition-fast);
   }
@@ -148,6 +206,7 @@
 /* Language toggle pill */
 .lang-toggle {
   display: flex;
+  height: 36px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
   overflow: hidden;
@@ -857,20 +916,24 @@
 .home-nav__login-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
+  letter-spacing: 0.01em;
   color: var(--color-text-inverse);
   background: var(--color-primary);
-  padding: var(--space-1) var(--space-3);
+  height: 44px;
+  padding: 0 var(--space-4);
   border-radius: var(--radius-md);
+  border: 1px solid var(--color-primary);
   text-decoration: none;
   cursor: pointer;
-  transition: background var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 .home-nav__login-btn:hover {
   background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 .home-nav__login-btn:focus-visible {
   outline: none;
@@ -879,6 +942,7 @@
 
 .home-nav__search {
   width: 240px;
+  height: 44px;
   margin-left: auto;
   position: relative;
   display: flex;
@@ -886,7 +950,7 @@
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-3);
+  padding: 0 var(--space-3);
   gap: var(--space-2);
 }
 
@@ -933,21 +997,30 @@
 
 @media (max-width: 767px) {
   .home-nav__search {
-    width: auto;
     flex: 1;
-    margin-left: auto;
-    padding: var(--space-1) var(--space-2);
+    width: auto;
+    margin-left: 0;
+    height: 36px;
+    padding: 0 var(--space-2);
   }
 
   .home-nav__search-input {
     font-size: var(--text-xs);
+  }
+
+  .home-nav__left .home-nav__icon-btn {
+    display: none;
+  }
+
+  .home-nav__right {
+    display: none;
   }
 }
 
 .search-dropdown__overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(200, 200, 200, 0.5);
   z-index: calc(var(--z-sticky) + 1);
 }
 

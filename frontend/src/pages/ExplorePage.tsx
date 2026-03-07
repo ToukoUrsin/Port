@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
-import { Link, useNavigate } from "react-router-dom";
-import { MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useApi } from "@/hooks/useApi";
 import { getLocations } from "@/lib/api";
 import Navbar from "@/components/Navbar";
@@ -95,14 +94,7 @@ export default function ExplorePage() {
 
   return (
     <>
-      <Navbar
-        left={
-          <Link to="/explore" className="home-nav__city-btn">
-            <MapPin size={16} />
-            <span>Select areas</span>
-          </Link>
-        }
-      />
+      <Navbar />
       <div className="explore">
         <MapContainer
           center={center}
