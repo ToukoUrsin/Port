@@ -423,7 +423,7 @@
   padding-bottom: 0;
 }
 .pl-step.active {
-  border-left-color: var(--color-primary);
+  border-left-color: var(--color-gray-400);
 }
 .pl-step.done {
   border-left-color: var(--color-success, #22c55e);
@@ -442,8 +442,7 @@
   border: 2px solid var(--color-surface, #fff);
 }
 .pl-step.active::before {
-  background: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  background: var(--color-gray-400);
 }
 .pl-step.done::before {
   background: var(--color-success, #22c55e);
@@ -462,7 +461,7 @@
   align-items: center;
   color: var(--color-text-tertiary);
 }
-.pl-step.active .pl-step-icon { color: var(--color-primary); }
+.pl-step.active .pl-step-icon { color: var(--color-text-secondary); }
 .pl-step.done .pl-step-icon { color: var(--color-success, #22c55e); }
 
 .pl-step-label {
