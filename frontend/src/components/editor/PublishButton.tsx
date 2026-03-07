@@ -7,7 +7,7 @@ type PublishButtonProps = {
   onPublish: () => Promise<void>;
 };
 
-export function PublishButton({ gate, onPublish }: PublishButtonProps) {
+export function PublishButton({ onPublish }: PublishButtonProps) {
   const { t } = useLanguage();
   const [publishing, setPublishing] = useState(false);
 

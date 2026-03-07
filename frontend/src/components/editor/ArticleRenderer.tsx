@@ -88,6 +88,8 @@ export function ArticleEditor({
   const { headline: initHeadline, body: initBody } = splitHeadline(markdown);
   const headlineRef = useRef(initHeadline);
   const isExternalUpdate = useRef(false);
+  // Track the last markdown we sent up to avoid re-setting content from our own edits
+  const lastEmittedMarkdown = useRef(markdown);
 
   const editor = useEditor({
     extensions: [
@@ -98,11 +100,12 @@ export function ArticleEditor({
       AnnotationHighlight,
     ],
     content: initBody,
-    parseOptions: { preserveWhitespace: "full" },
     onUpdate({ editor: ed }) {
       if (isExternalUpdate.current) return;
       const bodyMd = (ed.storage as any).markdown.getMarkdown();
-      onContentChange(joinHeadlineBody(headlineRef.current, bodyMd));
+      const full = joinHeadlineBody(headlineRef.current, bodyMd);
+      lastEmittedMarkdown.current = full;
+      onContentChange(full);
     },
   });
 
@@ -115,18 +118,16 @@ export function ArticleEditor({
     editor.view.dispatch(tr);
   }, [editor, redTriggers]);
 
-  // Handle external markdown updates (e.g. AI refinement)
+  // Handle external markdown updates (e.g. AI refinement) — skip if the change came from us
   useEffect(() => {
     if (!editor) return;
-    const { body: currentBody } = splitHeadline(markdown);
-    const editorMd = (editor.storage as any).markdown.getMarkdown();
-    if (currentBody !== editorMd) {
-      isExternalUpdate.current = true;
-      editor.commands.setContent(currentBody);
-      const { headline } = splitHeadline(markdown);
-      headlineRef.current = headline;
-      isExternalUpdate.current = false;
-    }
+    if (markdown === lastEmittedMarkdown.current) return;
+    const { headline, body: newBody } = splitHeadline(markdown);
+    isExternalUpdate.current = true;
+    editor.commands.setContent(newBody);
+    headlineRef.current = headline;
+    lastEmittedMarkdown.current = markdown;
+    isExternalUpdate.current = false;
   }, [editor, markdown]);
 
   // Click handler for annotation decorations
