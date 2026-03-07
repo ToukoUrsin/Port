@@ -9,7 +9,7 @@ import CharacterCount from "@tiptap/extension-character-count";
 import TextAlign from "@tiptap/extension-text-align";
 import Highlight from "@tiptap/extension-highlight";
 import { Markdown } from "tiptap-markdown";
-import { AnnotationHighlight } from "./extensions/AnnotationHighlight";
+import { AnnotationHighlight, annotationPluginKey } from "./extensions/AnnotationHighlight";
 import { DragHandle } from "./extensions/DragHandle";
 import type { RedTrigger, VerificationEntry } from "@/lib/types";
 import type { ActiveAnnotation } from "./types";
@@ -70,6 +70,35 @@ function SuggestionCard({
   );
 }
 
+const VERIFY_LABELS: Record<string, { label: string; className: string }> = {
+  NOT_IN_SOURCE: { label: "Not in source", className: "verify-tooltip--warning" },
+  POSSIBLE_HALLUCINATION: { label: "Possible hallucination", className: "verify-tooltip--error" },
+  FABRICATED_QUOTE: { label: "Fabricated quote", className: "verify-tooltip--error" },
+};
+
+function VerifyTooltip({
+  status,
+  claim,
+  rect,
+  wrapperRect,
+}: {
+  status: string;
+  claim: string;
+  rect: DOMRect;
+  wrapperRect: DOMRect;
+}) {
+  const config = VERIFY_LABELS[status] || { label: status, className: "verify-tooltip--warning" };
+  const top = rect.bottom - wrapperRect.top + 4;
+  const left = Math.max(0, rect.left - wrapperRect.left);
+
+  return (
+    <div className={`verify-tooltip ${config.className}`} style={{ top, left }}>
+      <span className="verify-tooltip__label">{config.label}</span>
+      <p className="verify-tooltip__claim">{claim}</p>
+    </div>
+  );
+}
+
 /** Extract headline from first `# ` line in markdown */
 function splitHeadline(markdown: string): { headline: string; body: string } {
   const lines = markdown.split("\n");
@@ -109,6 +138,11 @@ export function ArticleEditor({
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [aiInstruction, setAiInstruction] = useState("");
+  const [verifyTooltip, setVerifyTooltip] = useState<{
+    status: string;
+    claim: string;
+    rect: DOMRect;
+  } | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -147,7 +181,7 @@ export function ArticleEditor({
     (editor.storage as any).annotationHighlight.triggers = redTriggers;
     (editor.storage as any).annotationHighlight.verification = verification;
     const { tr } = editor.state;
-    tr.setMeta("annotationHighlight", { triggers: redTriggers, verification });
+    tr.setMeta(annotationPluginKey, { triggers: redTriggers, verification });
     editor.view.dispatch(tr);
   }, [editor, redTriggers, verification]);
 
@@ -181,6 +215,35 @@ export function ArticleEditor({
       }
     },
     [redTriggers, onAnnotationClick],
+  );
+
+  // Hover handler for verification annotations
+  const handleEditorMouseOver = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.classList.contains("annotation--amber") ||
+        target.classList.contains("annotation--red-verify")
+      ) {
+        const status = target.getAttribute("data-verify-status") || "";
+        const claim = target.getAttribute("data-verify-claim") || "";
+        setVerifyTooltip({ status, claim, rect: target.getBoundingClientRect() });
+      }
+    },
+    [],
+  );
+
+  const handleEditorMouseOut = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.classList.contains("annotation--amber") ||
+        target.classList.contains("annotation--red-verify")
+      ) {
+        setVerifyTooltip(null);
+      }
+    },
+    [],
   );
 
   // Highlight paragraph scroll
@@ -277,7 +340,12 @@ export function ArticleEditor({
         )}
       </div>
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-      <div className="article-prose" onClick={handleEditorClick}>
+      <div
+        className="article-prose"
+        onClick={handleEditorClick}
+        onMouseOver={handleEditorMouseOver}
+        onMouseOut={handleEditorMouseOut}
+      >
         <EditorContent editor={editor} />
 
         {/* Floating menu — shows on empty paragraphs */}
@@ -556,6 +624,15 @@ export function ArticleEditor({
           rect={activeAnnotation.rect}
           wrapperRect={wrapperRect}
           onDismiss={onAnnotationDismiss}
+        />
+      )}
+
+      {verifyTooltip && wrapperRect && (
+        <VerifyTooltip
+          status={verifyTooltip.status}
+          claim={verifyTooltip.claim}
+          rect={verifyTooltip.rect}
+          wrapperRect={wrapperRect}
         />
       )}
     </div>
