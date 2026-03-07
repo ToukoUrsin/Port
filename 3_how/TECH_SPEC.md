@@ -331,6 +331,17 @@ CREATE INDEX idx_replies_submission ON replies (submission_id);
 CREATE INDEX idx_replies_profile ON replies (profile_id);
 CREATE INDEX idx_replies_parent ON replies (parent_id);
 
+CREATE TABLE advertisers (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name            VARCHAR(300) NOT NULL,
+    status          SMALLINT DEFAULT 0,         -- 0=pending, 1=active, 2=suspended
+    permissions     BIGINT DEFAULT 0,
+    tags            BIGINT DEFAULT 0,           -- targeting categories
+    meta            JSONB DEFAULT '{}',         -- contact, billing, logo, etc.
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE embeddings (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_id       UUID NOT NULL,
@@ -486,8 +497,6 @@ Examples: `"Port 2026"` → `port-2026`, `"Gävle kommun"` → `gavle-kommun`, `
 ```go
 type LocationMeta struct {
     // Geographic
-    Lat        float64 `json:"lat,omitempty"`
-    Lng        float64 `json:"lng,omitempty"`
     AreaKm2    float64 `json:"area_km2,omitempty"`
     Timezone   string  `json:"timezone,omitempty"`
 
@@ -511,6 +520,8 @@ type Location struct {
     Path             string              `gorm:"type:text;not null" json:"path"`
     Description      *string             `gorm:"type:text" json:"description,omitempty"`
     IsActive         bool                `gorm:"default:true" json:"is_active"`
+    Lat              *float64            `json:"lat,omitempty"`
+    Lng              *float64            `json:"lng,omitempty"`
     ArticleCount     int                 `gorm:"default:0" json:"article_count"`
     SubmissionCount  int                 `gorm:"default:0" json:"submission_count"`
     ContributorCount int                 `gorm:"default:0" json:"contributor_count"`
@@ -678,6 +689,8 @@ type Submission struct {
     CountryID    *uuid.UUID             `gorm:"type:uuid;index" json:"country_id,omitempty"`
     RegionID     *uuid.UUID             `gorm:"type:uuid;index" json:"region_id,omitempty"`
     CityID       *uuid.UUID             `gorm:"type:uuid;index" json:"city_id,omitempty"`
+    Lat          *float64               `json:"lat,omitempty"`
+    Lng          *float64               `json:"lng,omitempty"`
     Title        string                 `gorm:"type:varchar(300);not null;default:''" json:"title"`
     Description  string                 `gorm:"type:text;not null;default:''" json:"description"`
     Tags         int64                  `gorm:"default:0" json:"tags"`
@@ -770,6 +783,37 @@ type Reply struct {
     Status       int16            `gorm:"default:0" json:"status"`
     Meta         JSONB[ReplyMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
     CreatedAt    time.Time        `gorm:"autoCreateTime" json:"created_at"`
+}
+```
+
+#### Advertiser (`internal/models/advertiser.go`)
+
+```go
+type AdvertiserMeta struct {
+    // Contact
+    ContactName  string `json:"contact_name,omitempty"`
+    ContactEmail string `json:"contact_email,omitempty"`
+    ContactPhone string `json:"contact_phone,omitempty"`
+
+    // Branding
+    Logo        string `json:"logo,omitempty"`
+    Website     string `json:"website,omitempty"`
+    Description string `json:"description,omitempty"`
+
+    // Billing
+    BillingEmail   string `json:"billing_email,omitempty"`
+    BillingAddress string `json:"billing_address,omitempty"`
+    VatID          string `json:"vat_id,omitempty"`
+}
+
+type Advertiser struct {
+    ID          uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    Name        string                 `gorm:"type:varchar(300);not null" json:"name"`
+    Status      int16                  `gorm:"default:0" json:"status"`
+    Permissions int64                  `gorm:"default:0" json:"permissions"`
+    Tags        int64                  `gorm:"default:0" json:"tags"`
+    Meta        JSONB[AdvertiserMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
 }
 ```
 
