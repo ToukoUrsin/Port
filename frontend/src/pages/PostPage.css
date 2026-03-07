@@ -5,8 +5,9 @@
 }
 .post-page--centered {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: var(--space-12);
   min-height: 80vh;
 }
 @media (min-width: 640px) {
@@ -201,30 +202,157 @@
 }
 
 /* ===============================================
-   Processing animation
+   Building animation (skeleton article)
    =============================================== */
-.processing {
-  display: flex; flex-direction: column; align-items: center; gap: var(--space-6);
+.building {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 720px;
   animation: fadeIn 0.3s ease;
 }
-.processing-spinner {
-  color: var(--color-primary);
-  animation: spin 1s linear infinite;
+
+.building-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-secondary);
+  margin-bottom: var(--space-6);
 }
-.processing-title {
-  font-family: var(--font-sans); font-size: var(--text-xl);
-  font-weight: var(--font-semibold); color: var(--color-secondary);
+
+.building-article {
+  width: 100%;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
 }
-.processing-steps {
-  display: flex; flex-direction: column; gap: var(--space-3); width: 100%; max-width: 260px;
+
+/* Skeleton base */
+.building .skeleton {
+  background: var(--color-gray-100);
+  border-radius: var(--radius-sm);
+  animation: buildingShimmer 1.5s infinite;
 }
-.processing-step {
-  display: flex; align-items: center; gap: var(--space-3);
-  font-size: var(--text-sm); transition: opacity var(--transition-normal);
+
+/* --- Headline --- */
+.building-headline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  opacity: 0.3;
+  transition: opacity 0.4s ease;
 }
-.processing-step.done { color: var(--color-primary); }
-.processing-step.active { color: var(--color-text); font-weight: var(--font-medium); }
-.processing-step.pending { color: var(--color-text-tertiary); }
+.building--has-headline .building-headline {
+  opacity: 1;
+}
+.building-headline-line {
+  height: 22px;
+}
+
+/* --- Byline --- */
+.building-byline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  opacity: 0;
+  transition: opacity 0.4s ease 0.15s;
+}
+.building--has-headline .building-byline {
+  opacity: 1;
+}
+.building-byline-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+.building-byline-text {
+  height: 14px;
+  width: 120px;
+}
+
+/* --- Image --- */
+.building-image {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s ease, margin 0.5s ease;
+  margin-bottom: 0;
+}
+.building--has-image .building-image {
+  max-height: 200px;
+  margin-bottom: var(--space-5);
+}
+.building-image-block {
+  height: 180px;
+  width: 100%;
+  border-radius: var(--radius-lg);
+}
+
+/* --- Body lines --- */
+.building-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.building-body-line {
+  height: 14px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.building--has-body .building-body-line {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- Gate badge --- */
+.building-gate {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.building--has-review .building-gate {
+  opacity: 1;
+}
+.building-gate-bar {
+  height: 20px;
+  width: 56px;
+  border-radius: var(--radius-full);
+}
+
+/* --- Step labels --- */
+.building-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  flex-wrap: wrap;
+}
+.building-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  transition: color var(--transition-normal);
+}
+.building-step.done { color: var(--color-primary); }
+.building-step.active { color: var(--color-text); font-weight: var(--font-medium); }
+.building-step.pending { color: var(--color-text-tertiary); }
+
+/* --- Shared keyframes --- */
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes buildingShimmer {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}

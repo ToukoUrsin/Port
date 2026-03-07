@@ -190,11 +190,13 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
 
 // --- Step 2: Processing with SSE ---
 const STEP_LABELS: Record<string, string> = {
-  transcribing: "Listening to your recording...",
-  describing_photos: "Looking at your photos...",
-  generating: "Writing your article...",
-  reviewing: "Reviewing quality...",
+  transcribing: "Listening",
+  describing_photos: "Seeing photos",
+  generating: "Writing",
+  reviewing: "Reviewing",
 };
+
+const STEP_ORDER = ["transcribing", "describing_photos", "generating", "reviewing"];
 
 function ProcessingStep({
   submissionId,
@@ -233,26 +235,66 @@ function ProcessingStep({
     return () => controller.abort();
   }, [submissionId, onDone, onError]);
 
+  const currentIndex = STEP_ORDER.indexOf(currentStep);
+  const reached = (step: string) => STEP_ORDER.indexOf(step) <= currentIndex;
+
+  const buildingClasses = [
+    "building-article",
+    reached("transcribing") ? "building--has-headline" : "",
+    reached("describing_photos") ? "building--has-image" : "",
+    reached("generating") ? "building--has-body" : "",
+    reached("reviewing") ? "building--has-review" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className="processing">
-      <div className="processing-spinner">
-        <Loader2 size={32} />
+    <div className="building">
+      <h2 className="building-title">Creating your article</h2>
+      <div className={buildingClasses}>
+        {/* Gate badge placeholder */}
+        <div className="building-gate">
+          <div className="skeleton building-gate-bar" />
+        </div>
+
+        {/* Headline */}
+        <div className="building-headline">
+          <div className="skeleton building-headline-line" style={{ width: "85%" }} />
+          <div className="skeleton building-headline-line" style={{ width: "55%" }} />
+        </div>
+
+        {/* Byline */}
+        <div className="building-byline">
+          <div className="skeleton building-byline-avatar" />
+          <div className="skeleton building-byline-text" />
+        </div>
+
+        {/* Image */}
+        <div className="building-image">
+          <div className="skeleton building-image-block" />
+        </div>
+
+        {/* Body lines */}
+        <div className="building-body">
+          {[100, 95, 88, 100, 72, 96, 60].map((w, i) => (
+            <div key={i} className="skeleton building-body-line" style={{ width: `${w}%`, transitionDelay: `${i * 0.09}s` }} />
+          ))}
+        </div>
       </div>
-      <h2 className="processing-title">Creating your article</h2>
-      <div className="processing-steps">
-        {stepKeys.map((key) => {
-          const isDone = currentStep !== key;
+
+      {/* Step labels */}
+      <div className="building-steps">
+        {STEP_ORDER.map((key) => {
+          const isDone = stepKeys.includes(key) && currentStep !== key;
           const isActive = currentStep === key;
           return (
             <div
               key={key}
-              className={`processing-step ${isDone ? "done" : isActive ? "active" : "pending"}`}
+              className={`building-step ${isDone ? "done" : isActive ? "active" : "pending"}`}
             >
               {isDone ? (
-                <CheckCircle size={16} />
-              ) : (
-                <Loader2 size={16} className="spin" />
-              )}
+                <CheckCircle size={14} />
+              ) : isActive ? (
+                <Loader2 size={14} className="spin" />
+              ) : null}
               <span>{STEP_LABELS[key] || key}</span>
             </div>
           );
