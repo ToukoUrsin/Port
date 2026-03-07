@@ -170,6 +170,15 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		"meta":   models.JSONB[models.SubmissionMeta]{V: meta},
 	})
 
+	// Embed for semantic search (non-fatal)
+	events <- PipelineEvent{Event: "status", Step: "embedding", Message: "Indexing for search..."}
+	chunks := p.chunker.ChunkMarkdown(article, ChunkConfig{MaxTokens: 300})
+	if len(chunks) > 0 {
+		if err := p.embedding.EmbedChunks(ctx, sub.ID, models.EntitySubmission, chunks); err != nil {
+			log.Printf("embedding failed for submission %s: %v", submissionID, err)
+		}
+	}
+
 	events <- PipelineEvent{
 		Event: "complete",
 		Data: map[string]any{

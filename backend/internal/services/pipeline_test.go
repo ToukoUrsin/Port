@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
+	"github.com/pgvector/pgvector-go"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -33,6 +34,8 @@ type mockGeneration struct {
 	result *GenerationOutput
 	err    error
 }
+
+func (m *mockGeneration) ModelName() string { return "mock" }
 
 func (m *mockGeneration) Generate(_ context.Context, input GenerationInput) (*GenerationOutput, error) {
 	m.called = true
@@ -66,14 +69,34 @@ func (m *mockPhotoDescription) Describe(_ context.Context, photoPath string) (st
 	return "A photo", nil
 }
 
-type mockChunker struct{}
+type mockChunker struct {
+	chunks []Chunk
+}
 
 func (m *mockChunker) ChunkBlocks(_ []models.Block, _ ChunkConfig) []Chunk { return nil }
+func (m *mockChunker) ChunkMarkdown(_ string, _ ChunkConfig) []Chunk {
+	if m.chunks != nil {
+		return m.chunks
+	}
+	return []Chunk{{Index: 0, Text: "test chunk", Type: "section"}}
+}
 
-type mockEmbedding struct{}
+type mockEmbedding struct {
+	called   bool
+	entityID uuid.UUID
+	chunks   []Chunk
+	err      error
+}
 
-func (m *mockEmbedding) EmbedChunks(_ context.Context, _ uuid.UUID, _ int16, _ []Chunk) error {
-	return nil
+func (m *mockEmbedding) EmbedChunks(_ context.Context, entityID uuid.UUID, _ int16, chunks []Chunk) error {
+	m.called = true
+	m.entityID = entityID
+	m.chunks = chunks
+	return m.err
+}
+
+func (m *mockEmbedding) EmbedQuery(_ context.Context, _ string) (pgvector.Vector, error) {
+	return pgvector.Vector{}, nil
 }
 
 // --- Test DB setup ---
@@ -193,6 +216,10 @@ func collectEvents(events chan PipelineEvent) []PipelineEvent {
 
 func buildPipeline(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription) *PipelineService {
 	return NewPipelineService(db, trans, gen, rev, photo, &mockChunker{}, &mockEmbedding{})
+}
+
+func buildPipelineWithEmbedding(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription, chunker *mockChunker, emb *mockEmbedding) *PipelineService {
+	return NewPipelineService(db, trans, gen, rev, photo, chunker, emb)
 }
 
 // --- Pipeline tests ---
@@ -705,5 +732,74 @@ func TestPipeline_CompleteEvent_PayloadShape(t *testing.T) {
 	// review should be *ReviewResult
 	if _, ok := data["review"].(*models.ReviewResult); !ok {
 		t.Errorf("data[review] type = %T, want *ReviewResult", data["review"])
+	}
+}
+
+func TestPipeline_EmbeddingCalledAfterSave(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "Embed", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGeneration{result: defaultGenOutput()}
+	rev := &mockReview{result: defaultReviewResult()}
+	emb := &mockEmbedding{}
+	chunker := &mockChunker{chunks: []Chunk{{Index: 0, Text: "chunk one", Type: "section"}}}
+
+	pipeline := buildPipelineWithEmbedding(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, chunker, emb)
+	events := make(chan PipelineEvent, 20)
+	pipeline.Run(context.Background(), sub.ID, events)
+	collectEvents(events)
+
+	if !emb.called {
+		t.Fatal("embedding service should have been called")
+	}
+	if emb.entityID != sub.ID {
+		t.Errorf("embedding entityID = %s, want %s", emb.entityID, sub.ID)
+	}
+	if len(emb.chunks) != 1 || emb.chunks[0].Text != "chunk one" {
+		t.Errorf("embedding chunks = %v, want [{0 chunk one section}]", emb.chunks)
+	}
+
+	// Verify article was saved (embedding happens after DB save)
+	var updated models.Submission
+	db.First(&updated, "id = ?", sub.ID)
+	if updated.Status != models.StatusReady {
+		t.Errorf("status = %d, want StatusReady (%d)", updated.Status, models.StatusReady)
+	}
+}
+
+func TestPipeline_EmbeddingFailure_NonFatal(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "EmbedFail", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGeneration{result: defaultGenOutput()}
+	rev := &mockReview{result: defaultReviewResult()}
+	emb := &mockEmbedding{err: fmt.Errorf("Gemini embedding API down")}
+	chunker := &mockChunker{chunks: []Chunk{{Index: 0, Text: "chunk one", Type: "section"}}}
+
+	pipeline := buildPipelineWithEmbedding(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, chunker, emb)
+	events := make(chan PipelineEvent, 20)
+	pipeline.Run(context.Background(), sub.ID, events)
+
+	evts := collectEvents(events)
+
+	// Pipeline should still complete despite embedding failure
+	last := evts[len(evts)-1]
+	if last.Event != "complete" {
+		t.Errorf("last event = %q, want 'complete'", last.Event)
+	}
+
+	// Status should be Ready, not an error state
+	var updated models.Submission
+	db.First(&updated, "id = ?", sub.ID)
+	if updated.Status != models.StatusReady {
+		t.Errorf("status = %d, want StatusReady (%d)", updated.Status, models.StatusReady)
 	}
 }
