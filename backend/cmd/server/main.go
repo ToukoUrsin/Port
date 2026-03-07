@@ -136,6 +136,9 @@ func main() {
 	r.SetTrustedProxies(cfg.TrustedProxies)
 	middleware.SetupCORS(r, cfg.AllowedOrigins)
 
+	// Serve uploaded media files
+	r.Static("/uploads", cfg.MediaStoragePath)
+
 	// Rate limiting
 	rl := middleware.NewRateLimiter(c.Client(), cfg)
 	r.Use(rl.Middleware())

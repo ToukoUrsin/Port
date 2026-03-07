@@ -178,3 +178,4 @@ Frontend uses `VITE_API_URL` to override the backend base URL (default `http://l
 - Push features frequently — small, working increments rather than large batches
 - Keep the repo clean: no dead code, no leftover debug logs, no unrelated changes in commits
 - Commit in a way that makes sense for the project
+- Try not to be destructive, no rebasing, no force pushing, no deleting branches, be graceful and careful

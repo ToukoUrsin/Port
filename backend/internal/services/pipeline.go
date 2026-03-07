@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -247,7 +248,7 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 			photoDescs = make([]string, len(photoFiles))
 			photoFileURLs = make([]string, len(photoFiles))
 			for i, pf := range photoFiles {
-				photoFileURLs[i] = pf.Name
+				photoFileURLs[i] = fmt.Sprintf("/uploads/%s/%s", submissionID, filepath.Base(pf.Name))
 				desc, descErr := p.photoDescription.Describe(ctx, pf.Name)
 				if descErr != nil {
 					photoErr = descErr

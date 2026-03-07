@@ -1,6 +1,6 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { User, Search, X, Clock, Loader2 } from "lucide-react";
+import { User, Search, X, Clock, Loader2, PenSquare } from "lucide-react";
 import { search } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
 import type { SearchResponse } from "@/lib/types";
@@ -114,6 +114,10 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
             </button>
           ) : (
             <>
+              <NavLink to="/post" className="home-nav__post-btn" title="Post a story">
+                <PenSquare size={16} />
+                <span>Post</span>
+              </NavLink>
               <button className="home-nav__search-btn" onClick={openSearch} title="Search">
                 <Search size={18} />
               </button>
