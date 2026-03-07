@@ -526,7 +526,7 @@ export default function HomePage() {
   const bestOfWeek = useMemo(
     () => [...allArticles]
       .filter((a) => a.image)
-      .sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+      .sort((a, b) => b.title.localeCompare(a.title))
       .slice(0, 5),
     [allArticles],
   );

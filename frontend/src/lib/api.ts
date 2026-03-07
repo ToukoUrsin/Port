@@ -7,6 +7,8 @@ import type {
   ApiProfile,
   ApiLocation,
   ApiReply,
+  Coaching,
+  RedTrigger,
 } from "@/lib/types.ts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -171,10 +173,67 @@ export function getSubmission(id: string): Promise<ApiSubmission> {
   return apiFetch<ApiSubmission>(`/api/submissions/${id}`);
 }
 
-export function publishArticle(
+export type GateRejection = {
+  error: "gate_red";
+  gate: "RED";
+  coaching: Coaching;
+  red_triggers: RedTrigger[];
+};
+
+export async function publishArticle(
   id: string,
-): Promise<void> {
-  return apiFetch<void>(`/api/submissions/${id}/publish`, {
+): Promise<{ status: string } | GateRejection> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  const token = currentToken;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}/api/submissions/${id}/publish`, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({}),
+  });
+
+  if (res.status === 422) {
+    return res.json() as Promise<GateRejection>;
+  }
+
+  if (!res.ok) {
+    let msg = res.statusText;
+    try {
+      const body = await res.json();
+      msg = body.error || body.message || msg;
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(res.status, msg);
+  }
+
+  return res.json();
+}
+
+export async function refineSubmission(
+  id: string,
+  data: FormData | { text_note: string },
+): Promise<{ status: string }> {
+  if (data instanceof FormData) {
+    return apiFetch<{ status: string }>(`/api/submissions/${id}/refine`, {
+      method: "POST",
+      body: data,
+    });
+  }
+  return apiFetch<{ status: string }>(`/api/submissions/${id}/refine`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function appealSubmission(
+  id: string,
+): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/submissions/${id}/appeal`, {
     method: "POST",
     body: JSON.stringify({}),
   });

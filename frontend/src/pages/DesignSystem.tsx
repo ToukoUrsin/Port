@@ -45,15 +45,6 @@ const SEMANTIC_COLORS = [
   { token: "--color-info-light", label: "Info Light" },
 ];
 
-const CATEGORY_COLORS = [
-  { token: "--color-cat-council", label: "Council", badge: "badge-council" },
-  { token: "--color-cat-schools", label: "Schools", badge: "badge-schools" },
-  { token: "--color-cat-business", label: "Business", badge: "badge-business" },
-  { token: "--color-cat-events", label: "Events", badge: "badge-events" },
-  { token: "--color-cat-sports", label: "Sports", badge: "badge-sports" },
-  { token: "--color-cat-community", label: "Community", badge: "badge-community" },
-];
-
 const TYPE_SCALE = [
   { token: "--text-xs", label: "xs", rem: "0.75rem" },
   { token: "--text-sm", label: "sm", rem: "0.875rem" },

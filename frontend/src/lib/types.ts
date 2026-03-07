@@ -1,30 +1,89 @@
 // API types mirroring Go backend structs
 
-export interface Block {
-  type: string;
-  content?: string;
-  src?: string;
-  caption?: string;
-  alt?: string;
-  level?: number;
-  author?: string;
+// --- Review types (matches PROMPTS_SPEC.md canonical schema) ---
+
+export interface VerificationEntry {
+  claim: string;
+  evidence: string;
+  status:
+    | "SUPPORTED"
+    | "NOT_IN_SOURCE"
+    | "POSSIBLE_HALLUCINATION"
+    | "FABRICATED_QUOTE";
 }
 
-export interface ReviewFlag {
-  type: string;
-  text: string;
+export interface QualityScores {
+  evidence: number;
+  perspectives: number;
+  representation: number;
+  ethical_framing: number;
+  cultural_context: number;
+  manipulation: number;
+}
+
+export interface RedTrigger {
+  dimension: string;
+  trigger: string;
+  paragraph: number;
+  sentence: string;
+  fix_options: string[];
+}
+
+export interface YellowFlag {
+  dimension: string;
+  description: string;
   suggestion: string;
 }
 
-export interface ReviewResult {
-  score: number;
-  flags: ReviewFlag[];
-  approved: boolean;
+export interface Coaching {
+  celebration: string;
+  suggestions: string[];
 }
 
+export interface ReviewResult {
+  verification: VerificationEntry[];
+  scores: QualityScores;
+  gate: "GREEN" | "YELLOW" | "RED";
+  red_triggers: RedTrigger[];
+  yellow_flags: YellowFlag[];
+  coaching: Coaching;
+}
+
+// --- Article metadata (from generation) ---
+
+export interface ArticleMetadata {
+  chosen_structure:
+    | "news_report"
+    | "feature"
+    | "photo_essay"
+    | "brief"
+    | "narrative";
+  category: string;
+  confidence: number;
+  missing_context: string[];
+}
+
+export interface ArticleVersion {
+  article_markdown: string;
+  metadata: ArticleMetadata;
+  review: ReviewResult;
+  contributor_input: string;
+  timestamp: string;
+}
+
+// --- Submission ---
+
 export interface SubmissionMeta {
-  blocks?: Block[];
+  // New article engine fields
+  article_markdown?: string;
+  article_metadata?: ArticleMetadata;
+  versions?: ArticleVersion[];
+  transcript?: string;
+
+  // Review (new shape)
   review?: ReviewResult;
+
+  // Kept from before
   summary?: string;
   category?: string;
   model?: string;
@@ -43,6 +102,7 @@ export interface SubmissionMeta {
 export interface ApiSubmission {
   id: string;
   owner_id: string;
+  owner_name?: string;
   location_id: string;
   title: string;
   description: string;
@@ -146,7 +206,8 @@ export interface SSEStatusEvent {
 }
 
 export interface SSECompleteEvent {
-  article: ApiSubmission;
+  article: string;
+  metadata: ArticleMetadata;
   review: ReviewResult;
 }
 
@@ -170,6 +231,8 @@ export const SubmissionStatus = {
   Ready: 4,
   Published: 5,
   Archived: 6,
+  Refining: 7,
+  Appealed: 8,
 } as const;
 
 // --- Tag bitmask constants ---
@@ -211,25 +274,19 @@ export function timeAgo(dateStr: string): string {
 }
 
 export function apiToArticle(s: ApiSubmission): Article {
-  const blocks = s.meta.blocks ?? [];
-  const body = blocks
-    .map((b) => b.content)
-    .filter(Boolean)
-    .join("\n\n");
+  const body = s.meta.article_markdown || s.description || "";
 
   return {
     id: s.id,
     title: s.title,
-    excerpt: s.description || s.meta.summary || "",
+    excerpt: (s.meta.article_markdown || s.description || s.meta.summary || "").slice(0, 200),
     body,
     category: s.meta.category || tagsToCategory(s.tags),
-    author: s.owner_id.slice(0, 8),
+    author: s.owner_name || s.owner_id.slice(0, 8),
     authorId: s.owner_id,
     timeAgo: timeAgo(s.created_at),
     image: s.meta.featured_img || "",
     area: s.meta.place_name,
-    qualityScore: s.meta.review?.score,
-    qualityFlags: s.meta.review?.flags,
   };
 }
 

@@ -1,67 +1,15 @@
 import { useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ChevronDown, ImageIcon, MessageSquare, User, Send, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
 import { getArticle, getArticles, getReplies, createReply } from "@/lib/api";
 import { apiToArticle, timeAgo } from "@/lib/types";
-import type { ApiReply, ReviewFlag } from "@/lib/types";
+import type { ApiReply } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import "./ArticlePage.css";
-
-function QualityScore({
-  score,
-  flags,
-}: {
-  score: number;
-  flags?: ReviewFlag[];
-}) {
-  const [open, setOpen] = useState(false);
-
-  const tier =
-    score >= 80 ? "high" : score >= 60 ? "medium" : "low";
-
-  return (
-    <div className="quality-section">
-      <button className="quality-header" onClick={() => setOpen(!open)}>
-        <div className="quality-header__left">
-          <span className="quality-header__label">Quality review</span>
-          <span className={`quality-score-badge quality-score-badge--${tier}`}>
-            {score}/100
-          </span>
-        </div>
-        {flags && flags.length > 0 && (
-          <ChevronDown
-            size={16}
-            className={`quality-toggle-icon ${open ? "quality-toggle-icon--open" : ""}`}
-          />
-        )}
-      </button>
-
-      {open && flags && flags.length > 0 && (
-        <div className="quality-dimensions">
-          {flags.map((flag, i) => (
-            <div key={i} className="quality-dim">
-              <div className="quality-dim__label">
-                <AlertTriangle size={12} />
-                <span style={{ fontWeight: 600 }}>{flag.type}</span>
-              </div>
-              <p style={{ margin: "var(--space-1) 0 0", color: "var(--color-text-secondary)", fontSize: "var(--text-sm)" }}>
-                {flag.text}
-              </p>
-              {flag.suggestion && (
-                <p style={{ margin: "var(--space-1) 0 0", color: "var(--color-text-tertiary)", fontSize: "var(--text-xs)", fontStyle: "italic" }}>
-                  {flag.suggestion}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function Comments({ articleId }: { articleId: string }) {
   const { isAuthenticated } = useAuth();
@@ -161,7 +109,6 @@ function Comments({ articleId }: { articleId: string }) {
       {hasMore && (
         <button className="comments-show-more" onClick={() => setShowAll(true)}>
           Show all {allReplies.length} comments
-          <ChevronDown size={14} />
         </button>
       )}
     </div>
@@ -224,6 +171,9 @@ export default function ArticlePage() {
     );
   }
 
+  // Determine gate badge if review data is available
+  const gate = apiData?.meta?.review?.gate;
+
   return (
     <>
       <Navbar
@@ -246,13 +196,18 @@ export default function ArticlePage() {
 
       <div className="article-content">
         <div className="article-meta">
-          <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          <span className={`badge ${BADGE_CLASS[article.category] || "badge-community"}`}>
             {article.category}
           </span>
           <span className="article-meta__time">
             <Clock size={12} />
             {article.timeAgo}
           </span>
+          {gate && (
+            <span className={`gate-badge-inline gate-badge-inline--${gate.toLowerCase()}`}>
+              {gate === "GREEN" ? "Verified" : gate === "YELLOW" ? "Review notes" : "Needs changes"}
+            </span>
+          )}
         </div>
 
         <h1 className="article-title">{article.title}</h1>
@@ -261,17 +216,27 @@ export default function ArticlePage() {
         </p>
 
         <div className="article-body">
-          {article.body.split("\n\n").map((paragraph, i) => (
-            <p key={i}>{paragraph}</p>
-          ))}
+          {apiData?.meta?.article_markdown ? (
+            <ReactMarkdown>{apiData.meta.article_markdown}</ReactMarkdown>
+          ) : (
+            article.body.split("\n\n").map((paragraph, i) => (
+              <p key={i}>{paragraph}</p>
+            ))
+          )}
         </div>
 
-        {article.qualityScore != null && (
-          <QualityScore
-            score={article.qualityScore}
-            flags={article.qualityFlags}
-          />
-        )}
+        {/* Contributor card */}
+        <div className="contributor-card">
+          <div className="contributor-info">
+            <span className="contributor-name">By {article.author}</span>
+            <span className="contributor-date">{article.timeAgo}</span>
+          </div>
+          {apiData?.meta?.article_metadata?.category && (
+            <span className={`badge ${BADGE_CLASS[apiData.meta.article_metadata.category] || "badge-community"}`}>
+              {apiData.meta.article_metadata.category}
+            </span>
+          )}
+        </div>
 
         <Comments articleId={id!} />
 
@@ -295,7 +260,7 @@ export default function ArticlePage() {
                     )}
                   </div>
                   <div className="more-card__body">
-                    <span className={`badge ${BADGE_CLASS[r.category]}`}>
+                    <span className={`badge ${BADGE_CLASS[r.category] || "badge-community"}`}>
                       {r.category}
                     </span>
                     <h3 className="more-card__title">{r.title}</h3>

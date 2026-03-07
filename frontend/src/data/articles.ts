@@ -10,9 +10,6 @@ export interface Article {
   image: string;
   area?: string;
   isLead?: boolean;
-  qualityScore?: number;
-  qualityFlags?: { type: string; text: string; suggestion: string }[];
-  sourceType?: string;
 }
 
 export function authorSlug(name: string): string {

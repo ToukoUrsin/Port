@@ -291,8 +291,10 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 	})
 
 	// Invalidate caches
-	h.cache.Delete(c.Request.Context(), "articles:"+id.String())
-	h.cache.DeletePattern(c.Request.Context(), "articles:list:"+sub.LocationID.String()+":*")
+	if h.cache != nil {
+		h.cache.Delete(c.Request.Context(), "articles:"+id.String())
+		h.cache.DeletePattern(c.Request.Context(), "articles:list:"+sub.LocationID.String()+":*")
+	}
 
 	// Update location counters
 	h.db.Model(&models.Location{}).Where("id = ?", sub.LocationID).
