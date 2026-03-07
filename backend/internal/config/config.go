@@ -46,7 +46,7 @@ func Load() *Config {
 		GoogleRedirect:   env("GOOGLE_REDIRECT_URL", "http://localhost:8000/api/auth/google/callback"),
 
 		GeminiAPIKey:        env("GEMINI_API_KEY", ""),
-		GenerationModel:     env("GENERATION_MODEL", "gemini-3.1-pro"),
+		GenerationModel:     env("GENERATION_MODEL", "gemini-2.5-flash"),
 		EmbeddingModel:      env("EMBEDDING_MODEL", "gemini-embedding-001"),
 		EmbeddingDimensions: envInt("EMBEDDING_DIMENSIONS", 768),
 
