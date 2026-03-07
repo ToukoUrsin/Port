@@ -171,7 +171,7 @@ CREATE TABLE locations (
 
 CREATE TABLE profiles (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    display_name    VARCHAR(200),
+    profile_name    VARCHAR(100) UNIQUE NOT NULL,
     email           VARCHAR(320) UNIQUE NOT NULL,
     password_hash   BYTEA NOT NULL,
     location_id     UUID REFERENCES locations(id),
@@ -179,6 +179,7 @@ CREATE TABLE profiles (
     permissions     BIGINT DEFAULT 0,
     tags            BIGINT DEFAULT 0,
     public          BOOLEAN DEFAULT FALSE,
+    is_adult        BOOLEAN DEFAULT FALSE,
     meta            JSONB DEFAULT '{}',
 
     -- Full-text search (populated from display_name + email)
@@ -221,28 +222,30 @@ CREATE INDEX idx_oauth_profile ON oauth_accounts (profile_id);
 
 CREATE TABLE submissions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id        UUID REFERENCES profiles(id) NOT NULL,
     location_id     UUID REFERENCES locations(id) NOT NULL,
-    contributor_id  UUID NOT NULL,
     tags            BIGINT DEFAULT 0,
     status          SMALLINT DEFAULT 0,
-    error           SMALLINT DEFAULT 0,          -- 0=none, 1=transcription_failed, 2=generation_failed, etc.
-    transcript      TEXT,                        -- populated after ElevenLabs STT completes
-    notes           TEXT,                        -- contributor-provided notes
-    headline        TEXT,                        -- generated article headline
-    body            TEXT,                        -- generated article body (markdown)
+    error           SMALLINT DEFAULT 0,
     meta            JSONB DEFAULT '{}',
-
-    -- Full-text search (populated from transcript + notes + headline + body)
     search_vector   TSVECTOR,
-
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_submissions_location ON submissions (location_id);
-CREATE INDEX idx_submissions_contributor ON submissions (contributor_id);
 CREATE INDEX idx_submissions_status ON submissions (status);
 CREATE INDEX idx_submissions_search ON submissions USING GIN (search_vector);
+
+CREATE TABLE submission_contributors (
+    submission_id   UUID REFERENCES submissions(id) NOT NULL,
+    profile_id      UUID REFERENCES profiles(id) NOT NULL,
+    role            SMALLINT DEFAULT 0,
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (submission_id, profile_id)
+);
+
+CREATE INDEX idx_sub_contrib_profile ON submission_contributors (profile_id);
 
 CREATE TABLE files (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -317,6 +320,351 @@ CREATE INDEX idx_embeddings_category ON embeddings (entity_category);
 CREATE INDEX idx_embeddings_vector ON embeddings USING ivfflat (embedding vector_cosine_ops);
 ```
 
+### Go Structs (GORM Models)
+
+#### Base Types (`internal/models/base.go`)
+
+```go
+package models
+
+import (
+    "database/sql/driver"
+    "encoding/json"
+    "fmt"
+    "time"
+)
+
+type Timestamps struct {
+    CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+    UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+// JSONB[T] — typed wrapper for PostgreSQL JSONB columns.
+// Implements sql.Scanner, driver.Valuer, and JSON marshal/unmarshal.
+type JSONB[T any] struct{ V T }
+
+func (j JSONB[T]) Value() (driver.Value, error) {
+    return json.Marshal(j.V)
+}
+
+func (j *JSONB[T]) Scan(src any) error {
+    if src == nil {
+        return nil
+    }
+    b, ok := src.([]byte)
+    if !ok {
+        return fmt.Errorf("expected []byte, got %T", src)
+    }
+    return json.Unmarshal(b, &j.V)
+}
+
+func (j JSONB[T]) MarshalJSON() ([]byte, error) {
+    return json.Marshal(j.V)
+}
+
+func (j *JSONB[T]) UnmarshalJSON(data []byte) error {
+    return json.Unmarshal(data, &j.V)
+}
+```
+
+#### Location (`internal/models/location.go`)
+
+```go
+type LocationMeta struct {
+    // Geographic
+    Lat        float64 `json:"lat,omitempty"`
+    Lng        float64 `json:"lng,omitempty"`
+    AreaKm2    float64 `json:"area_km2,omitempty"`
+    Timezone   string  `json:"timezone,omitempty"`
+
+    // Descriptive
+    About      string   `json:"about,omitempty"`
+    Highlights []string `json:"highlights,omitempty"`
+    Population int      `json:"population,omitempty"`
+    PostalCode string   `json:"postal_code,omitempty"`
+
+    // Media
+    CoverImage string `json:"cover_image,omitempty"`
+    Icon       string `json:"icon,omitempty"`
+}
+
+type Location struct {
+    ID               uuid.UUID           `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    Name             string              `gorm:"type:varchar(200);not null" json:"name"`
+    Slug             string              `gorm:"type:varchar(100);not null" json:"slug"`
+    Level            int16               `gorm:"not null" json:"level"`
+    ParentID         *uuid.UUID          `gorm:"type:uuid" json:"parent_id,omitempty"`
+    Path             string              `gorm:"type:text;not null" json:"path"`
+    Description      *string             `gorm:"type:text" json:"description,omitempty"`
+    IsActive         bool                `gorm:"default:true" json:"is_active"`
+    ArticleCount     int                 `gorm:"default:0" json:"article_count"`
+    SubmissionCount  int                 `gorm:"default:0" json:"submission_count"`
+    ContributorCount int                 `gorm:"default:0" json:"contributor_count"`
+    FollowerCount    int                 `gorm:"default:0" json:"follower_count"`
+    LastActivityAt   *time.Time          `json:"last_activity_at,omitempty"`
+    TrendingScore    float32             `gorm:"default:0" json:"trending_score"`
+    Meta             JSONB[LocationMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+```
+
+#### Profile + Auth (`internal/models/profile.go`)
+
+```go
+type ProfileMeta struct {
+    // Identity
+    FirstName    string   `json:"first_name,omitempty"`
+    LastName     string   `json:"last_name,omitempty"`
+    Avatar       string   `json:"avatar,omitempty"`
+    Bio          string   `json:"bio,omitempty"`
+    About        string   `json:"about,omitempty"`
+    Occupation   string   `json:"occupation,omitempty"`
+    Organization string   `json:"organization,omitempty"`
+    Tags         []string `json:"tags,omitempty"`
+
+    // Contact / links
+    Phone   string            `json:"phone,omitempty"`
+    Website string            `json:"website,omitempty"`
+    Links   map[string]string `json:"links,omitempty"`
+
+    // Activity
+    LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+
+    // Preferences
+    Language    string `json:"language,omitempty"`
+    NotifyEmail bool   `json:"notify_email,omitempty"`
+    NotifyPush  bool   `json:"notify_push,omitempty"`
+}
+
+type Profile struct {
+    ID           uuid.UUID          `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileName  string             `gorm:"type:varchar(100);uniqueIndex;not null" json:"profile_name"`
+    Email        string             `gorm:"type:varchar(320);uniqueIndex;not null" json:"email"`
+    PasswordHash []byte             `gorm:"type:bytea;not null" json:"-"`
+    LocationID   *uuid.UUID         `gorm:"type:uuid;index" json:"location_id,omitempty"`
+    Role         int16              `gorm:"default:0;index" json:"role"`
+    Permissions  int64              `gorm:"default:0" json:"permissions"`
+    Tags         int64              `gorm:"default:0" json:"tags"`
+    Public       bool               `gorm:"default:false" json:"public"`
+    IsAdult      bool               `gorm:"default:false" json:"is_adult"`
+    Meta         JSONB[ProfileMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+
+type RefreshTokenMeta struct {
+    Device    string `json:"device,omitempty"`
+    IP        string `json:"ip,omitempty"`
+    UserAgent string `json:"user_agent,omitempty"`
+}
+
+type RefreshToken struct {
+    ID        uuid.UUID               `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileID uuid.UUID               `gorm:"type:uuid;not null;index" json:"profile_id"`
+    TokenHash []byte                  `gorm:"type:bytea;not null" json:"-"`
+    ExpiresAt time.Time               `gorm:"not null;index" json:"expires_at"`
+    Revoked   bool                    `gorm:"default:false" json:"revoked"`
+    Meta      JSONB[RefreshTokenMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    CreatedAt time.Time               `gorm:"autoCreateTime" json:"created_at"`
+}
+
+type OAuthAccountMeta struct {
+    AccessToken  string     `json:"access_token,omitempty"`
+    RefreshToken string     `json:"refresh_token,omitempty"`
+    Scopes       string     `json:"scopes,omitempty"`
+    ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+    DisplayName  string     `json:"display_name,omitempty"`
+    AvatarURL    string     `json:"avatar_url,omitempty"`
+}
+
+type OAuthAccount struct {
+    ID          uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileID   uuid.UUID                `gorm:"type:uuid;not null;index" json:"profile_id"`
+    Provider    int16                    `gorm:"not null;uniqueIndex:idx_oauth_provider_uid" json:"provider"`
+    ProviderUID string                   `gorm:"type:varchar(300);not null;uniqueIndex:idx_oauth_provider_uid" json:"provider_uid"`
+    Meta        JSONB[OAuthAccountMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+```
+
+#### Submission (`internal/models/submission.go`)
+
+```go
+type Block struct {
+    Type    string `json:"type"`              // "text", "heading", "image", "audio", "quote", "video"
+    Content string `json:"content,omitempty"`  // text/markdown content
+    Src     string `json:"src,omitempty"`      // media path for image/audio/video
+    Caption string `json:"caption,omitempty"`  // media caption
+    Alt     string `json:"alt,omitempty"`      // image alt text
+    Level   int    `json:"level,omitempty"`    // heading level (1-3)
+    Author  string `json:"author,omitempty"`   // quote attribution
+}
+
+type ReviewFlag struct {
+    Type       string `json:"type"`       // unverified_claim, missing_context, tone, attribution, factual
+    Text       string `json:"text"`
+    Suggestion string `json:"suggestion"`
+}
+
+type ReviewResult struct {
+    Score    int          `json:"score"`
+    Flags    []ReviewFlag `json:"flags"`
+    Approved bool         `json:"approved"`
+}
+
+type EditEntry struct {
+    EditedBy uuid.UUID `json:"edited_by"`
+    EditedAt time.Time `json:"edited_at"`
+    Field    string    `json:"field"`
+    Previous string    `json:"previous"`
+}
+
+type SubmissionMeta struct {
+    // Content blocks
+    Blocks []Block `json:"blocks,omitempty"`
+
+    // AI pipeline output
+    Review   *ReviewResult `json:"review,omitempty"`
+    Summary  string        `json:"summary,omitempty"`
+    Category string        `json:"category,omitempty"`
+
+    // AI pipeline metadata
+    Model       string     `json:"model,omitempty"`
+    GeneratedAt *time.Time `json:"generated_at,omitempty"`
+
+    // Content metadata
+    Slug        string      `json:"slug,omitempty"`
+    FeaturedImg string      `json:"featured_img,omitempty"`
+    Sources     []string    `json:"sources,omitempty"`
+    EventDate   string      `json:"event_date,omitempty"`
+    PlaceName   string      `json:"place_name,omitempty"`
+    CoAuthors   []uuid.UUID `json:"co_authors,omitempty"`
+
+    // Publishing
+    PublishedAt *time.Time `json:"published_at,omitempty"`
+    PublishedBy *uuid.UUID `json:"published_by,omitempty"`
+    ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
+
+    // Engagement
+    Reactions  map[string]int `json:"reactions,omitempty"`
+    Views      int            `json:"views,omitempty"`
+    ShareCount int            `json:"share_count,omitempty"`
+
+    // Moderation
+    Flagged    bool   `json:"flagged,omitempty"`
+    FlagReason string `json:"flag_reason,omitempty"`
+
+    // Edit tracking
+    EditHistory []EditEntry `json:"edit_history,omitempty"`
+}
+
+type Submission struct {
+    ID         uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    OwnerID    uuid.UUID              `gorm:"type:uuid;not null" json:"owner_id"`
+    LocationID uuid.UUID              `gorm:"type:uuid;not null;index" json:"location_id"`
+    Tags       int64                  `gorm:"default:0" json:"tags"`
+    Status     int16                  `gorm:"default:0;index" json:"status"`
+    Error      int16                  `gorm:"default:0" json:"error"`
+    Meta       JSONB[SubmissionMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+
+type SubmissionContributor struct {
+    SubmissionID uuid.UUID `gorm:"type:uuid;not null;primaryKey" json:"submission_id"`
+    ProfileID    uuid.UUID `gorm:"type:uuid;not null;primaryKey;index:idx_sub_contrib_profile" json:"profile_id"`
+    Role         int16     `gorm:"default:0" json:"role"`
+    CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+```
+
+#### File (`internal/models/file.go`)
+
+```go
+type FileMeta struct {
+    MimeType     string `json:"mime_type,omitempty"`
+    Width        int    `json:"width,omitempty"`
+    Height       int    `json:"height,omitempty"`
+    DurationSecs int    `json:"duration_secs,omitempty"`
+    Thumbnail    string `json:"thumbnail,omitempty"`
+}
+
+type File struct {
+    ID             uuid.UUID       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    EntityID       uuid.UUID       `gorm:"type:uuid;not null" json:"entity_id"`
+    EntityCategory int16           `gorm:"not null" json:"entity_category"`
+    SubmissionID   uuid.UUID       `gorm:"type:uuid;not null;index" json:"submission_id"`
+    ContributorID  uuid.UUID       `gorm:"type:uuid;not null" json:"contributor_id"`
+    FileType       int16           `gorm:"not null;index" json:"file_type"`
+    Name           string          `gorm:"type:varchar(300);not null" json:"name"`
+    Size           int64           `gorm:"not null" json:"size"`
+    UploadedAt     time.Time       `gorm:"autoCreateTime" json:"uploaded_at"`
+    Meta           JSONB[FileMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+}
+```
+
+#### Tag (`internal/models/tag.go`)
+
+```go
+type Tag struct {
+    ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    Name      string    `gorm:"type:varchar(100);not null" json:"name"`
+    Slug      string    `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
+    CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+
+type EntityTag struct {
+    EntityID       uuid.UUID `gorm:"type:uuid;primaryKey" json:"entity_id"`
+    EntityCategory int16     `gorm:"not null;index:idx_entity_tags_entity" json:"entity_category"`
+    TagID          uuid.UUID `gorm:"type:uuid;primaryKey" json:"tag_id"`
+}
+```
+
+#### Follow (`internal/models/follow.go`)
+
+```go
+type Follow struct {
+    ID         uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileID  uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_follows_unique;index" json:"profile_id"`
+    TargetID   uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_follows_unique" json:"target_id"`
+    TargetType int16     `gorm:"not null;uniqueIndex:idx_follows_unique" json:"target_type"`
+    CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+```
+
+#### Reply (`internal/models/reply.go`)
+
+```go
+type ReplyMeta struct {
+    Reactions  map[string]int `json:"reactions,omitempty"`
+    EditedAt   *time.Time     `json:"edited_at,omitempty"`
+    EditedBody string         `json:"edited_body,omitempty"`
+}
+
+type Reply struct {
+    ID           uuid.UUID        `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    SubmissionID uuid.UUID        `gorm:"type:uuid;not null;index" json:"submission_id"`
+    ProfileID    uuid.UUID        `gorm:"type:uuid;not null;index" json:"profile_id"`
+    ParentID     *uuid.UUID       `gorm:"type:uuid;index" json:"parent_id,omitempty"`
+    Body         string           `gorm:"type:text;not null" json:"body"`
+    Status       int16            `gorm:"default:0" json:"status"`
+    Meta         JSONB[ReplyMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    CreatedAt    time.Time        `gorm:"autoCreateTime" json:"created_at"`
+}
+```
+
+#### Embedding (`internal/models/embedding.go`)
+
+```go
+import "github.com/pgvector/pgvector-go"
+
+type Embedding struct {
+    ID             uuid.UUID       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    EntityID       uuid.UUID       `gorm:"type:uuid;not null;index" json:"entity_id"`
+    EntityCategory int16           `gorm:"not null;index" json:"entity_category"`
+    ChunkText      string          `gorm:"type:text;not null" json:"chunk_text"`
+    Embedding      pgvector.Vector `gorm:"type:vector(1536);not null" json:"embedding"`
+}
+```
+
 ### Migrations
 
 GORM AutoMigrate handles schema creation during development. For production, use raw SQL migration files in `backend/migrations/` applied with a migration tool like `golang-migrate/migrate` or manual `psql` execution. The full-text search triggers and extensions (below) must be applied via raw SQL since GORM doesn't manage triggers.
@@ -331,43 +679,51 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- trigram fuzzy matching
 
 #### How it works
 
-1. **Write time** — when a row is inserted/updated, a trigger populates the `search_vector` column by normalizing the source text into lexemes (tokenize → remove stop words → stem).
-2. **GIN index** — an inverted index maps each lexeme to the rows containing it. Lookups are O(1) per term instead of full table scans.
-3. **Query time** — the search query goes through the same normalization, then PostgreSQL intersects matching row sets from the index.
+1. **Write time** — a `BEFORE INSERT OR UPDATE` trigger fires when the row changes. The trigger extracts raw text from the source fields (for submissions: iterates `meta->'blocks'` JSONB array and concatenates each block's `content` field; for profiles: reads `profile_name` and `email`). PostgreSQL's `to_tsvector('english', text)` then normalizes this text into lexemes: tokenize into words → lowercase → remove stop words ("the", "and", "is") → stem to root forms ("running" → "run", "cities" → "citi"). The result is stored in the `search_vector TSVECTOR` column. Blocks are weighted: heading blocks get weight A (highest rank), all other block types get weight B, so matches in titles rank higher.
+2. **GIN index** — a Generalized Inverted Index maps each lexeme to the set of row IDs containing it. Searching for a term is an index lookup, not a table scan. The `@@` operator checks if a query matches a vector in O(1) per term.
+3. **Query time** — the user's search string goes through the same normalization via `plainto_tsquery('english', query)`. PostgreSQL intersects the matching row sets from the GIN index and ranks results using `ts_rank()`, which scores based on lexeme frequency, weight, and proximity.
 
 #### Triggers
 
 ```sql
--- Submissions: index transcript, notes, headline, and body
--- headline is weighted A (highest), body B, notes C, transcript D
+-- Submissions: extract text from meta blocks and build search vector
+-- heading blocks weighted A, text blocks weighted B
 CREATE FUNCTION submissions_search_update() RETURNS trigger AS $$
+DECLARE
+  headings TEXT := '';
+  body_text TEXT := '';
 BEGIN
+  SELECT
+    coalesce(string_agg(CASE WHEN b->>'type' = 'heading' THEN b->>'content' END, ' '), ''),
+    coalesce(string_agg(CASE WHEN b->>'type' != 'heading' THEN b->>'content' END, ' '), '')
+  INTO headings, body_text
+  FROM jsonb_array_elements(coalesce(NEW.meta->'blocks', '[]'::jsonb)) AS b
+  WHERE b->>'content' IS NOT NULL;
+
   NEW.search_vector :=
-    setweight(to_tsvector('english', coalesce(NEW.headline, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(NEW.body, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(NEW.notes, '')), 'C') ||
-    setweight(to_tsvector('english', coalesce(NEW.transcript, '')), 'D');
+    setweight(to_tsvector('english', headings), 'A') ||
+    setweight(to_tsvector('english', body_text), 'B');
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_submissions_search
-  BEFORE INSERT OR UPDATE OF transcript, notes, headline, body
+  BEFORE INSERT OR UPDATE OF meta
   ON submissions
   FOR EACH ROW EXECUTE FUNCTION submissions_search_update();
 
--- Profiles: index display_name and email
+-- Profiles: index profile_name and email
 CREATE FUNCTION profiles_search_update() RETURNS trigger AS $$
 BEGIN
   NEW.search_vector :=
-    setweight(to_tsvector('simple', coalesce(NEW.display_name, '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce(NEW.profile_name, '')), 'A') ||
     setweight(to_tsvector('simple', coalesce(NEW.email, '')), 'B');
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_profiles_search
-  BEFORE INSERT OR UPDATE OF display_name, email
+  BEFORE INSERT OR UPDATE OF profile_name, email
   ON profiles
   FOR EACH ROW EXECUTE FUNCTION profiles_search_update();
 ```
@@ -430,9 +786,8 @@ func (h *Handler) Search(c *gin.Context) {
 For typo-tolerant "search as you type", use trigram similarity on specific columns:
 
 ```sql
--- Optional: add trigram indexes for fuzzy headline/name search
-CREATE INDEX idx_submissions_headline_trgm ON submissions USING GIN (headline gin_trgm_ops);
-CREATE INDEX idx_profiles_name_trgm ON profiles USING GIN (display_name gin_trgm_ops);
+-- Trigram indexes for fuzzy search
+CREATE INDEX idx_profiles_name_trgm ON profiles USING GIN (profile_name gin_trgm_ops);
 ```
 
 ```go
