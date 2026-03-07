@@ -1051,6 +1051,132 @@
 }
 
 /* ===============================================
+   Drag handle (Notion-style grip)
+   =============================================== */
+.drag-handle {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  color: var(--color-text-tertiary);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.1s, color 0.1s;
+  z-index: 20;
+  user-select: none;
+}
+.drag-handle:hover {
+  opacity: 1;
+  background: var(--color-gray-100);
+  color: var(--color-text-secondary);
+}
+.drag-handle:active {
+  cursor: grabbing;
+}
+.article-prose:hover .drag-handle {
+  opacity: 0.5;
+}
+.article-prose:hover .drag-handle:hover {
+  opacity: 1;
+}
+
+/* ===============================================
+   Floating menu (block inserter on empty lines)
+   =============================================== */
+.floating-menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: white;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.floating-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+.floating-menu button:hover {
+  color: var(--color-text);
+  background: var(--color-gray-100);
+}
+
+/* ===============================================
+   Bubble menu — link input row
+   =============================================== */
+.bubble-menu-link-input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-secondary, #1a1a1a);
+  border-radius: var(--radius-md);
+  padding: 4px 6px;
+  margin-top: 2px;
+}
+.bubble-menu-link-input input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  padding: 4px 8px;
+  outline: none;
+  min-width: 180px;
+}
+.bubble-menu-link-input input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+.bubble-menu-link-input button {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bubble-menu-link-input button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ===============================================
+   Word count
+   =============================================== */
+.word-count {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  text-align: right;
+  padding: var(--space-2) 0;
+}
+
+/* ===============================================
+   Highlight mark
+   =============================================== */
+.article-prose .ProseMirror mark {
+  background: #fef08a;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* ===============================================
    Utility
    =============================================== */
 .spin { animation: editor-spin 1s linear infinite; }
