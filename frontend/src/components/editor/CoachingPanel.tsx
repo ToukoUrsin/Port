@@ -1,13 +1,14 @@
-import { useState } from "react";
-import { CheckCircle, AlertTriangle, XCircle, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useRef } from "react";
+import { CheckCircle, AlertTriangle, XCircle, HelpCircle, ChevronDown, ChevronUp, MessageCircle, Send } from "lucide-react";
 import type { ReviewResult, VerificationEntry } from "@/lib/types";
 import { useLanguage } from "@/contexts/LanguageContext";
-import type { CoachingSuggestion } from "./types";
+import type { CoachingSuggestion, GeneralRefinement } from "./types";
 
 type CoachingPanelProps = {
   review: ReviewResult;
   onAppeal: () => void;
   onSuggestionClick?: (paragraphRef: number) => void;
+  onRefine?: (r: GeneralRefinement) => void;
 };
 
 function parseSuggestions(raw: string[] | CoachingSuggestion[]): CoachingSuggestion[] {
@@ -40,45 +41,125 @@ function VerificationItem({ entry }: { entry: VerificationEntry }) {
   );
 }
 
+function QuestionCard({
+  suggestion,
+  index: _index,
+  onReply,
+  onSuggestionClick,
+}: {
+  suggestion: CoachingSuggestion;
+  index: number;
+  onReply?: (questionText: string, answer: string) => void;
+  onSuggestionClick?: (paragraphRef: number) => void;
+}) {
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleReply() {
+    if (!replyText.trim() || !onReply) return;
+    onReply(suggestion.text, replyText.trim());
+    setReplyText("");
+    setIsReplying(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleReply();
+    }
+    if (e.key === "Escape") {
+      setIsReplying(false);
+      setReplyText("");
+    }
+  }
+
+  return (
+    <div
+      className={`coaching-question ${suggestion.paragraph_ref !== undefined ? "coaching-question--clickable" : ""}`}
+      onClick={() => {
+        if (suggestion.paragraph_ref !== undefined && onSuggestionClick) {
+          onSuggestionClick(suggestion.paragraph_ref);
+        }
+      }}
+    >
+      <p className="coaching-question__text">{suggestion.text}</p>
+      {onReply && !isReplying && (
+        <button
+          className="coaching-question__reply-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsReplying(true);
+            setTimeout(() => inputRef.current?.focus(), 0);
+          }}
+        >
+          <MessageCircle size={14} />
+          Reply
+        </button>
+      )}
+      {isReplying && (
+        <div className="coaching-question__reply" onClick={(e) => e.stopPropagation()}>
+          <input
+            ref={inputRef}
+            type="text"
+            className="coaching-question__reply-input"
+            placeholder="Type your answer..."
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            autoFocus
+          />
+          <button
+            className="coaching-question__reply-send"
+            onClick={handleReply}
+            disabled={!replyText.trim()}
+          >
+            <Send size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CoachingPanel({
   review,
   onAppeal,
   onSuggestionClick,
+  onRefine,
 }: CoachingPanelProps) {
   const { t } = useLanguage();
   const [showVerificationDetail, setShowVerificationDetail] = useState(false);
   const suggestions = parseSuggestions(review.coaching.suggestions as string[] | CoachingSuggestion[]);
 
-  // Count verification stats
   const verified = review.verification?.filter((v) => v.status === "SUPPORTED").length ?? 0;
   const problematic = review.verification?.filter((v) => v.status !== "SUPPORTED") ?? [];
   const total = review.verification?.length ?? 0;
 
+  function handleQuestionReply(questionText: string, answer: string) {
+    if (!onRefine) return;
+    // Compose the question + answer into a natural refinement
+    onRefine({ text_note: `Regarding your question "${questionText.slice(0, 80)}...": ${answer}` });
+  }
+
   return (
     <div className="coaching-panel">
-      {/* 1. Celebration — warm opening */}
-      <p className="coaching-celebration">{review.coaching.celebration}</p>
-
-      {/* 2. Coaching questions — THE primary content */}
+      {/* 1. Coaching questions — THE primary content */}
       {suggestions.length > 0 && (
         <div className="coaching-questions">
           {suggestions.map((s, i) => (
-            <div
+            <QuestionCard
               key={i}
-              className={`coaching-question ${s.paragraph_ref !== undefined ? "coaching-question--clickable" : ""}`}
-              onClick={() => {
-                if (s.paragraph_ref !== undefined && onSuggestionClick) {
-                  onSuggestionClick(s.paragraph_ref);
-                }
-              }}
-            >
-              {s.text}
-            </div>
+              suggestion={s}
+              index={i}
+              onReply={onRefine ? handleQuestionReply : undefined}
+              onSuggestionClick={onSuggestionClick}
+            />
           ))}
         </div>
       )}
 
-      {/* 3. Source check summary — collapsed by default */}
+      {/* 2. Source check summary — collapsed by default */}
       {total > 0 && (
         <div className="verification-summary">
           <div className="verification-summary__counts">
@@ -105,7 +186,7 @@ export function CoachingPanel({
         </div>
       )}
 
-      {/* 4. Web sources */}
+      {/* 3. Web sources */}
       {review.web_sources && review.web_sources.length > 0 && (
         <div className="web-sources">
           <p className="web-sources__label">Verified against:</p>
@@ -119,7 +200,7 @@ export function CoachingPanel({
         </div>
       )}
 
-      {/* 5. Yellow flags — gentle notes */}
+      {/* 4. Yellow flags — gentle notes */}
       {review.yellow_flags.length > 0 && (
         <div className="yellow-flags">
           <h4 className="coaching-section-title">Notes</h4>
@@ -132,7 +213,7 @@ export function CoachingPanel({
         </div>
       )}
 
-      {/* 6. Red triggers — warm framing */}
+      {/* 5. Red triggers — warm framing */}
       {review.red_triggers.length > 0 && (
         <div className="red-gate-coaching">
           <h4 className="coaching-section-title">To make this bulletproof</h4>
@@ -149,7 +230,7 @@ export function CoachingPanel({
         </div>
       )}
 
-      {/* 7. Appeal */}
+      {/* 6. Appeal */}
       {review.gate === "RED" && (
         <button className="appeal-link" onClick={onAppeal}>
           {t("editor.appealLink")}

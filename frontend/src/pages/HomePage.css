@@ -407,6 +407,9 @@
   align-items: center;
   justify-content: center;
   min-height: 100px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .ad-banner__inner img {
