@@ -52,39 +52,71 @@ OUTPUT (professional local journalism):
   background the contributor mentioned elsewhere in their recording].
 ```
 
+---
+
 ## Contents
+
+### spec/ — Build from these (locked-in design decisions)
 
 | File | What |
 |------|------|
-| **MISSION.md** | **The soul: contributor feels proud, reader feels interested, community feels represented** |
-| MISSION_QUESTIONS.md | Top questions about the mission — pride line, asking tone, time pressure |
-| JOURNALISM_CRAFT.md | Research: rules, structures, and techniques of professional journalism (the knowledge base) |
-| LANDSCAPE.md | Prior art: who else does this (nobody does all three) |
-| VOICE_TO_ARTICLE.md | Technical challenges: Whisper, quotes, Finnish, faithfulness |
-| TOP_5_CHALLENGES.md | The 5 hard problems to solve before building |
-| EDITORIAL_RULES.md | The journalistic principles encoded into the prompts |
-| PRIOR_ART_LESSONS.md | What to steal from existing tools (actionable) |
-| **OUTPUT_FORMAT.md** | **Why JSON output was wrong. Markdown article + metadata sidecar. Flexible structure, not fixed.** |
-| **HOW_PROS_MAKE_NEWS.md** | **Deep research: professional journalism workflows, tools, small newsroom reality, reporter-editor relationship, citizen journalism, Finnish journalism. 60+ sources.** |
-| **HOW_PEOPLE_WANT_NEWS.md** | **Deep research: news consumption & sharing patterns, psychology of sharing, community reporting motivations, news deserts, Finnish/Nordic specifics. 70+ sources.** |
+| **MISSION.md** | The soul: contributor feels proud, reader feels interested, community feels represented |
+| **THE_CONTRIBUTOR_CYCLE.md** | The ideal human experience: 7 phases from witness to return. Pride cycle flywheel. Refinement modes. |
+| **QUALITY_PROBLEM.md** | What must not be published. 7 problem levels, proportional evidence model, 6 quality dimensions, GREEN/YELLOW/RED gate. |
+| **OUTPUT_FORMAT.md** | Why JSON was wrong. Markdown article + metadata sidecar. Flexible structure selection. |
+| **EDITORIAL_RULES.md** | The 10 journalistic principles that become prompt constraints and review checks. |
+| **ARCHITECTURE.md** | The build plan. 3 calls (gather, generate, review). Extended thinking. Review = verify+score+gate+coach. ~22s, $0.05/article. Data flow. API shape. |
+| **ARCHITECTURE_DECISION.md** | Why 3 calls not 5. Navigator analysis. Small-newsroom-editor analogy. When to revisit. |
 
-**Not yet written** (need proper research first):
-- UX design — the contributor experience from "something happened" to "my article is published"
-- Pipeline architecture — how many calls, what each does, data flow
-- Generation prompt — the actual article generation (must follow OUTPUT_FORMAT decisions)
-- Review prompt — the quality review layer
-- Prompt testing — gate tests before building UI
+### spec/build/ — Implementation specs (bridge from research to code)
+
+Read in order: PROMPTS_SPEC → BACKEND_UPDATE_SPEC → FRONTEND_CONTRACT. Each is self-contained.
+
+| File | What |
+|------|------|
+| **PROMPTS_SPEC.md** | The two system prompts (generation + review), photo vision prompt, town context, output schemas, 7 test cases. Root dependency for implementation. |
+| **BACKEND_UPDATE_SPEC.md** | Go model changes, new service interfaces, pipeline updates, new endpoints (refine, appeal), state machine. References PROMPTS_SPEC.md. |
+| **FRONTEND_CONTRACT.md** | TypeScript type changes (old → new), API client updates, PostPage rewrite (block editor → markdown + coaching), SSE payload changes. |
+
+### Research — Informed the decisions above
+
+| File | What |
+|------|------|
+| LANDSCAPE.md | Prior art: who else does this (nobody does all three) |
+| PRIOR_ART_LESSONS.md | What to steal from existing tools (22 actionable lessons) |
+| HOW_PROS_MAKE_NEWS.md | Professional journalism workflows, small newsroom reality, Finnish journalism. 60+ sources. |
+| HOW_PEOPLE_WANT_NEWS.md | News consumption & sharing patterns, community reporting motivations, Finnish/Nordic specifics. 70+ sources. |
+| JOURNALISM_CRAFT.md | Rules, structures, and techniques of professional journalism |
+| VOICE_TO_ARTICLE.md | Technical challenges: Whisper, quotes, Finnish, faithfulness |
+| TOP_5_CHALLENGES.md | The 5 hard problems (hallucination, quotes, journalism vs blog, Finnish, specific review) |
+| MISSION_QUESTIONS.md | Open questions about the mission |
+| FACT_CHECKING_LANDSCAPE.md | Hallucination detection: 3 tiers, tools evaluated, hackathon vs production strategy |
+
+### Build specs
+
+See `spec/build/` above. Read in order: PROMPTS_SPEC → BACKEND_UPDATE_SPEC → FRONTEND_CONTRACT.
+
+---
 
 ## Read Order
 
-1. **MISSION.md** — what we're optimizing for (read this first, it drives everything)
-2. **HOW_PROS_MAKE_NEWS.md** + **HOW_PEOPLE_WANT_NEWS.md** — the reality of news production and consumption
-3. JOURNALISM_CRAFT.md — the craft of journalism itself (research, examples, rules)
+For understanding: start with research, then spec.
+
+1. **spec/MISSION.md** — what we're optimizing for (read first, drives everything)
+2. HOW_PROS_MAKE_NEWS.md + HOW_PEOPLE_WANT_NEWS.md — the reality of news
+3. JOURNALISM_CRAFT.md — the craft itself
 4. LANDSCAPE.md + PRIOR_ART_LESSONS.md — what exists, what to steal
 5. VOICE_TO_ARTICLE.md + TOP_5_CHALLENGES.md — the hard problems
-6. EDITORIAL_RULES.md — what good journalism actually means (the spec)
-7. **OUTPUT_FORMAT.md** — the output format decision (read before writing any prompts)
+6. **spec/EDITORIAL_RULES.md** — rules that become prompts
+7. **spec/OUTPUT_FORMAT.md** — the output format decision
+8. **spec/THE_CONTRIBUTOR_CYCLE.md** — the human experience
+9. **spec/QUALITY_PROBLEM.md** — the quality gate
+10. **spec/ARCHITECTURE.md** — how it all becomes code
+
+For building: read only `spec/`. Everything in spec/ is self-contained — the research conclusions are already absorbed into these documents.
+
+---
 
 ## The Thesis
 
-The moat is not "we use AI to write articles" — everyone can do that. The moat is "we use AI to produce *journalism*" — articles with proper structure, real attribution, neutral tone, identified gaps, and editorial review. The prompts that achieve this are the core IP. They encode decades of journalism training into a pipeline that runs in 15 seconds for 3 cents.
+The moat is not "we use AI to write articles" — everyone can do that. The moat is "we use AI to produce *journalism*" — articles with proper structure, real attribution, neutral tone, identified gaps, and editorial review. The prompts that achieve this are the core IP. They encode decades of journalism training into a pipeline that runs in 22 seconds for 5 cents.
