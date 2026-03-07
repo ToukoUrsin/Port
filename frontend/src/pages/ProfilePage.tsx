@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, Settings } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import AccountSettings from "@/components/AccountSettings";
@@ -25,7 +25,6 @@ const STATUS_LABEL: Record<number, string> = {
 };
 
 function PostItem({ post, status }: { post: Article; status?: number }) {
-  const { t } = useLanguage();
   const isDraft = status !== undefined;
   const label = status !== undefined ? STATUS_LABEL[status] ?? "Draft" : null;
   const isReady = status === SubmissionStatus.Ready;
