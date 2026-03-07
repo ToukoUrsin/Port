@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
@@ -122,7 +122,6 @@ function Comments({ articleId }: { articleId: string }) {
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { t } = useLanguage();
 
   const fetchArticle = useCallback(() => getArticle(id!), [id]);

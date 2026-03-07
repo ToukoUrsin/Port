@@ -51,10 +51,11 @@ def blocks_to_markdown(blocks, title=""):
             else:
                 parts.append(f"> {content}")
         elif btype == "image":
-            alt = block.get("alt", "")
-            caption = block.get("caption", "")
             src = block.get("src", "")
-            if src:
+            # Only include images with real URLs, skip local file paths
+            if src and (src.startswith("http") or src.startswith("/api/")):
+                alt = block.get("alt", "")
+                caption = block.get("caption", "")
                 label = caption or alt or "Photo"
                 parts.append(f"![{label}]({src})")
     return "\n\n".join(parts)
@@ -125,6 +126,17 @@ def seed_articles(submissions, id_map, batch_size=50):
             skipped += 1
             continue
 
+        # Reject articles without a usable image
+        has_image = any(
+            b.get("type") == "image" and b.get("src", "").startswith("http")
+            for b in blocks
+        )
+        img = meta.get("featured_img", "")
+        has_featured = img and (img.startswith("http") or img.startswith("/api/"))
+        if not has_image and not has_featured:
+            skipped += 1
+            continue
+
         # Map location_id from seed data to actual DB id
         loc_id = sub["location_id"]
         actual_loc_id = id_map.get(loc_id, loc_id)
@@ -139,8 +151,10 @@ def seed_articles(submissions, id_map, batch_size=50):
         }
         if meta.get("summary"):
             article["summary"] = meta["summary"]
-        if meta.get("featured_img"):
-            article["featured_img"] = meta["featured_img"]
+        # Only pass featured_img if it's an actual URL (not a local file path)
+        img = meta.get("featured_img", "")
+        if img and (img.startswith("http") or img.startswith("/api/")):
+            article["featured_img"] = img
         articles.append(article)
 
     if skipped:
