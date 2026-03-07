@@ -29,7 +29,7 @@ export default function OnboardingPage() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const checkAvailability = useCallback((value: string) => {
     clearTimeout(debounceRef.current);

@@ -48,8 +48,15 @@ services:
       JWT_SECRET: ${NEWS_JWT_SECRET}
       GEMINI_API_KEY: ${NEWS_GEMINI_API_KEY}
       ELEVENLABS_API_KEY: ${NEWS_ELEVENLABS_API_KEY}
+      GENERATION_MODEL: gemini-3.1-pro
+      GOOGLE_CLIENT_ID: 537452979916-q7l3jf1mnfjm9ked1ad30qr76rinob9l.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: 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
+      GOOGLE_REDIRECT_URL: https://news.minir.ai/api/auth/google/callback
       MEDIA_STORAGE_PATH: /app/uploads
       ALLOWED_ORIGINS: https://news.minir.ai
+      RERANKER_MODEL_PATH: /app/models/model.onnx
+      RERANKER_VOCAB_PATH: /app/models/vocab.txt
+      ONNX_LIB_PATH: /usr/lib/libonnxruntime.so
       GIN_MODE: release
     volumes:
       - news_uploads:/app/uploads
