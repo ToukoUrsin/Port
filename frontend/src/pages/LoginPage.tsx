@@ -114,6 +114,30 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div className="auth-divider">or</div>
+
+        <button
+          type="button"
+          className="btn btn-lg"
+          style={{ width: "100%", background: "var(--neutral-100)", color: "var(--neutral-700)", border: "1px solid var(--neutral-300)" }}
+          disabled={isSubmitting}
+          onClick={async () => {
+            setError("");
+            setIsSubmitting(true);
+            try {
+              await login("antti@localnews.dev", "editor123");
+              toast("Signed in as guest", "success");
+              navigate("/");
+            } catch {
+              setError("Guest login failed. Is the backend running?");
+            } finally {
+              setIsSubmitting(false);
+            }
+          }}
+        >
+          Sign in as Guest
+        </button>
+
         <div className="auth-footer">
           Don't have an account? <Link to="/signup">Sign up</Link>
         </div>

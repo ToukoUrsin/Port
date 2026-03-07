@@ -51,6 +51,12 @@ func (w *bufferedWriter) Flush() {
 // with a generic error message while logging the original to stderr.
 func ErrorSanitizer() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Skip buffering for CORS preflight — the CORS middleware handles these directly.
+		if c.Request.Method == http.MethodOptions {
+			c.Next()
+			return
+		}
+
 		bw := &bufferedWriter{ResponseWriter: c.Writer, status: http.StatusOK}
 		c.Writer = bw
 

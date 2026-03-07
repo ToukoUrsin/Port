@@ -133,11 +133,11 @@ func main() {
 
 	// Router
 	r := gin.New()
+	r.SetTrustedProxies(cfg.TrustedProxies)
+	middleware.SetupCORS(r, cfg.AllowedOrigins) // CORS must be first — before ErrorSanitizer buffers the response
 	r.Use(middleware.ErrorSanitizer())
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.SetTrustedProxies(cfg.TrustedProxies)
-	middleware.SetupCORS(r, cfg.AllowedOrigins)
 
 	// Serve uploaded media files
 	r.Static("/uploads", cfg.MediaStoragePath)
