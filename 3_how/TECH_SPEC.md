@@ -78,6 +78,8 @@ backend/
 │   ├── database/
 │   │   └── database.go          # GORM connection + auto-migrate
 │   ├── models/
+│   │   ├── base.go              # Timestamps, JSONB[T] generic wrapper
+│   │   ├── constants.go         # Status, error, tag, entity category constants
 │   │   ├── location.go          # Location model (hierarchical)
 │   │   ├── profile.go           # Profile + auth models
 │   │   ├── submission.go        # Submission model
@@ -89,13 +91,16 @@ backend/
 │   ├── handlers/
 │   │   ├── submissions.go       # POST raw content, GET stream (SSE)
 │   │   ├── articles.go          # GET/list published articles
-│   │   ├── search.go            # GET full-text search
+│   │   ├── search.go            # GET full-text + semantic search
 │   │   └── locations.go         # GET location newspaper data
 │   ├── services/
 │   │   ├── transcription.go     # ElevenLabs STT integration
 │   │   ├── generation.go        # Claude API — article generation
 │   │   ├── review.go            # Claude API — editorial quality review
-│   │   └── media.go             # File upload handling
+│   │   ├── media.go             # File upload handling
+│   │   ├── chunker.go           # Semantic-aware block chunking
+│   │   ├── embedding.go         # Gemini embedding + pgvector storage
+│   │   └── reranker.go          # ONNX cross-encoder reranking (CPU)
 │   ├── cache/
 │   │   └── cache.go             # Redis client, get/set/invalidate helpers
 │   └── middleware/
@@ -113,14 +118,17 @@ module github.com/localnews/backend
 go 1.22
 
 require (
-    github.com/gin-gonic/gin          v1.10+
-    github.com/gin-contrib/cors        v1.7+
-    gorm.io/gorm                       v1.25+
-    gorm.io/driver/postgres            v1.5+
-    github.com/anthropics/anthropic-sdk-go  latest
-    github.com/redis/go-redis/v9       v9.7+
-    github.com/joho/godotenv           v1.5+
-    github.com/google/uuid             v1.6+
+    github.com/gin-gonic/gin              v1.10+
+    github.com/gin-contrib/cors            v1.7+
+    gorm.io/gorm                           v1.25+
+    gorm.io/driver/postgres                v1.5+
+    github.com/anthropics/anthropic-sdk-go latest
+    github.com/redis/go-redis/v9           v9.7+
+    github.com/joho/godotenv               v1.5+
+    github.com/google/uuid                 v1.6+
+    google.golang.org/genai                latest    // Gemini API (embeddings)
+    github.com/pgvector/pgvector-go        latest    // pgvector Go bindings
+    github.com/yalue/onnxruntime_go        latest    // ONNX Runtime (cross-encoder reranker)
 )
 ```
 
@@ -342,16 +350,18 @@ CREATE TABLE advertisers (
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE embeddings (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_id       UUID NOT NULL,
     entity_category SMALLINT NOT NULL,
+    chunk_index     SMALLINT NOT NULL DEFAULT 0,
     chunk_text      TEXT NOT NULL,
-    embedding       VECTOR(1536) NOT NULL
+    embedding       VECTOR(768) NOT NULL
 );
 
-CREATE INDEX idx_embeddings_entity ON embeddings (entity_id);
-CREATE INDEX idx_embeddings_category ON embeddings (entity_category);
+CREATE INDEX idx_embeddings_entity ON embeddings (entity_id, entity_category);
 CREATE INDEX idx_embeddings_vector ON embeddings USING ivfflat (embedding vector_cosine_ops);
 ```
 
@@ -824,10 +834,11 @@ import "github.com/pgvector/pgvector-go"
 
 type Embedding struct {
     ID             uuid.UUID       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-    EntityID       uuid.UUID       `gorm:"type:uuid;not null;index" json:"entity_id"`
-    EntityCategory int16           `gorm:"not null;index" json:"entity_category"`
+    EntityID       uuid.UUID       `gorm:"type:uuid;not null;index:idx_embeddings_entity" json:"entity_id"`
+    EntityCategory int16           `gorm:"not null;index:idx_embeddings_entity" json:"entity_category"`
+    ChunkIndex     int16           `gorm:"not null;default:0" json:"chunk_index"`
     ChunkText      string          `gorm:"type:text;not null" json:"chunk_text"`
-    Vector         pgvector.Vector `gorm:"column:embedding;type:vector(1536);not null" json:"embedding"`
+    Vector         pgvector.Vector `gorm:"column:embedding;type:vector(768);not null" json:"embedding"`
 }
 ```
 
@@ -1184,6 +1195,15 @@ func (h *Handler) StreamPipeline(c *gin.Context) {
             return false
         }
 
+        // Step 4: Embed
+        c.SSEvent("status", gin.H{"step": "embedding", "message": "Indexing for search..."})
+        c.Writer.Flush()
+        chunks := services.ChunkBlocks(article.Blocks, services.ChunkConfig{})
+        if err := h.embeddingService.EmbedChunks(c, submissionID, models.EntitySubmission, chunks); err != nil {
+            // Non-fatal — log but don't fail the pipeline
+            log.Printf("embedding failed for %s: %v", submissionID, err)
+        }
+
         // Done
         c.SSEvent("complete", gin.H{"article": article, "review": review})
         return false // close stream
@@ -1344,6 +1364,403 @@ Two-request pattern with SSE for real-time progress:
 ```
 
 The full pipeline takes ~20-30 seconds. The frontend shows real-time step progress via the SSE stream. If any step fails, the submission is marked `failed` with an error message, and an error event is sent.
+
+---
+
+## Embedding System — Semantic Search & Similarity
+
+Complements the full-text search with vector similarity for "find articles like this" and semantic queries where keyword matching fails. Uses Gemini's embedding model via the Google GenAI Go SDK, with a two-stage retrieval pipeline: fast vector recall followed by cross-encoder reranking for precision.
+
+### Dependencies
+
+```
+// go.mod
+google.golang.org/genai              latest   // Gemini API (embeddings + cross-encoder reranking)
+github.com/pgvector/pgvector-go      latest   // pgvector Go bindings
+```
+
+### Environment Variables
+
+```bash
+GEMINI_API_KEY=...                     # Google AI API key
+EMBEDDING_MODEL=gemini-embedding-001   # default model
+EMBEDDING_DIMENSIONS=768               # 768 | 1536 | 3072 (768 = good quality/storage tradeoff)
+```
+
+### Architecture
+
+```
+Submission created/updated
+    │
+    ▼
+Semantic Chunker (split blocks into meaningful chunks)
+    │
+    ▼
+Gemini EmbedContent API (batch embed all chunks)
+    │
+    ▼
+pgvector (store + index)
+
+Query time:
+    User query → embed query → pgvector ANN recall (top 50) → cross-encoder rerank (top 10) → return
+```
+
+### Semantic-Aware Chunking (`internal/services/chunker.go`)
+
+Content blocks from `SubmissionMeta.Blocks` are not chunked naively by character count. The chunker respects content boundaries:
+
+```go
+package services
+
+// Chunk represents a semantically coherent piece of content.
+type Chunk struct {
+    Index int    // position in the original document
+    Text  string // chunk content
+    Type  string // source block type: "heading+body", "quote", "text"
+}
+
+// ChunkConfig controls chunking behavior.
+type ChunkConfig struct {
+    MaxTokens   int // soft limit per chunk (default 300)
+    OverlapSent int // sentence overlap between adjacent chunks (default 1)
+}
+
+// ChunkBlocks splits submission blocks into semantic chunks.
+func ChunkBlocks(blocks []models.Block, cfg ChunkConfig) []Chunk
+```
+
+**Chunking rules:**
+
+1. **Heading + following body** — a heading block and the text blocks immediately after it form one chunk. This preserves "section" semantics. If the combined text exceeds `MaxTokens`, split the body at sentence boundaries.
+2. **Quotes** — each quote block is its own chunk (attribution + quote text together). Quotes are short and semantically self-contained.
+3. **Consecutive text blocks** — merge until `MaxTokens` is reached, then split at the nearest sentence boundary. Adjacent chunks overlap by `OverlapSent` sentences so that context isn't lost at split points.
+4. **Media blocks** (image, audio, video) — skip for embedding. Captions and alt text are included as part of the surrounding text chunk.
+5. **Minimum chunk size** — chunks under 20 tokens are merged with the previous chunk rather than embedded standalone (avoids noisy short vectors).
+
+**Example:** A submission with `[heading, text, text, quote, text, heading, text]` blocks produces:
+
+```
+Chunk 0: "heading + text + text"     (section 1, merged)
+Chunk 1: "quote with attribution"    (standalone)
+Chunk 2: "text"                      (bridge paragraph)
+Chunk 3: "heading + text"            (section 2)
+```
+
+### Embedding Service (`internal/services/embedding.go`)
+
+```go
+package services
+
+import (
+    "context"
+    "google.golang.org/genai"
+    "github.com/pgvector/pgvector-go"
+)
+
+type EmbeddingService struct {
+    client     *genai.Client
+    model      string  // "gemini-embedding-001"
+    dimensions int32   // 768
+    db         *gorm.DB
+}
+
+func NewEmbeddingService(apiKey string, model string, dims int32, db *gorm.DB) (*EmbeddingService, error) {
+    client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
+        APIKey:  apiKey,
+        Backend: genai.BackendGeminiAPI,
+    })
+    if err != nil {
+        return nil, err
+    }
+    return &EmbeddingService{client: client, model: model, dimensions: dims, db: db}, nil
+}
+
+// EmbedChunks embeds a batch of chunks and stores them in the database.
+// Deletes any existing embeddings for the entity first (re-embed on update).
+func (s *EmbeddingService) EmbedChunks(ctx context.Context, entityID uuid.UUID, category int16, chunks []Chunk) error {
+    // Build contents for batch embedding
+    contents := make([]*genai.Content, len(chunks))
+    for i, chunk := range chunks {
+        contents[i] = genai.NewContentFromText(chunk.Text)
+    }
+
+    // Call Gemini embedding API
+    dims := s.dimensions
+    result, err := s.client.Models.EmbedContent(ctx, s.model, contents, &genai.EmbedContentConfig{
+        OutputDimensionality: &dims,
+        TaskType:             genai.TaskTypeRetrievalDocument,
+    })
+    if err != nil {
+        return fmt.Errorf("embed content: %w", err)
+    }
+
+    // Delete old embeddings for this entity
+    s.db.Where("entity_id = ? AND entity_category = ?", entityID, category).Delete(&models.Embedding{})
+
+    // Store new embeddings
+    embeddings := make([]models.Embedding, len(result.Embeddings))
+    for i, emb := range result.Embeddings {
+        embeddings[i] = models.Embedding{
+            EntityID:       entityID,
+            EntityCategory: category,
+            ChunkIndex:     int16(chunks[i].Index),
+            ChunkText:      chunks[i].Text,
+            Vector:         pgvector.NewVector(emb.Values),
+        }
+    }
+    return s.db.Create(&embeddings).Error
+}
+
+// EmbedQuery embeds a search query using the RETRIEVAL_QUERY task type.
+func (s *EmbeddingService) EmbedQuery(ctx context.Context, query string) (pgvector.Vector, error) {
+    dims := s.dimensions
+    result, err := s.client.Models.EmbedContent(ctx, s.model, []*genai.Content{
+        genai.NewContentFromText(query),
+    }, &genai.EmbedContentConfig{
+        OutputDimensionality: &dims,
+        TaskType:             genai.TaskTypeRetrievalQuery,
+    })
+    if err != nil {
+        return pgvector.Vector{}, err
+    }
+    return pgvector.NewVector(result.Embeddings[0].Values), nil
+}
+```
+
+**Task types used:**
+- `TaskTypeRetrievalDocument` — when embedding submission content (optimized for document storage)
+- `TaskTypeRetrievalQuery` — when embedding a user's search query (optimized for query matching)
+
+Using asymmetric task types improves retrieval quality — the model learns that queries are short/intent-driven while documents are longer/information-dense.
+
+### Cross-Encoder Reranking (`internal/services/reranker.go`)
+
+Vector similarity (ANN) is fast but approximate — it retrieves candidates based on geometric distance, which can miss nuance. A cross-encoder reranker takes the top-N candidates and scores each (query, document) pair jointly, capturing token-level interactions that bi-encoder embeddings lose.
+
+**Model:** [`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2) — 22.7M parameters, 6-layer MiniLM. Runs as a quantized ONNX model on CPU via [`onnxruntime_go`](https://github.com/yalue/onnxruntime_go). The int8-quantized ONNX file is ~80MB, scores 50 candidates in <100ms on a modern CPU.
+
+**Two-stage pipeline:** vector recall (fast, coarse) → cross-encoder rerank (slow, precise).
+
+**Setup:** Export the quantized ONNX model and tokenizer once:
+
+```bash
+# Download quantized model + tokenizer to backend/models/reranker/
+pip install optimum[onnxruntime]
+optimum-cli export onnx --model cross-encoder/ms-marco-MiniLM-L6-v2 \
+    --optimize O3 --device cpu backend/models/reranker/
+```
+
+Files needed at runtime:
+```
+backend/models/reranker/
+├── model.onnx            # quantized ONNX model (~80MB)
+├── tokenizer.json        # HuggingFace fast tokenizer
+└── special_tokens_map.json
+```
+
+**Dependencies:**
+
+```
+// go.mod
+github.com/yalue/onnxruntime_go   latest   // ONNX Runtime Go bindings
+github.com/AlanVerbner/go-tokenizer latest  // HuggingFace tokenizer in Go (or similar)
+```
+
+Also requires the ONNX Runtime shared library installed on the system:
+```bash
+# macOS
+brew install onnxruntime
+# Linux
+apt install libonnxruntime-dev  # or download from https://github.com/microsoft/onnxruntime/releases
+```
+
+```go
+package services
+
+import (
+    "sort"
+    ort "github.com/yalue/onnxruntime_go"
+)
+
+type RerankerService struct {
+    session   *ort.AdvancedSession
+    tokenizer *Tokenizer  // wraps tokenizer.json for WordPiece encoding
+    maxLen    int          // max token length (default 512)
+}
+
+type RankedResult struct {
+    EntityID       uuid.UUID
+    EntityCategory int16
+    ChunkText      string
+    Score          float64 // cross-encoder relevance score
+}
+
+func NewRerankerService(modelDir string) (*RerankerService, error) {
+    ort.SetSharedLibraryPath(findOrtLib()) // path to libonnxruntime.so / .dylib
+    if err := ort.InitializeEnvironment(); err != nil {
+        return nil, err
+    }
+
+    // Load ONNX model session
+    session, err := ort.NewAdvancedSession(
+        filepath.Join(modelDir, "model.onnx"),
+        []string{"input_ids", "attention_mask", "token_type_ids"},
+        []string{"logits"},
+        nil, // default session options (CPU)
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    tokenizer, err := LoadTokenizer(filepath.Join(modelDir, "tokenizer.json"))
+    if err != nil {
+        return nil, err
+    }
+
+    return &RerankerService{session: session, tokenizer: tokenizer, maxLen: 512}, nil
+}
+
+// Rerank scores each (query, chunk) pair through the cross-encoder
+// and returns the top-K results sorted by relevance.
+func (r *RerankerService) Rerank(query string, candidates []models.Embedding, topK int) ([]RankedResult, error) {
+    results := make([]RankedResult, len(candidates))
+
+    for i, cand := range candidates {
+        // Tokenize as a sentence pair: [CLS] query [SEP] document [SEP]
+        ids, mask, typeIDs := r.tokenizer.EncodePair(query, cand.ChunkText, r.maxLen)
+
+        // Create input tensors
+        inputIDs, _ := ort.NewTensor(ort.NewShape(1, int64(len(ids))), ids)
+        attnMask, _ := ort.NewTensor(ort.NewShape(1, int64(len(mask))), mask)
+        tokenTypes, _ := ort.NewTensor(ort.NewShape(1, int64(len(typeIDs))), typeIDs)
+        output, _ := ort.NewEmptyTensor[float32](ort.NewShape(1, 1))
+
+        // Run inference
+        err := r.session.Run(
+            []ort.ArbitraryTensor{inputIDs, attnMask, tokenTypes},
+            []ort.ArbitraryTensor{output},
+        )
+        inputIDs.Destroy()
+        attnMask.Destroy()
+        tokenTypes.Destroy()
+
+        score := float64(0)
+        if err == nil {
+            score = float64(output.GetData()[0])
+        }
+        output.Destroy()
+
+        results[i] = RankedResult{
+            EntityID:       cand.EntityID,
+            EntityCategory: cand.EntityCategory,
+            ChunkText:      cand.ChunkText,
+            Score:          score,
+        }
+    }
+
+    sort.Slice(results, func(i, j int) bool { return results[i].Score > results[j].Score })
+    if len(results) > topK {
+        results = results[:topK]
+    }
+    return results, nil
+}
+
+func (r *RerankerService) Close() {
+    r.session.Destroy()
+    ort.DestroyEnvironment()
+}
+```
+
+**Why this model:**
+- **22.7M params** — small enough for CPU, no GPU needed
+- **ONNX int8 quantized** — ~80MB, fits in memory on any server
+- **~2ms per pair** on CPU — 50 candidates reranked in <100ms
+- **MiniLM-L6** — 6 transformer layers, trained on MS MARCO passage ranking. Good enough for local news content where queries and documents share a language domain
+
+**Why a cross-encoder on top of vector search:**
+- Vector search finds chunks that are geometrically close to the query — good recall but can surface false positives (similar words, different meaning)
+- The cross-encoder sees query and document tokens together, understanding relationships like "school budgets" matching "education funding" even when few words overlap
+- Cost tradeoff: we only run the cross-encoder on 50 candidates, not the entire corpus. No API calls, no latency — it runs locally
+
+### Semantic Search Handler (`handlers/search.go`)
+
+Integrates with the existing search endpoint. When `mode=semantic` is passed, uses the two-stage vector + rerank pipeline instead of full-text search:
+
+```go
+// GET /api/search?q=...&mode=semantic&location_id=...&limit=10
+
+func (h *Handler) SemanticSearch(c *gin.Context) {
+    q := c.Query("q")
+    limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+    locationID := c.Query("location_id")
+
+    // Stage 1: Embed query
+    queryVec, err := h.embeddingService.EmbedQuery(c, q)
+    if err != nil {
+        c.JSON(500, gin.H{"error": "embedding failed"})
+        return
+    }
+
+    // Stage 2: ANN recall — top 50 candidates from pgvector
+    var candidates []models.Embedding
+    stmt := h.db.Order("embedding <=> ?", queryVec).Limit(50)
+    if locationID != "" {
+        // Join submissions to filter by location hierarchy
+        stmt = stmt.Joins("JOIN submissions ON submissions.id = embeddings.entity_id").
+            Where("embeddings.entity_category = ? AND (submissions.city_id = ? OR submissions.region_id = ? OR submissions.country_id = ?)",
+                models.EntitySubmission, locationID, locationID, locationID)
+    }
+    stmt.Find(&candidates)
+
+    // Stage 3: Cross-encoder rerank — top K
+    ranked, err := h.reranker.Rerank(c, q, candidates, limit)
+    if err != nil {
+        c.JSON(500, gin.H{"error": "reranking failed"})
+        return
+    }
+
+    c.JSON(200, ranked)
+}
+```
+
+### Pipeline Integration
+
+Embeddings are generated as part of the submission pipeline, after the article is generated and reviewed:
+
+```
+POST /api/submissions → save files → return { submission_id }
+GET  /api/submissions/{id}/stream → SSE connection:
+  → ElevenLabs transcribe → event: status "transcribing"
+  → Claude generate       → event: status "generating"
+  → Claude review         → event: status "reviewing"
+  → Gemini embed chunks   → event: status "embedding"
+  → save to DB            → event: complete { article, review }
+```
+
+The embedding step runs after review because it needs the final article content. It adds ~1-2 seconds to the pipeline.
+
+### When Embeddings Are Created / Updated
+
+| Event | Action |
+|-------|--------|
+| Pipeline completes (article generated) | Chunk + embed all blocks |
+| Article edited by contributor | Re-chunk + re-embed (delete old, insert new) |
+| Article deleted | Delete all embeddings for that entity |
+
+### Project Structure (additions)
+
+```
+backend/
+├── models/
+│   └── reranker/
+│       ├── model.onnx               # MiniLM-L6 quantized ONNX (~80MB, not in git)
+│       ├── tokenizer.json           # HuggingFace fast tokenizer
+│       └── special_tokens_map.json
+├── internal/services/
+│   ├── chunker.go                   # semantic-aware block chunking
+│   ├── embedding.go                 # Gemini embedding + pgvector storage
+│   └── reranker.go                  # ONNX cross-encoder reranking (CPU)
+```
 
 ---
 
