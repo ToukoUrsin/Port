@@ -222,7 +222,16 @@ export async function publishArticle(
 
 export async function refineSubmission(
   id: string,
-  data: FormData | { text_note: string },
+  data:
+    | FormData
+    | { type: "general"; text_note?: string }
+    | {
+        type: "targeted";
+        selected_text: string;
+        instruction: string;
+        paragraph_index: number;
+      }
+    | { text_note: string },
 ): Promise<{ status: string }> {
   if (data instanceof FormData) {
     return apiFetch<{ status: string }>(`/api/submissions/${id}/refine`, {
@@ -231,6 +240,16 @@ export async function refineSubmission(
     });
   }
   return apiFetch<{ status: string }>(`/api/submissions/${id}/refine`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function rephraseSubmission(
+  id: string,
+  data: { selected_text: string; paragraph_index: number },
+): Promise<{ options: string[] }> {
+  return apiFetch<{ options: string[] }>(`/api/submissions/${id}/rephrase`, {
     method: "POST",
     body: JSON.stringify(data),
   });

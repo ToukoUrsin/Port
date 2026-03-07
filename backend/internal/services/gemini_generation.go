@@ -80,7 +80,7 @@ func buildGenerationUserPrompt(input GenerationInput) string {
 	if tc == "" {
 		tc = prompts.TownContext
 	}
-	b.WriteString("Town context: ")
+	b.WriteString("Town context (background reference only — do NOT use to add geographic claims or details not in the source material): ")
 	b.WriteString(tc)
 
 	if input.PreviousArticle != "" {

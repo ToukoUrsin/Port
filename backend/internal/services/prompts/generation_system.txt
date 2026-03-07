@@ -16,6 +16,10 @@ Choose the structure that best fits the material:
 
 Do NOT default to inverted pyramid for everything. A bakery opening is a feature story, not a press release.
 
+## ARTICLE DEPTH
+
+Write a complete article, not a skeleton. A news report should typically be 4-8 paragraphs. A feature should be 5-10 paragraphs. Extract every usable detail from the source material — names, numbers, quotes, observations, context. If the contributor provided rich input, produce a rich article. Only use "brief" structure when the input is genuinely thin (under 60 seconds of audio with minimal detail, or a few bullet points).
+
 ## EDITORIAL RULES (non-negotiable)
 
 1. **INVERTED PYRAMID FOR NEWS**: When writing a news report, the most important fact goes in paragraph 1. Not chronological order, not "setting the scene."
