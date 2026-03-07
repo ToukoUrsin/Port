@@ -13,6 +13,7 @@ import type {
   ReplyReactionMap,
   FollowStatus,
   FollowCounts,
+  FileListResponse,
 } from "@/lib/types.ts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -281,10 +282,20 @@ export async function appealSubmission(
 export function getLocations(params?: {
   country?: string;
   level?: number;
+  south?: number;
+  west?: number;
+  north?: number;
+  east?: number;
+  limit?: number;
 }): Promise<{ locations: ApiLocation[] }> {
   const qs = new URLSearchParams();
   if (params?.country) qs.set("country", params.country);
   if (params?.level != null) qs.set("level", String(params.level));
+  if (params?.south != null) qs.set("south", String(params.south));
+  if (params?.west != null) qs.set("west", String(params.west));
+  if (params?.north != null) qs.set("north", String(params.north));
+  if (params?.east != null) qs.set("east", String(params.east));
+  if (params?.limit != null) qs.set("limit", String(params.limit));
   const query = qs.toString();
   return apiFetch<{ locations: ApiLocation[] }>(
     `/api/locations${query ? `?${query}` : ""}`,
@@ -464,6 +475,30 @@ export function unfollowUser(followId: string): Promise<void> {
 
 export function getFollowStatus(profileId: string): Promise<FollowStatus> {
   return apiFetch<FollowStatus>(`/api/follows/status/${profileId}`);
+}
+
+// --- Files ---
+
+export function getMyFiles(params?: {
+  file_type?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<FileListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.file_type) qs.set("file_type", String(params.file_type));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  const query = qs.toString();
+  return apiFetch<FileListResponse>(`/api/profiles/me/files${query ? `?${query}` : ""}`);
+}
+
+export function fileToMediaUrl(name: string): string {
+  // name is stored as "./uploads/<submissionID>/<filename>"
+  const parts = name.replace(/^\.\/uploads\//, "").split("/");
+  if (parts.length >= 2) {
+    return `${API_BASE}/api/media/${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+  }
+  return `${API_BASE}/api/media/${name}`;
 }
 
 export function getFollowCounts(profileId: string): Promise<FollowCounts> {

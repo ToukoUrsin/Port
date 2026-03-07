@@ -3,7 +3,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { RedTrigger, VerificationEntry } from "@/lib/types";
 
-const annotationPluginKey = new PluginKey("annotationHighlight");
+export const annotationPluginKey = new PluginKey("annotationHighlight");
 
 type ParagraphConfidence = "supported" | "warning" | "error";
 

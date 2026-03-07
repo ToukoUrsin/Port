@@ -241,6 +241,7 @@ func main() {
 
 		// Profiles
 		authed.GET("/profiles/me", h.GetMyProfile)
+		authed.GET("/profiles/me/files", h.ListMyFiles)
 		authed.PUT("/profiles/:id", h.UpdateProfile)
 
 		// Replies

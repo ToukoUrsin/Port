@@ -23,16 +23,39 @@ func (h *Handler) ListLocations(c *gin.Context) {
 		}
 	}
 
-	q.Order("level ASC, name ASC").Find(&locations)
-
-	// Compute article counts dynamically
-	for i := range locations {
-		var count int64
-		h.db.Model(&models.Submission{}).
-			Where("location_id = ? AND status = ?", locations[i].ID, models.StatusPublished).
-			Count(&count)
-		locations[i].ArticleCount = int(count)
+	// Bbox filtering (requires all four params)
+	south := c.Query("south")
+	west := c.Query("west")
+	north := c.Query("north")
+	east := c.Query("east")
+	if south != "" && west != "" && north != "" && east != "" {
+		s, e1 := strconv.ParseFloat(south, 64)
+		w, e2 := strconv.ParseFloat(west, 64)
+		n, e3 := strconv.ParseFloat(north, 64)
+		e, e4 := strconv.ParseFloat(east, 64)
+		if e1 == nil && e2 == nil && e3 == nil && e4 == nil {
+			q = q.Where("lat IS NOT NULL AND lng IS NOT NULL")
+			q = q.Where("lat BETWEEN ? AND ?", s, n)
+			if w <= e {
+				q = q.Where("lng BETWEEN ? AND ?", w, e)
+			} else {
+				// Antimeridian wrap
+				q = q.Where("(lng >= ? OR lng <= ?)", w, e)
+			}
+		}
 	}
+
+	// Limit with hard cap of 300
+	limit := 300
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			if parsed < limit {
+				limit = parsed
+			}
+		}
+	}
+
+	q.Order("article_count DESC, name ASC").Limit(limit).Find(&locations)
 
 	c.JSON(http.StatusOK, gin.H{"locations": locations})
 }

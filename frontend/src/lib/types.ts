@@ -425,6 +425,36 @@ export interface ReplyReactionMap {
   };
 }
 
+// --- File types ---
+
+export interface FileMeta {
+  mime_type?: string;
+  width?: number;
+  height?: number;
+  duration_secs?: number;
+  thumbnail?: string;
+}
+
+export interface ApiFile {
+  id: string;
+  entity_id: string;
+  entity_category: number;
+  submission_id: string;
+  contributor_id: string;
+  file_type: number; // 1=audio, 2=photo
+  name: string;
+  size: number;
+  uploaded_at: string;
+  meta: FileMeta;
+}
+
+export interface FileListResponse {
+  files: ApiFile[];
+  total: number;
+}
+
+export const FileType = { Audio: 1, Photo: 2 } as const;
+
 export interface FollowStatus {
   following: boolean;
   follow_id?: string;
