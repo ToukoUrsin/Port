@@ -177,16 +177,6 @@ export default function ArticlePage() {
     <>
       <Navbar />
 
-      <div className="article-hero">
-        {article.image ? (
-          <img src={article.image} alt={article.title} />
-        ) : (
-          <div className="article-hero__placeholder">
-            <ImageIcon size={48} />
-          </div>
-        )}
-      </div>
-
       <div className="article-content">
         <div className="article-meta">
           <span className={`badge ${BADGE_CLASS[article.category] || "badge-community"}`}>

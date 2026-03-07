@@ -283,6 +283,7 @@ func main() {
 			adminAPI.GET("/batch/:id", h.GetBatchStatus)
 			adminAPI.POST("/seed/locations", h.SeedLocations)
 			adminAPI.POST("/seed/profiles", h.SeedProfiles)
+			adminAPI.POST("/media/:id", h.AdminUploadMedia)
 		}
 	}
 

@@ -1,5 +1,68 @@
-import { useState, useRef } from "react";
-import { Mic, Square, X } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Mic, Square, X, Play, Pause } from "lucide-react";
+
+function AudioPlayer({ src, onRemove }: { src: string; onRemove: () => void }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onLoaded = () => setDuration(audio.duration);
+    const onTimeUpdate = () => {
+      if (audio.duration) setProgress(audio.currentTime / audio.duration);
+    };
+    const onEnded = () => { setPlaying(false); setProgress(0); };
+    audio.addEventListener("loadedmetadata", onLoaded);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [src]);
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) { audio.pause(); } else { audio.play(); }
+    setPlaying(!playing);
+  }, [playing]);
+
+  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio || !audio.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audio.currentTime = pct * audio.duration;
+    setProgress(pct);
+  }, []);
+
+  function fmt(s: number) {
+    if (!s || !isFinite(s)) return "0:00";
+    return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  }
+
+  return (
+    <div className="audio-player">
+      <audio ref={audioRef} src={src} preload="metadata" />
+      <button type="button" className="audio-player-play" onClick={togglePlay}>
+        {playing ? <Pause size={14} /> : <Play size={14} />}
+      </button>
+      <span className="audio-player-time">{fmt(audioRef.current?.currentTime ?? 0)}</span>
+      <div className="audio-player-track" onClick={seek}>
+        <div className="audio-player-fill" style={{ width: `${progress * 100}%` }} />
+      </div>
+      <span className="audio-player-time">{fmt(duration)}</span>
+      <button type="button" className="audio-player-remove" onClick={onRemove}>
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
 
 export function VoiceRecorder({
   onRecording,
@@ -50,29 +113,22 @@ export function VoiceRecorder({
       {recording ? (
         <button
           type="button"
-          className={`${btnClass} record-btn--active`}
+          className="record-active-strip"
           onClick={stopRecording}
         >
-          <Square size={compact ? 14 : 20} />
+          <span className="record-dot" />
           <span className="record-timer">{formatTime(elapsed)}</span>
+          <Square size={14} />
         </button>
+      ) : audioURL ? (
+        <AudioPlayer
+          src={audioURL}
+          onRemove={() => setAudioURL(null)}
+        />
       ) : (
         <button type="button" className={btnClass} onClick={startRecording}>
           <Mic size={compact ? 18 : 24} />
         </button>
-      )}
-      {audioURL && !recording && (
-        <div className="recording-strip">
-          <audio src={audioURL} controls />
-          <button
-            type="button"
-            onClick={() => {
-              setAudioURL(null);
-            }}
-          >
-            <X size={14} />
-          </button>
-        </div>
       )}
     </div>
   );
