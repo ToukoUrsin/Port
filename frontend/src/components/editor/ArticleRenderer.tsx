@@ -1,10 +1,15 @@
-import { useRef, useCallback, type ReactNode } from "react";
-import ReactMarkdown from "react-markdown";
+import { useEffect, useRef, useCallback } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
+import { Markdown } from "tiptap-markdown";
+import { AnnotationHighlight } from "./extensions/AnnotationHighlight";
 import type { RedTrigger } from "@/lib/types";
 import type { ActiveAnnotation } from "./types";
 import { X } from "lucide-react";
 
-type ArticlePreviewProps = {
+type ArticleEditorProps = {
   markdown: string;
   userName: string;
   category?: string;
@@ -13,53 +18,8 @@ type ArticlePreviewProps = {
   onAnnotationClick: (trigger: RedTrigger, rect: DOMRect) => void;
   onAnnotationDismiss: () => void;
   highlightParagraph?: number;
+  onContentChange: (markdown: string) => void;
 };
-
-/** Split text around a target sentence, returning segments with annotation info. */
-function splitAtSentences(
-  text: string,
-  triggers: RedTrigger[],
-): { text: string; trigger?: RedTrigger }[] {
-  if (triggers.length === 0) return [{ text }];
-
-  const segments: { text: string; trigger?: RedTrigger }[] = [];
-  let remaining = text;
-
-  // Sort triggers by their position in text so we split left-to-right
-  const sorted = [...triggers].sort((a, b) => {
-    const posA = remaining.indexOf(a.sentence);
-    const posB = remaining.indexOf(b.sentence);
-    return posA - posB;
-  });
-
-  for (const trigger of sorted) {
-    const idx = remaining.indexOf(trigger.sentence);
-    if (idx === -1) continue; // sentence not found — skip gracefully
-
-    if (idx > 0) {
-      segments.push({ text: remaining.slice(0, idx) });
-    }
-    segments.push({ text: trigger.sentence, trigger });
-    remaining = remaining.slice(idx + trigger.sentence.length);
-  }
-
-  if (remaining.length > 0) {
-    segments.push({ text: remaining });
-  }
-
-  return segments;
-}
-
-/** Flatten ReactMarkdown children to plain text for sentence matching. */
-function flattenChildren(children: ReactNode): string {
-  if (typeof children === "string") return children;
-  if (typeof children === "number") return String(children);
-  if (Array.isArray(children)) return children.map(flattenChildren).join("");
-  if (children && typeof children === "object" && "props" in children) {
-    return flattenChildren((children as { props: { children?: ReactNode } }).props.children);
-  }
-  return "";
-}
 
 function SuggestionCard({
   trigger,
@@ -97,7 +57,23 @@ function SuggestionCard({
   );
 }
 
-export function ArticlePreview({
+/** Extract headline from first `# ` line in markdown */
+function splitHeadline(markdown: string): { headline: string; body: string } {
+  const lines = markdown.split("\n");
+  const headlineIdx = lines.findIndex((l) => l.startsWith("# "));
+  if (headlineIdx === -1) return { headline: "", body: markdown };
+  const headline = lines[headlineIdx].replace(/^#\s+/, "");
+  const body = [...lines.slice(0, headlineIdx), ...lines.slice(headlineIdx + 1)].join("\n");
+  return { headline, body };
+}
+
+/** Reassemble headline + body into markdown */
+function joinHeadlineBody(headline: string, bodyMarkdown: string): string {
+  if (!headline.trim()) return bodyMarkdown;
+  return `# ${headline}\n\n${bodyMarkdown}`;
+}
+
+export function ArticleEditor({
   markdown,
   userName,
   category,
@@ -106,91 +82,119 @@ export function ArticlePreview({
   onAnnotationClick,
   onAnnotationDismiss,
   highlightParagraph,
-}: ArticlePreviewProps) {
+  onContentChange,
+}: ArticleEditorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const paragraphCounter = useRef(0);
+  const { headline: initHeadline, body: initBody } = splitHeadline(markdown);
+  const headlineRef = useRef(initHeadline);
+  const isExternalUpdate = useRef(false);
 
-  // Reset counter before each render cycle
-  paragraphCounter.current = 0;
-
-  // Extract headline from first markdown heading
-  const lines = markdown.split("\n");
-  const headlineIdx = lines.findIndex((l) => l.startsWith("# "));
-  const headline = headlineIdx !== -1 ? lines[headlineIdx].replace(/^#\s+/, "") : "";
-  const bodyMarkdown =
-    headlineIdx !== -1
-      ? [...lines.slice(0, headlineIdx), ...lines.slice(headlineIdx + 1)].join("\n")
-      : markdown;
-
-  const handleAnnotationClick = useCallback(
-    (trigger: RedTrigger, e: React.MouseEvent<HTMLSpanElement>) => {
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
-      onAnnotationClick(trigger, rect);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Image.configure({ inline: false }),
+      Placeholder.configure({ placeholder: "Start writing..." }),
+      Markdown,
+      AnnotationHighlight,
+    ],
+    content: initBody,
+    parseOptions: { preserveWhitespace: "full" },
+    onUpdate({ editor: ed }) {
+      if (isExternalUpdate.current) return;
+      const bodyMd = ed.storage.markdown.getMarkdown();
+      onContentChange(joinHeadlineBody(headlineRef.current, bodyMd));
     },
-    [onAnnotationClick],
+  });
+
+  // Update annotations when redTriggers change
+  useEffect(() => {
+    if (!editor) return;
+    editor.storage.annotationHighlight.triggers = redTriggers;
+    const { tr } = editor.state;
+    tr.setMeta("annotationHighlight", { triggers: redTriggers });
+    editor.view.dispatch(tr);
+  }, [editor, redTriggers]);
+
+  // Handle external markdown updates (e.g. AI refinement)
+  useEffect(() => {
+    if (!editor) return;
+    const { body: currentBody } = splitHeadline(markdown);
+    const editorMd = editor.storage.markdown.getMarkdown();
+    if (currentBody !== editorMd) {
+      isExternalUpdate.current = true;
+      editor.commands.setContent(currentBody);
+      const { headline } = splitHeadline(markdown);
+      headlineRef.current = headline;
+      isExternalUpdate.current = false;
+    }
+  }, [editor, markdown]);
+
+  // Click handler for annotation decorations
+  const handleEditorClick = useCallback(
+    (e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.classList.contains("annotation--red")) return;
+
+      const dimension = target.getAttribute("data-trigger-dimension");
+      const paragraph = target.getAttribute("data-trigger-paragraph");
+      if (!dimension || !paragraph) return;
+
+      const trigger = redTriggers.find(
+        (t) => t.dimension === dimension && t.paragraph === Number(paragraph),
+      );
+      if (trigger) {
+        onAnnotationClick(trigger, target.getBoundingClientRect());
+      }
+    },
+    [redTriggers, onAnnotationClick],
   );
 
-  const AnnotatedParagraph = useCallback(
-    ({ children }: { children?: ReactNode }) => {
-      paragraphCounter.current += 1;
-      const pNum = paragraphCounter.current;
+  // Highlight paragraph scroll
+  useEffect(() => {
+    if (highlightParagraph == null || !editor) return;
+    const el = editor.view.dom.querySelector(
+      `p:nth-of-type(${highlightParagraph})`,
+    );
+    if (el) {
+      el.classList.add("paragraph--highlight");
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const timer = setTimeout(() => el.classList.remove("paragraph--highlight"), 3000);
+      return () => {
+        clearTimeout(timer);
+        el.classList.remove("paragraph--highlight");
+      };
+    }
+  }, [highlightParagraph, editor]);
 
-      const isHighlighted = highlightParagraph === pNum;
-      const triggersForP = redTriggers.filter((t) => t.paragraph === pNum);
-      const plainText = flattenChildren(children);
-
-      if (triggersForP.length === 0) {
-        return (
-          <p
-            className={isHighlighted ? "paragraph--highlight" : undefined}
-            data-paragraph={pNum}
-          >
-            {children}
-          </p>
-        );
-      }
-
-      const segments = splitAtSentences(plainText, triggersForP);
-
-      return (
-        <p
-          className={isHighlighted ? "paragraph--highlight" : undefined}
-          data-paragraph={pNum}
-        >
-          {segments.map((seg, i) =>
-            seg.trigger ? (
-              <span
-                key={i}
-                className="annotation annotation--red"
-                onClick={(e) => handleAnnotationClick(seg.trigger!, e)}
-              >
-                {seg.text}
-              </span>
-            ) : (
-              <span key={i}>{seg.text}</span>
-            ),
-          )}
-        </p>
-      );
+  const handleHeadlineChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      headlineRef.current = e.target.value;
+      if (!editor) return;
+      const bodyMd = editor.storage.markdown.getMarkdown();
+      onContentChange(joinHeadlineBody(e.target.value, bodyMd));
     },
-    [redTriggers, highlightParagraph, handleAnnotationClick],
+    [editor, onContentChange],
   );
 
   const wrapperRect = wrapperRef.current?.getBoundingClientRect();
 
   return (
     <div className="article-preview" ref={wrapperRef}>
-      {headline && <h1 className="article-headline">{headline}</h1>}
+      <input
+        className="article-headline-input"
+        defaultValue={initHeadline}
+        onChange={handleHeadlineChange}
+        placeholder="Article headline"
+      />
       <div className="article-byline">
         By {userName} &middot; {new Date().toLocaleDateString()}
         {category && (
           <span className={`badge badge-${category}`}>{category}</span>
         )}
       </div>
-      <div className="article-prose">
-        <ReactMarkdown components={{ p: AnnotatedParagraph }}>
-          {bodyMarkdown}
-        </ReactMarkdown>
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div className="article-prose" onClick={handleEditorClick}>
+        <EditorContent editor={editor} />
       </div>
       {activeAnnotation && wrapperRect && (
         <SuggestionCard
@@ -203,3 +207,6 @@ export function ArticlePreview({
     </div>
   );
 }
+
+// Keep backward-compat export
+export { ArticleEditor as ArticlePreview };
