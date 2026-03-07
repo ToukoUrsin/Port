@@ -1,4 +1,5 @@
 import type { ReviewResult } from "@/lib/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { CoachingSuggestion } from "./types";
 
 type CoachingPanelProps = {
@@ -20,6 +21,7 @@ export function CoachingPanel({
   onAppeal,
   onSuggestionClick,
 }: CoachingPanelProps) {
+  const { t } = useLanguage();
   const suggestions = parseSuggestions(review.coaching.suggestions as string[] | CoachingSuggestion[]);
 
   return (
@@ -80,7 +82,7 @@ export function CoachingPanel({
             </div>
           ))}
           <button className="appeal-link" onClick={onAppeal}>
-            I think this review is wrong
+            {t("editor.appealLink")}
           </button>
         </div>
       )}

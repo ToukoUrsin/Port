@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { search } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
 import type { SearchResponse } from "@/lib/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 
@@ -15,6 +16,7 @@ interface NavbarProps {
 
 export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
   const { isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Article[]>([]);
@@ -45,7 +47,7 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
     debounceRef.current = setTimeout(() => {
       search({ q: query.trim() })
         .then((res: SearchResponse) => {
-          const articles = (res.submissions || []).map(apiToArticle).slice(0, 10);
+          const articles = (res.submissions || []).map((s) => apiToArticle(s, t)).slice(0, 10);
           setResults(articles);
           setTotalResults(res.total_results);
           setIsLoading(false);
@@ -100,7 +102,7 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search articles..."
+            placeholder={t("navbar.searchPlaceholder")}
           />
           {query && (
             <button type="button" className="home-nav__search-clear" onClick={clearSearch}>
@@ -116,7 +118,7 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
                 </div>
               ) : results.length === 0 ? (
                 <div className="search-dropdown__empty">
-                  No results for &ldquo;{query.trim()}&rdquo;
+                  {t("navbar.noResults")} &ldquo;{query.trim()}&rdquo;
                 </div>
               ) : (
                 <>
@@ -150,7 +152,7 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
                         to={`/search?q=${encodeURIComponent(query.trim())}`}
                         onClick={clearSearch}
                       >
-                        View all {totalResults} results
+                        {t("navbar.viewAllResults").replace("{count}", String(totalResults))}
                       </Link>
                     </div>
                   )}
@@ -161,12 +163,12 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
         </form>
 
         <div className="home-nav__right">
-          <NavLink to="/post" className="home-nav__post-btn" title="Post a story">
+          <NavLink to="/post" className="home-nav__post-btn" title={t("navbar.post")}>
             <PenSquare size={16} />
-            <span>Post</span>
+            <span>{t("navbar.post")}</span>
           </NavLink>
           {isAuthenticated ? (
-            <NavLink to="/profile" className="home-nav__icon-btn" title="Profile">
+            <NavLink to="/profile" className="home-nav__icon-btn" title={t("navbar.profile")}>
               <User size={18} />
             </NavLink>
           ) : (

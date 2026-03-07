@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { LanguageProvider } from "@/contexts/LanguageContext.tsx";
 import { AuthProvider } from "@/contexts/AuthContext.tsx";
 import { ToastProvider } from "@/components/Toast.tsx";
 import { ConfirmProvider } from "@/components/ConfirmDialog.tsx";
@@ -18,6 +19,7 @@ import OnboardingPage from "./pages/OnboardingPage";
 function App() {
   return (
     <BrowserRouter>
+      <LanguageProvider>
       <AuthProvider>
         <ToastProvider>
           <ConfirmProvider>
@@ -74,6 +76,7 @@ function App() {
           </ConfirmProvider>
         </ToastProvider>
       </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

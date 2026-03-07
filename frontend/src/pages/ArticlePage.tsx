@@ -9,11 +9,13 @@ import { getArticle, getSimilarArticles, getReplies, createReply } from "@/lib/a
 import { apiToArticle, timeAgo } from "@/lib/types";
 import type { ApiSubmission, ApiReply } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
 import "./ArticlePage.css";
 
 function Comments({ articleId }: { articleId: string }) {
+  const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const fetchReplies = useCallback(() => getReplies(articleId), [articleId]);
   const { data: repliesData, isLoading } = useApi(fetchReplies, [articleId]);
@@ -48,7 +50,7 @@ function Comments({ articleId }: { articleId: string }) {
     <div className="comments-section">
       <h2 className="comments-section__title">
         <MessageSquare size={18} />
-        Comments
+        {t("article.comments")}
         {allReplies.length > 0 && (
           <span className="comments-section__count">{allReplies.length}</span>
         )}
@@ -63,7 +65,7 @@ function Comments({ articleId }: { articleId: string }) {
             <textarea
               ref={inputRef}
               className="input comment-form__input"
-              placeholder="Add a comment..."
+              placeholder={t("article.addComment")}
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={(e) => {
@@ -110,7 +112,7 @@ function Comments({ articleId }: { articleId: string }) {
 
       {hasMore && (
         <button className="comments-show-more" onClick={() => setShowAll(true)}>
-          Show all {allReplies.length} comments
+          {t("article.showAllComments").replace("{count}", String(allReplies.length))}
         </button>
       )}
     </div>
@@ -120,6 +122,7 @@ function Comments({ articleId }: { articleId: string }) {
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const fetchArticle = useCallback(() => getArticle(id!), [id]);
   const { data: apiData, isLoading, error } = useApi(fetchArticle, [id]);
@@ -129,7 +132,7 @@ export default function ArticlePage() {
 
   const [modalArticle, setModalArticle] = useState<{ article: Article; submission: ApiSubmission } | null>(null);
 
-  const article = apiData ? apiToArticle(apiData) : null;
+  const article = apiData ? apiToArticle(apiData, t) : null;
   const similarSubmissions = similarData?.articles ?? [];
   const similar = similarSubmissions.slice(0, 5);
 
@@ -161,12 +164,12 @@ export default function ArticlePage() {
           }
         />
         <div className="article-content" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
-          <h1 className="article-title">Article not found</h1>
+          <h1 className="article-title">{t("article.notFound")}</h1>
           <p style={{ color: "var(--color-text-secondary)", marginTop: "var(--space-4)" }}>
-            This article doesn't exist or has been removed.
+            {t("article.notFoundDesc")}
           </p>
           <Link to="/" className="btn btn-primary" style={{ marginTop: "var(--space-6)", display: "inline-flex" }}>
-            Back to home
+            {t("article.backHome")}
           </Link>
         </div>
       </>
@@ -207,14 +210,14 @@ export default function ArticlePage() {
           </span>
           {gate && (
             <span className={`gate-badge-inline gate-badge-inline--${gate.toLowerCase()}`}>
-              {gate === "GREEN" ? "Verified" : gate === "YELLOW" ? "Review notes" : "Needs changes"}
+              {gate === "GREEN" ? t("article.gateGreen") : gate === "YELLOW" ? t("article.gateYellow") : t("article.gateRed")}
             </span>
           )}
         </div>
 
         <h1 className="article-title">{article.title}</h1>
         <p className="article-author">
-          By <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link">{article.author}</Link>
+          {t("article.by")} <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link">{article.author}</Link>
         </p>
 
         <div className="article-body">
@@ -230,7 +233,7 @@ export default function ArticlePage() {
         {/* Contributor card */}
         <div className="contributor-card">
           <div className="contributor-info">
-            <span className="contributor-name">By {article.author}</span>
+            <span className="contributor-name">{t("article.by")} {article.author}</span>
             <span className="contributor-date">{article.timeAgo}</span>
           </div>
           {apiData?.meta?.article_metadata?.category && (
@@ -244,10 +247,10 @@ export default function ArticlePage() {
 
         {similar.length > 0 && (
           <div className="similar-stories">
-            <h2 className="similar-stories__title">Similar stories</h2>
+            <h2 className="similar-stories__title">{t("article.similarStories")}</h2>
             <div className="similar-stories__grid">
               {similar.map((s) => {
-                const a = apiToArticle(s);
+                const a = apiToArticle(s, t);
                 return (
                   <button
                     key={a.id}

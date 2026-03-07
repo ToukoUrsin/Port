@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { ArticlePreview } from "./ArticleRenderer";
 import { CoachingPanel } from "./CoachingPanel";
 import { RefinementInput } from "./RefinementInput";
@@ -21,6 +22,7 @@ export function EditorialScreen({
   onAppeal,
   onBack,
 }: EditorialScreenProps) {
+  const { t } = useLanguage();
   const [activeAnnotation, setActiveAnnotation] = useState<ActiveAnnotation>(null);
   const [highlightParagraph, setHighlightParagraph] = useState<number | undefined>();
   const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -69,7 +71,7 @@ export function EditorialScreen({
       {/* Top bar */}
       <div className="editorial-header">
         <button className="btn-back" onClick={onBack}>
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={16} /> {t("editor.back")}
         </button>
         <div className="editorial-header-right">
           <GateBadge gate={review.gate} />

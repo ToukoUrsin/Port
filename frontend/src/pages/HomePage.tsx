@@ -8,6 +8,7 @@ import { useApi } from "@/hooks/useApi.ts";
 import { getArticles, getLocations } from "@/lib/api.ts";
 import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse, ApiLocation } from "@/lib/types.ts";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import "./HomePage.css";
 
@@ -71,10 +72,10 @@ function OpinionCard({ article }: { article: Article }) {
         <p className="opinion-card__excerpt">{article.excerpt}</p>
         <div className="opinion-card__author">
           <div className="opinion-card__avatar">
-            {article.author.split(" ").map(n => n[0]).join("")}
+            {(article.author ?? "?").split(" ").map(n => n[0]).join("")}
           </div>
           <div>
-            <span className="opinion-card__name">{article.author}</span>
+            <span className="opinion-card__name">{article.author ?? "Anonymous"}</span>
             <span className="opinion-card__time">{article.timeAgo}</span>
           </div>
         </div>
@@ -145,7 +146,7 @@ function HeadlineItem({ article }: { article: Article }) {
 
 const AD_IMAGES = ["/Ad1.png", "/Ad 2.png", "/Ad 3.png", "/Ad 4.png"];
 
-function AdBanner() {
+function AdBanner({ t }: { t: (key: string) => string }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -158,8 +159,8 @@ function AdBanner() {
   return (
     <section className="ad-banner">
       <div className="ad-banner__inner">
-        <span className="ad-banner__label">Ad</span>
-        <img src={AD_IMAGES[current]} alt="Advertisement" />
+        <span className="ad-banner__label">{t("home.ad")}</span>
+        <img src={AD_IMAGES[current]} alt={t("home.advertisement")} />
       </div>
     </section>
   );
@@ -171,7 +172,7 @@ function AdBanner() {
 
 const INITIAL_COUNT = 2;
 
-function RecentSection({ articles }: { articles: Article[] }) {
+function RecentSection({ articles, t }: { articles: Article[]; t: (key: string) => string }) {
   const [expanded, setExpanded] = useState(false);
   const lead = articles[0];
   const rest = articles.slice(1);
@@ -180,7 +181,7 @@ function RecentSection({ articles }: { articles: Article[] }) {
 
   return (
     <section className="home-section">
-      <h2 className="home-section__title">Recent</h2>
+      <h2 className="home-section__title">{t("home.recent")}</h2>
       <div className="article-grid">
         {lead && <ArticleCard article={{ ...lead, isLead: true }} />}
         {lead && visible.length > 0 && <hr className="home-divider" />}
@@ -191,7 +192,7 @@ function RecentSection({ articles }: { articles: Article[] }) {
       {hasMore && !expanded && (
         <div className="home-section__more">
           <button className="home-show-more" onClick={() => setExpanded(true)}>
-            Show more
+            {t("home.showMore")}
             <ChevronDown size={16} />
           </button>
         </div>
@@ -200,11 +201,11 @@ function RecentSection({ articles }: { articles: Article[] }) {
   );
 }
 
-function BestOfWeekSection({ articles }: { articles: Article[] }) {
+function BestOfWeekSection({ articles, t }: { articles: Article[]; t: (key: string) => string }) {
   if (articles.length === 0) return null;
   return (
     <section className="home-section">
-      <h2 className="home-section__title">Best of the Week</h2>
+      <h2 className="home-section__title">{t("home.bestOfWeek")}</h2>
       <div className="ranked-list">
         {articles.map((article, i) => (
           <RankedCard key={article.id} article={article} rank={i + 1} />
@@ -214,11 +215,11 @@ function BestOfWeekSection({ articles }: { articles: Article[] }) {
   );
 }
 
-function OpinionSection({ articles }: { articles: Article[] }) {
+function OpinionSection({ articles, t }: { articles: Article[]; t: (key: string) => string }) {
   if (articles.length === 0) return null;
   return (
     <section className="home-section">
-      <h2 className="home-section__title">Opinions</h2>
+      <h2 className="home-section__title">{t("home.opinions")}</h2>
       <div className="opinion-grid">
         {articles.map((article) => (
           <OpinionCard key={article.id} article={article} />
@@ -228,11 +229,11 @@ function OpinionSection({ articles }: { articles: Article[] }) {
   );
 }
 
-function EventsSection({ articles }: { articles: Article[] }) {
+function EventsSection({ articles, t }: { articles: Article[]; t: (key: string) => string }) {
   if (articles.length === 0) return null;
   return (
     <section className="home-section">
-      <h2 className="home-section__title">Events</h2>
+      <h2 className="home-section__title">{t("home.events")}</h2>
       <div className="events-grid">
         {articles.map((article) => (
           <EventCard key={article.id} article={article} />
@@ -245,14 +246,16 @@ function EventsSection({ articles }: { articles: Article[] }) {
 function NewsSection({
   headlines,
   featured,
+  t,
 }: {
   headlines: Article[];
   featured: Article[];
+  t: (key: string) => string;
 }) {
   if (headlines.length === 0 && featured.length === 0) return null;
   return (
     <section className="home-section">
-      <h2 className="home-section__title">News</h2>
+      <h2 className="home-section__title">{t("home.news")}</h2>
       <div className="news-layout">
         <div className="news-layout__headlines">
           {headlines.map((article) => (
@@ -273,15 +276,15 @@ function NewsSection({
 
 export default function HomePage() {
   const [searchParams] = useSearchParams();
+  const { language, setLanguage, t } = useLanguage();
   const locationSlug = searchParams.get("location");
 
-  // Fetch locations from API
-  const fetchLocations = useCallback(() => getLocations(), []);
-  const { data: locData } = useApi<{ locations: ApiLocation[] }>(fetchLocations, []);
+  // Fetch locations from API, filtered by language/country
+  const country = language === "fi" ? "finland" : "united-states";
+  const fetchLocations = useCallback(() => getLocations({ country, level: 3 }), [country]);
+  const { data: locData } = useApi<{ locations: ApiLocation[] }>(fetchLocations, [country]);
   const locations = useMemo(
-    () => (locData?.locations ?? [])
-      .filter((l) => l.level >= 3)
-      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name)),
+    () => (locData?.locations ?? []).sort((a, b) => a.name.localeCompare(b.name)),
     [locData],
   );
 
@@ -294,8 +297,8 @@ export default function HomePage() {
   );
   const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id]);
   const allArticles = useMemo(
-    () => (apiData?.articles ?? []).map(apiToArticle),
-    [apiData],
+    () => (apiData?.articles ?? []).map((a) => apiToArticle(a, t)),
+    [apiData, t],
   );
 
   const recentArticles = allArticles.slice(0, 10);
@@ -318,13 +321,27 @@ export default function HomePage() {
         left={
           <Link to="/explore" className="home-nav__city-btn">
             <MapPin size={16} />
-            <span>{selectedLocation?.name ?? "All locations"}</span>
+            <span>{selectedLocation?.name ?? t("navbar.selectCities")}</span>
           </Link>
         }
       />
 
       <nav className="city-bar">
         <div className="city-bar__scroll">
+          <div className="lang-toggle">
+            <button
+              className={`lang-toggle__btn ${language === "fi" ? "lang-toggle__btn--active" : ""}`}
+              onClick={() => setLanguage("fi")}
+            >
+              FI
+            </button>
+            <button
+              className={`lang-toggle__btn ${language === "en" ? "lang-toggle__btn--active" : ""}`}
+              onClick={() => setLanguage("en")}
+            >
+              EN
+            </button>
+          </div>
           <Link
             to="/"
             className={`city-bar__item ${!locationSlug ? "city-bar__item--active" : ""}`}
@@ -353,21 +370,21 @@ export default function HomePage() {
           </div>
         ) : error ? (
           <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-secondary)" }}>
-            <p>Failed to load articles. Please try again later.</p>
+            <p>{t("home.loadError")}</p>
           </div>
         ) : allArticles.length === 0 ? (
           <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-secondary)" }}>
-            <p>No articles yet. Be the first to contribute!</p>
+            <p>{t("home.noArticles")}</p>
           </div>
         ) : (
           <>
-            <RecentSection articles={recentArticles} />
-            <AdBanner />
-            <BestOfWeekSection articles={bestOfWeek} />
-            <OpinionSection articles={opinionArticles} />
-            <AdBanner />
-            <EventsSection articles={eventArticles} />
-            <NewsSection headlines={newsHeadlines} featured={newsFeatured} />
+            <RecentSection articles={recentArticles} t={t} />
+            <AdBanner t={t} />
+            <BestOfWeekSection articles={bestOfWeek} t={t} />
+            <OpinionSection articles={opinionArticles} t={t} />
+            <AdBanner t={t} />
+            <EventsSection articles={eventArticles} t={t} />
+            <NewsSection headlines={newsHeadlines} featured={newsFeatured} t={t} />
           </>
         )}
       </main>

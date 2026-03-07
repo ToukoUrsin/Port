@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext.tsx";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AuthCallbackPage() {
   const { handleOAuthCallback } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const processed = useRef(false);
 
@@ -35,7 +37,7 @@ export default function AuthCallbackPage() {
         justifyContent: "center",
       }}
     >
-      <p>Signing you in...</p>
+      <p>{t("auth.signingIn")}</p>
     </div>
   );
 }

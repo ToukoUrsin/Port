@@ -22,6 +22,7 @@ import type {
 import { EditorialScreen } from "@/components/editor";
 import { VoiceRecorder } from "@/components/editor/VoiceRecorder";
 import type { GeneralRefinement } from "@/components/editor/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
@@ -37,6 +38,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const sel = e.target.files;
@@ -86,10 +88,9 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
 
   return (
     <div className="compose">
-      <h1 className="compose-prompt">What happened?</h1>
+      <h1 className="compose-prompt">{t("post.whatHappened")}</h1>
       <p className="compose-hint">
-        Tell us in your own words — we'll turn it into an article you can
-        review before anything is published.
+        {t("post.hint")}
       </p>
 
       {error && <p className="auth-error">{error}</p>}
@@ -126,7 +127,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
         {showNotes && (
           <textarea
             className="compose-textarea"
-            placeholder="budget vote, school cuts, heated..."
+            placeholder={t("post.notesPlaceholder")}
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={isSubmitting}
@@ -179,20 +180,27 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       </form>
 
       <ul className="compose-tips">
-        <li>Voice works best — just talk like you're telling a friend</li>
-        <li>Photos help but aren't required</li>
-        <li>Don't worry about polish — that's what the AI is for</li>
+        <li>{t("post.tip1")}</li>
+        <li>{t("post.tip2")}</li>
+        <li>{t("post.tip3")}</li>
       </ul>
     </div>
   );
 }
 
 // --- Step 2: Processing with SSE ---
-const STEP_LABELS: Record<string, string> = {
+const STEP_LABELS_EN: Record<string, string> = {
   transcribing: "Listening",
   describing_photos: "Seeing photos",
   generating: "Writing",
   reviewing: "Reviewing",
+};
+
+const STEP_LABELS_FI: Record<string, string> = {
+  transcribing: "Kuunnellaan",
+  describing_photos: "Katsotaan kuvia",
+  generating: "Kirjoitetaan",
+  reviewing: "Tarkistetaan",
 };
 
 const STEP_ORDER = ["transcribing", "describing_photos", "generating", "reviewing"];
@@ -206,6 +214,8 @@ function ProcessingStep({
   onDone: (article: string, review: ReviewResult, metadata: ArticleMetadata) => void;
   onError: (message: string) => void;
 }) {
+  const { language, t } = useLanguage();
+  const STEP_LABELS = language === "fi" ? STEP_LABELS_FI : STEP_LABELS_EN;
   const [stepKeys, setStepKeys] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState<string>("");
 
@@ -247,7 +257,7 @@ function ProcessingStep({
 
   return (
     <div className="building">
-      <h2 className="building-title">Creating your article</h2>
+      <h2 className="building-title">{t("post.creating")}</h2>
       <div className={buildingClasses}>
         {/* Gate badge placeholder */}
         <div className="building-gate">
@@ -310,6 +320,7 @@ export default function PostPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t: pt } = useLanguage();
   const [step, setStep] = useState<FlowStep>("input");
   const [submissionId, setSubmissionId] = useState<string>("");
   const [articleMarkdown, setArticleMarkdown] = useState<string>("");
@@ -372,19 +383,19 @@ export default function PostPage() {
   const handlePublish = useCallback(async () => {
     const result = await publishArticle(submissionId);
     if ("error" in result && result.error === "gate_red") {
-      toast("This article needs changes before publishing.", "error");
+      toast(pt("post.gateRedError"), "error");
       return;
     }
-    toast("Article published!", "success");
+    toast(pt("post.published"), "success");
     navigate("/");
   }, [submissionId, toast, navigate]);
 
   const handleAppeal = useCallback(async () => {
     try {
       await appealSubmission(submissionId);
-      toast("Your story has been sent for editorial review.", "info");
+      toast(pt("post.appealSent"), "info");
     } catch {
-      toast("Appeal failed. Please try again.", "error");
+      toast(pt("post.appealFailed"), "error");
     }
   }, [submissionId, toast]);
 

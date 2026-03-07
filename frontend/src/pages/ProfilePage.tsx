@@ -6,6 +6,7 @@ import BottomBar from "@/components/BottomBar";
 import AccountSettings from "@/components/AccountSettings";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useApi } from "@/hooks/useApi";
 import { getArticles, getProfileBySlug, getSubmissions } from "@/lib/api";
 import { apiToArticle, timeAgo, SubmissionStatus } from "@/lib/types";
@@ -24,6 +25,7 @@ const STATUS_LABEL: Record<number, string> = {
 };
 
 function PostItem({ post, status }: { post: Article; status?: number }) {
+  const { t } = useLanguage();
   const isDraft = status !== undefined;
   const label = status !== undefined ? STATUS_LABEL[status] ?? "Draft" : null;
   const isReady = status === SubmissionStatus.Ready;
@@ -86,6 +88,7 @@ export default function ProfilePage() {
   const [tab, setTab] = useState<"posts" | "drafts" | "settings">("posts");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const isOwnProfile = !slug;
 
   // Fetch profile for other users
@@ -105,7 +108,7 @@ export default function ProfilePage() {
   );
   const { data: articlesData, isLoading: articlesLoading } = useApi(fetchArticles, [profileId]);
   const publishedPosts = useMemo(
-    () => (articlesData?.articles ?? []).map(apiToArticle),
+    () => (articlesData?.articles ?? []).map((s) => apiToArticle(s, t)),
     [articlesData],
   );
 
@@ -145,12 +148,12 @@ export default function ProfilePage() {
         <Navbar />
         <main className="profile-container" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
           <User size={48} style={{ color: "var(--color-text-tertiary)", marginBottom: "var(--space-4)" }} />
-          <h1 className="profile-name">Profile not found</h1>
+          <h1 className="profile-name">{t("profile.notFound")}</h1>
           <p style={{ color: "var(--color-text-secondary)", marginTop: "var(--space-2)" }}>
-            This profile doesn't exist or is private.
+            {t("profile.notFoundDesc")}
           </p>
           <Link to="/" className="btn btn-primary" style={{ marginTop: "var(--space-6)", display: "inline-flex" }}>
-            Back to home
+            {t("profile.backHome")}
           </Link>
         </main>
         <BottomBar />
@@ -176,7 +179,7 @@ export default function ProfilePage() {
           <div className="profile-info">
             <h1 className="profile-name">{name}</h1>
             {isOwnProfile && email && <span className="profile-email">{email}</span>}
-            {joined && <span className="profile-joined">Joined {joined}</span>}
+            {joined && <span className="profile-joined">{t("profile.joined")} {joined}</span>}
           </div>
           {isOwnProfile && (
             <button className="profile-logout" onClick={handleLogout}>
@@ -189,12 +192,12 @@ export default function ProfilePage() {
         <div className="profile-stats">
           <div className="profile-stat">
             <span className="profile-stat__value">{publishedPosts.length}</span>
-            <span className="profile-stat__label">Published</span>
+            <span className="profile-stat__label">{t("profile.published")}</span>
           </div>
           {isOwnProfile && (
             <div className="profile-stat">
               <span className="profile-stat__value">{drafts.length}</span>
-              <span className="profile-stat__label">Drafts</span>
+              <span className="profile-stat__label">{t("profile.drafts")}</span>
             </div>
           )}
         </div>
@@ -204,14 +207,14 @@ export default function ProfilePage() {
             className={`profile-tab ${tab === "posts" ? "profile-tab--active" : ""}`}
             onClick={() => setTab("posts")}
           >
-            Published
+            {t("profile.published")}
           </button>
           {isOwnProfile && (
             <button
               className={`profile-tab ${tab === "drafts" ? "profile-tab--active" : ""}`}
               onClick={() => setTab("drafts")}
             >
-              Drafts
+              {t("profile.drafts")}
             </button>
           )}
           {isOwnProfile && (
@@ -248,7 +251,7 @@ export default function ProfilePage() {
               {tab === "posts" ? <FileText size={32} /> : <PenSquare size={32} />}
             </div>
             <p className="profile-empty__text">
-              {tab === "posts" ? "No published posts yet" : "No drafts yet"}
+              {tab === "posts" ? t("profile.noPosts") : t("profile.noDrafts")}
             </p>
             {isOwnProfile && (
               <Link to="/post" className="profile-empty__cta">

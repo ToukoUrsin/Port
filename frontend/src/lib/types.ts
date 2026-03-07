@@ -273,19 +273,25 @@ function tagsToCategory(tags: number): string {
   return "community";
 }
 
-export function timeAgo(dateStr: string): string {
+export function timeAgo(dateStr: string, t?: (key: string) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) {
+    return t ? t("time.minutesAgo").replace("{n}", String(mins)) : `${mins}m ago`;
+  }
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) {
+    return t ? t("time.hoursAgo").replace("{n}", String(hours)) : `${hours}h ago`;
+  }
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) {
+    return t ? t("time.daysAgo").replace("{n}", String(days)) : `${days}d ago`;
+  }
   const weeks = Math.floor(days / 7);
-  return `${weeks}w ago`;
+  return t ? t("time.weeksAgo").replace("{n}", String(weeks)) : `${weeks}w ago`;
 }
 
-export function apiToArticle(s: ApiSubmission): Article {
+export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Article {
   const body = s.meta.article_markdown || s.description || "";
 
   return {
@@ -296,7 +302,7 @@ export function apiToArticle(s: ApiSubmission): Article {
     category: s.meta.category || tagsToCategory(s.tags),
     author: s.owner_name || s.owner_id.slice(0, 8),
     authorId: s.owner_id,
-    timeAgo: timeAgo(s.created_at),
+    timeAgo: timeAgo(s.created_at, t),
     image: s.meta.featured_img || "",
     area: s.meta.place_name,
   };

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Send, Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type PublishButtonProps = {
   gate: "GREEN" | "YELLOW" | "RED";
@@ -7,6 +8,7 @@ type PublishButtonProps = {
 };
 
 export function PublishButton({ gate, onPublish }: PublishButtonProps) {
+  const { t } = useLanguage();
   const [publishing, setPublishing] = useState(false);
 
   async function handleClick() {
@@ -29,7 +31,7 @@ export function PublishButton({ gate, onPublish }: PublishButtonProps) {
       ) : (
         <>
           <Send size={16} />
-          Publish
+          {t("editor.publish")}
         </>
       )}
     </button>

@@ -6,10 +6,12 @@ import BottomBar from "@/components/BottomBar";
 import ArticleCard from "@/components/ArticleCard";
 import { search, searchSessionChunk } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { Article } from "@/data/articles";
 import "./SearchPage.css";
 
 export default function SearchPage() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
 
@@ -39,7 +41,7 @@ export default function SearchPage() {
 
     search({ q: q.trim() })
       .then((res) => {
-        setArticles((res.submissions || []).map(apiToArticle));
+        setArticles((res.submissions || []).map((s) => apiToArticle(s, t)));
         setSessionId(res.session_id);
         setCurrentChunk(res.chunk);
         setTotalChunks(res.total_chunks);
@@ -58,7 +60,7 @@ export default function SearchPage() {
 
     searchSessionChunk(sessionId, currentChunk + 1)
       .then((res) => {
-        const newArticles = (res.submissions || []).map(apiToArticle);
+        const newArticles = (res.submissions || []).map((s) => apiToArticle(s, t));
         setArticles((prev) => [...prev, ...newArticles]);
         setCurrentChunk(res.chunk);
         setIsLoadingMore(false);
@@ -78,7 +80,7 @@ export default function SearchPage() {
         {q.trim() && !isLoading && !error && (
           <div className="search-header">
             <h1 className="search-header__count">
-              {totalResults} result{totalResults !== 1 ? "s" : ""} for &ldquo;{q}&rdquo;
+              {totalResults} {totalResults !== 1 ? t("search.results") : t("search.result")} — &ldquo;{q}&rdquo;
             </h1>
           </div>
         )}
@@ -94,12 +96,12 @@ export default function SearchPage() {
         ) : !q.trim() ? (
           <div className="search-empty">
             <SearchX size={48} />
-            <p>Enter a search term to find articles</p>
+            <p>{t("search.enterTerm")}</p>
           </div>
         ) : articles.length === 0 ? (
           <div className="search-empty">
             <SearchX size={48} />
-            <p>No results found for &ldquo;{q}&rdquo;</p>
+            <p>{t("search.noResults")} — &ldquo;{q}&rdquo;</p>
           </div>
         ) : (
           <>
@@ -119,10 +121,10 @@ export default function SearchPage() {
                   {isLoadingMore ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
-                      Loading...
+                      {t("search.loading")}
                     </>
                   ) : (
-                    "Load more"
+                    t("search.loadMore")
                   )}
                 </button>
               </div>

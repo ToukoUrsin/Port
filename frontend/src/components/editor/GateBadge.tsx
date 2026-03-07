@@ -1,11 +1,13 @@
-const GATE_CONFIG = {
-  GREEN: { className: "gate-green", label: "Ready to publish" },
-  YELLOW: { className: "gate-yellow", label: "Suggestions available" },
-  RED: { className: "gate-red", label: "Needs changes" },
-};
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export function GateBadge({ gate }: { gate: "GREEN" | "YELLOW" | "RED" }) {
-  const { className, label } = GATE_CONFIG[gate];
+  const { t } = useLanguage();
+  const config = {
+    GREEN: { className: "gate-green", label: t("editor.gateGreen") },
+    YELLOW: { className: "gate-yellow", label: t("editor.gateYellow") },
+    RED: { className: "gate-red", label: t("editor.gateRed") },
+  };
+  const { className, label } = config[gate];
   return (
     <span className={`gate-badge ${className}`}>
       <span className="gate-dot" />

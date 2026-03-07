@@ -8,6 +8,7 @@ import { useApi } from "@/hooks/useApi";
 import { getLocations, getLocationArticles } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
 import type { Article } from "@/data/articles";
+import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "leaflet/dist/leaflet.css";
@@ -58,6 +59,7 @@ const getSnapshot = () => window.matchMedia(mediaQuery).matches;
 const getServerSnapshot = () => true;
 
 export default function ExplorePage() {
+  const { t } = useLanguage();
   const isDesktop = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
   const [showMap, setShowMap] = useState(false);
@@ -83,7 +85,7 @@ export default function ExplorePage() {
   const { data: areaArticlesData, isLoading: articlesLoading } = useApi(fetchAreaArticles, [selectedArea?.slug]);
 
   const displayArticles: Article[] = selectedArea
-    ? (areaArticlesData?.articles ?? []).map(apiToArticle)
+    ? (areaArticlesData?.articles ?? []).map((s) => apiToArticle(s, t))
     : [];
 
   const center: [number, number] = [61.4978, 23.761];
@@ -96,17 +98,17 @@ export default function ExplorePage() {
         {selectedArea && (
           <button className="explore__back-area" onClick={() => setSelectedArea(null)}>
             <ArrowLeft size={16} />
-            All areas
+            {t("explore.allAreas")}
           </button>
         )}
         <div className="explore__list-header">
           {selectedArea ? (
             <p className="explore__count">
-              {displayArticles.length} {displayArticles.length === 1 ? "story" : "stories"} in {selectedArea.name}
+              {displayArticles.length} {displayArticles.length === 1 ? t("explore.story") : t("explore.stories")} — {selectedArea.name}
             </p>
           ) : (
             <p className="explore__count">
-              {areas.reduce((sum, a) => sum + a.articleCount, 0)} stories in your area
+              {areas.reduce((sum, a) => sum + a.articleCount, 0)} {t("explore.storiesInArea")}
             </p>
           )}
         </div>
@@ -127,7 +129,7 @@ export default function ExplorePage() {
               >
                 <span className="explore-area-card__name">{area.name}</span>
                 <span className="explore-area-card__count">
-                  {area.articleCount} {area.articleCount === 1 ? "story" : "stories"}
+                  {area.articleCount} {area.articleCount === 1 ? t("explore.story") : t("explore.stories")}
                 </span>
               </button>
             ))}
@@ -214,7 +216,7 @@ export default function ExplorePage() {
         className="btn btn-primary btn-lg explore__map-toggle"
         onClick={() => { setShowMap(!showMap); }}
       >
-        {showMap ? "Show list" : "Show map"}
+        {showMap ? t("explore.showList") : t("explore.showMap")}
       </button>
 
     </div>
