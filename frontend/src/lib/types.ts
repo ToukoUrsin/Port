@@ -55,6 +55,12 @@ export interface ReviewResult {
   web_sources?: WebSource[];
 }
 
+export interface ResearchResult {
+  context: string;
+  sources: WebSource[];
+  queries: string[];
+}
+
 // --- Article metadata (from generation) ---
 
 export interface ArticleMetadata {
@@ -88,6 +94,9 @@ export interface SubmissionMeta {
 
   // Review (new shape)
   review?: ReviewResult;
+
+  // Research context from pre-generation web search
+  research?: ResearchResult;
 
   // Kept from before
   summary?: string;
@@ -208,9 +217,41 @@ export interface SubmissionCreateResponse {
   status: string;
 }
 
+export interface SSEGatherData {
+  transcript?: string;
+  photo_descriptions?: string[];
+  photo_urls?: string[];
+  notes?: string;
+}
+
+export interface SSEResearchData {
+  context: string;
+  sources: WebSource[];
+  queries: string[];
+}
+
+export interface SSEGeneratedData {
+  structure: string;
+  category: string;
+  confidence: number;
+  missing_context: string[];
+  word_count: number;
+}
+
+export interface SSEReviewedData {
+  gate: "GREEN" | "YELLOW" | "RED";
+  scores: QualityScores;
+  verified_claims: number;
+  red_triggers: number;
+  yellow_flags: number;
+  coaching: Coaching;
+  web_sources: number;
+}
+
 export interface SSEStatusEvent {
   step: string;
   message: string;
+  data?: SSEGatherData | SSEResearchData | SSEGeneratedData | SSEReviewedData;
 }
 
 export interface SSECompleteEvent {
@@ -246,6 +287,7 @@ export const SubmissionStatus = {
   Archived: 6,
   Refining: 7,
   Appealed: 8,
+  Researching: 9,
 } as const;
 
 // --- Tag bitmask constants ---

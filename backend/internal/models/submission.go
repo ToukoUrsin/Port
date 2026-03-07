@@ -56,6 +56,12 @@ type WebSource struct {
 	URL   string `json:"url"`
 }
 
+type ResearchResult struct {
+	Context string      `json:"context"`
+	Sources []WebSource `json:"sources"`
+	Queries []string    `json:"queries"`
+}
+
 type ReviewResult struct {
 	Verification []VerificationEntry `json:"verification"`
 	Scores       QualityScores       `json:"scores"`
@@ -94,6 +100,7 @@ type SubmissionMeta struct {
 	Versions        []ArticleVersion `json:"versions,omitempty"`
 	Transcript      string           `json:"transcript,omitempty"`
 	Review          *ReviewResult    `json:"review,omitempty"`
+	Research        *ResearchResult  `json:"research,omitempty"`
 	Summary         string           `json:"summary,omitempty"`
 	Category        string           `json:"category,omitempty"`
 	Model       string        `json:"model,omitempty"`

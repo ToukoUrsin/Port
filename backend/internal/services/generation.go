@@ -18,6 +18,7 @@ type GenerationInput struct {
 	Notes             string
 	PhotoDescriptions []string
 	TownContext       string
+	ResearchContext   string // web-sourced background research (empty if research skipped/failed)
 	PreviousArticle   string // empty on first run
 	Direction         string // empty on first run
 }

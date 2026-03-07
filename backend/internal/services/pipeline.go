@@ -1,4 +1,4 @@
-// Pipeline orchestrates GATHER -> GENERATE -> REVIEW for submissions.
+// Pipeline orchestrates GATHER -> RESEARCH -> GENERATE -> REVIEW for submissions.
 //
 // Plan: 1_what/article_engine/spec/build/BACKEND_UPDATE_SPEC.md
 //
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +37,7 @@ type PipelineService struct {
 	photoDescription PhotoDescriptionService
 	chunker          ChunkerService
 	embedding        EmbeddingService
+	researcher       ResearchService
 	semanticGrouper  *SemanticGrouper
 }
 
@@ -47,6 +49,7 @@ func NewPipelineService(
 	photoDescription PhotoDescriptionService,
 	chunker ChunkerService,
 	embedding EmbeddingService,
+	researcher ResearchService,
 ) *PipelineService {
 	return &PipelineService{
 		db:               db,
@@ -56,6 +59,7 @@ func NewPipelineService(
 		photoDescription: photoDescription,
 		chunker:          chunker,
 		embedding:        embedding,
+		researcher:       researcher,
 		semanticGrouper:  NewSemanticGrouper(embedding),
 	}
 }
@@ -113,6 +117,55 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
+	// Send gathered data to frontend
+	gatherData := map[string]any{}
+	if transcript != "" {
+		gatherData["transcript"] = transcript
+	}
+	if len(photoDescs) > 0 {
+		gatherData["photo_descriptions"] = photoDescs
+	}
+	if len(photoFileURLs) > 0 {
+		gatherData["photo_urls"] = photoFileURLs
+	}
+	if sub.Description != "" {
+		gatherData["notes"] = sub.Description
+	}
+	if len(gatherData) > 0 {
+		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "gathered", Message: "Input collected", Data: gatherData}) {
+			return
+		}
+	}
+
+	// RESEARCH (non-fatal — continue with empty context on failure)
+	var researchContext string
+	var researchResult *models.ResearchResult
+	if sub.Status == models.StatusRefining && sub.Meta.V.Research != nil {
+		// Refinement: reuse persisted research
+		researchContext = sub.Meta.V.Research.Context
+		researchResult = sub.Meta.V.Research
+	} else {
+		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "researching", Message: "Researching context..."}) {
+			return
+		}
+		p.db.Model(&sub).Update("status", models.StatusResearching)
+
+		rr, researchErr := p.researcher.Research(ctx, ResearchInput{
+			Transcript:        transcript,
+			Notes:             sub.Description,
+			PhotoDescriptions: photoDescs,
+			TownContext:       prompts.TownContext,
+		})
+		if researchErr != nil {
+			log.Printf("research failed for submission %s: %v", submissionID, researchErr)
+		} else if rr != nil {
+			researchContext = rr.Context
+			researchResult = rr
+			// Send research results to frontend
+			sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "researched", Message: "Research complete", Data: rr})
+		}
+	}
+
 	// GENERATE
 	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}) {
 		return
@@ -124,6 +177,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		Notes:             sub.Description,
 		PhotoDescriptions: photoDescs,
 		TownContext:       prompts.TownContext,
+		ResearchContext:   researchContext,
 	}
 
 	// If refinement, add previous article + direction
@@ -141,6 +195,16 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "generating", Message: fmt.Sprintf("Generation failed: %v", err)})
 		return
 	}
+
+	// Send generation metadata to frontend
+	wordCount := len(strings.Fields(genOutput.ArticleMarkdown))
+	sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generated", Message: "Article written", Data: map[string]any{
+		"structure":       genOutput.Metadata.ChosenStructure,
+		"category":        genOutput.Metadata.Category,
+		"confidence":      genOutput.Metadata.Confidence,
+		"missing_context": genOutput.Metadata.MissingContext,
+		"word_count":      wordCount,
+	}})
 
 	// REVIEW
 	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}) {
@@ -160,15 +224,29 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		return
 	}
 
-	// Replace photo placeholders with actual URLs
+	// Send review summary to frontend
+	sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewed", Message: "Review complete", Data: map[string]any{
+		"gate":               reviewResult.Gate,
+		"scores":             reviewResult.Scores,
+		"verified_claims":    len(reviewResult.Verification),
+		"red_triggers":       len(reviewResult.RedTriggers),
+		"yellow_flags":       len(reviewResult.YellowFlags),
+		"coaching":           reviewResult.Coaching,
+		"web_sources":        len(reviewResult.WebSources),
+	}})
+
+	// Replace photo placeholders with actual URLs.
+	// Replace in reverse order so photo_10 is handled before photo_1 can match it.
+	// Use markdown image context (photo_N) to avoid replacing plain text occurrences.
 	article := genOutput.ArticleMarkdown
-	for i, fileURL := range photoFileURLs {
-		placeholder := fmt.Sprintf("photo_%d", i+1)
-		article = strings.ReplaceAll(article, placeholder, fileURL)
+	for i := len(photoFileURLs) - 1; i >= 0; i-- {
+		placeholder := fmt.Sprintf("(photo_%d)", i+1)
+		article = strings.ReplaceAll(article, placeholder, fmt.Sprintf("(%s)", photoFileURLs[i]))
 	}
 
-	// Extract headline from markdown
+	// Extract headline and featured image from markdown
 	headline := ExtractHeadline(article)
+	featuredImg := ExtractFirstImage(article)
 
 	// Persist transcript on first run
 	meta := sub.Meta.V
@@ -181,10 +259,16 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	meta.ArticleMarkdown = article
 	meta.ArticleMetadata = &genOutput.Metadata
 	meta.Review = reviewResult
+	if researchResult != nil {
+		meta.Research = researchResult
+	}
 	meta.Category = genOutput.Metadata.Category
 	meta.Summary = ExtractFirstParagraph(article)
 	meta.GeneratedAt = &now
 	meta.Model = p.generation.ModelName()
+	if featuredImg != "" {
+		meta.FeaturedImg = featuredImg
+	}
 
 	p.db.Model(&sub).Updates(map[string]any{
 		"title":  headline,
@@ -301,6 +385,16 @@ func ExtractHeadline(markdown string) string {
 		if strings.HasPrefix(line, "# ") {
 			return strings.TrimPrefix(line, "# ")
 		}
+	}
+	return ""
+}
+
+var mdImageRe = regexp.MustCompile(`!\[.*?\]\(([^)]+)\)`)
+
+func ExtractFirstImage(markdown string) string {
+	m := mdImageRe.FindStringSubmatch(markdown)
+	if len(m) >= 2 {
+		return m[1]
 	}
 	return ""
 }

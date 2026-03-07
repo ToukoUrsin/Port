@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowUp, X, Loader2,
   CheckCircle, Camera, Type,
+  Mic, ImageIcon, Search, PenTool, ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useToast } from "@/components/Toast.tsx";
@@ -19,6 +20,11 @@ import type {
   ReviewResult,
   ArticleMetadata,
   SSEStatusEvent,
+  SSEGatherData,
+  SSEResearchData,
+  SSEGeneratedData,
+  SSEReviewedData,
+  WebSource,
 } from "@/lib/types.ts";
 import { EditorialScreen } from "@/components/editor";
 import { VoiceRecorder } from "@/components/editor/VoiceRecorder";
@@ -200,22 +206,82 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   );
 }
 
-// --- Step 2: Processing with SSE ---
+// --- Step 2: Processing with SSE (live data feed) ---
+
+const STEP_ORDER = ["transcribing", "describing_photos", "researching", "generating", "reviewing"];
+
+const STEP_ICONS: Record<string, React.ReactNode> = {
+  transcribing: <Mic size={16} />,
+  describing_photos: <ImageIcon size={16} />,
+  researching: <Search size={16} />,
+  generating: <PenTool size={16} />,
+  reviewing: <ShieldCheck size={16} />,
+};
+
 const STEP_LABELS_EN: Record<string, string> = {
-  transcribing: "Listening",
-  describing_photos: "Seeing photos",
-  generating: "Writing",
-  reviewing: "Reviewing",
+  transcribing: "Listening to your recording",
+  describing_photos: "Analyzing your photos",
+  researching: "Researching background",
+  generating: "Writing the article",
+  reviewing: "Quality review",
 };
 
 const STEP_LABELS_FI: Record<string, string> = {
-  transcribing: "Kuunnellaan",
-  describing_photos: "Katsotaan kuvia",
-  generating: "Kirjoitetaan",
-  reviewing: "Tarkistetaan",
+  transcribing: "Kuunnellaan äänitettä",
+  describing_photos: "Analysoidaan kuvia",
+  researching: "Tutkitaan taustaa",
+  generating: "Kirjoitetaan artikkelia",
+  reviewing: "Laaduntarkistus",
 };
 
-const STEP_ORDER = ["transcribing", "describing_photos", "generating", "reviewing"];
+const STRUCTURE_LABELS: Record<string, string> = {
+  news_report: "News Report",
+  feature: "Feature Story",
+  photo_essay: "Photo Essay",
+  brief: "Brief",
+  narrative: "Narrative",
+};
+
+const SCORE_LABELS: Record<string, string> = {
+  evidence: "Evidence",
+  perspectives: "Perspectives",
+  representation: "Representation",
+  ethical_framing: "Ethics",
+  cultural_context: "Cultural",
+  manipulation: "Integrity",
+};
+
+function ScoreBar({ label, value }: { label: string; value: number }) {
+  const pct = Math.round(value * 100);
+  const color = pct >= 80 ? "var(--color-success, #22c55e)" : pct >= 60 ? "var(--color-warning, #f59e0b)" : "var(--color-error, #ef4444)";
+  return (
+    <div className="pl-score">
+      <span className="pl-score-label">{label}</span>
+      <div className="pl-score-track">
+        <div className="pl-score-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="pl-score-value">{pct}</span>
+    </div>
+  );
+}
+
+function GateBadge({ gate }: { gate: string }) {
+  const colors: Record<string, string> = {
+    GREEN: "var(--color-success, #22c55e)",
+    YELLOW: "var(--color-warning, #f59e0b)",
+    RED: "var(--color-error, #ef4444)",
+  };
+  const labels: Record<string, string> = {
+    GREEN: "Ready to publish",
+    YELLOW: "Needs review",
+    RED: "Issues found",
+  };
+  return (
+    <span className="pl-gate" style={{ background: colors[gate] || colors.YELLOW }}>
+      {labels[gate] || gate}
+    </span>
+  );
+}
 
 function ProcessingStep({
   submissionId,
@@ -230,6 +296,27 @@ function ProcessingStep({
   const STEP_LABELS = language === "fi" ? STEP_LABELS_FI : STEP_LABELS_EN;
   const [stepKeys, setStepKeys] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState<string>("");
+  const [stepTimes, setStepTimes] = useState<Record<string, number>>({});
+  const stepStartRef = useRef<number>(Date.now());
+
+  // Gathered data
+  const [transcript, setTranscript] = useState<string>("");
+  const [photoDescs, setPhotoDescs] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [notes, setNotes] = useState<string>("");
+
+  // Research data
+  const [researchContext, setResearchContext] = useState<string>("");
+  const [researchSources, setResearchSources] = useState<WebSource[]>([]);
+  const [researchQueries, setResearchQueries] = useState<string[]>([]);
+
+  // Generation metadata
+  const [genData, setGenData] = useState<SSEGeneratedData | null>(null);
+
+  // Review summary
+  const [reviewData, setReviewData] = useState<SSEReviewedData | null>(null);
+
+  const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -240,10 +327,40 @@ function ProcessingStep({
 
     const controller = streamPipeline(submissionId, token, {
       onStatus(event: SSEStatusEvent) {
-        setCurrentStep(event.step);
+        // Track elapsed time for previous step
+        const now = Date.now();
+        setCurrentStep((prev) => {
+          if (prev && prev !== event.step) {
+            const elapsed = Math.round((now - stepStartRef.current) / 1000);
+            setStepTimes((t) => ({ ...t, [prev]: elapsed }));
+          }
+          stepStartRef.current = now;
+          return event.step;
+        });
         setStepKeys((prev) =>
           prev.includes(event.step) ? prev : [...prev, event.step],
         );
+
+        // Handle intermediate data payloads
+        if (event.step === "gathered" && event.data) {
+          const d = event.data as SSEGatherData;
+          if (d.transcript) setTranscript(d.transcript);
+          if (d.photo_descriptions) setPhotoDescs(d.photo_descriptions);
+          if (d.photo_urls) setPhotoUrls(d.photo_urls);
+          if (d.notes) setNotes(d.notes);
+        }
+        if (event.step === "researched" && event.data) {
+          const d = event.data as SSEResearchData;
+          if (d.context) setResearchContext(d.context);
+          if (d.sources) setResearchSources(d.sources);
+          if (d.queries) setResearchQueries(d.queries);
+        }
+        if (event.step === "generated" && event.data) {
+          setGenData(event.data as SSEGeneratedData);
+        }
+        if (event.step === "reviewed" && event.data) {
+          setReviewData(event.data as SSEReviewedData);
+        }
       },
       onComplete(event) {
         onDone(event.article, event.review, event.metadata);
@@ -256,67 +373,169 @@ function ProcessingStep({
     return () => controller.abort();
   }, [submissionId, onDone, onError]);
 
-  const currentIndex = STEP_ORDER.indexOf(currentStep);
-  const reached = (step: string) => STEP_ORDER.indexOf(step) <= currentIndex;
+  // Auto-scroll feed
+  useEffect(() => {
+    if (feedRef.current) {
+      feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    }
+  }, [stepKeys, transcript, photoDescs, researchContext, genData, reviewData, currentStep]);
 
-  const buildingClasses = [
-    "building-article",
-    reached("transcribing") ? "building--has-headline" : "",
-    reached("describing_photos") ? "building--has-image" : "",
-    reached("generating") ? "building--has-body" : "",
-    reached("reviewing") ? "building--has-review" : "",
-  ].filter(Boolean).join(" ");
+  const isDone = (step: string) => stepKeys.includes(step) && currentStep !== step;
+  const isActive = (step: string) => currentStep === step;
+  const hasReached = (step: string) => stepKeys.includes(step);
 
   return (
-    <div className="building">
-      <h2 className="building-title">{t("post.creating")}</h2>
-      <div className={buildingClasses}>
-        {/* Gate badge placeholder */}
-        <div className="building-gate">
-          <div className="skeleton building-gate-bar" />
-        </div>
+    <div className="pipeline">
+      <h2 className="pipeline-title">{t("post.creating")}</h2>
 
-        {/* Headline */}
-        <div className="building-headline">
-          <div className="skeleton building-headline-line" style={{ width: "85%" }} />
-          <div className="skeleton building-headline-line" style={{ width: "55%" }} />
-        </div>
-
-        {/* Byline */}
-        <div className="building-byline">
-          <div className="skeleton building-byline-avatar" />
-          <div className="skeleton building-byline-text" />
-        </div>
-
-        {/* Image */}
-        <div className="building-image">
-          <div className="skeleton building-image-block" />
-        </div>
-
-        {/* Body lines */}
-        <div className="building-body">
-          {[100, 95, 88, 100, 72, 96, 60].map((w, i) => (
-            <div key={i} className="skeleton building-body-line" style={{ width: `${w}%`, transitionDelay: `${i * 0.09}s` }} />
-          ))}
-        </div>
-      </div>
-
-      {/* Step labels */}
-      <div className="building-steps">
+      <div className="pipeline-feed" ref={feedRef}>
         {STEP_ORDER.map((key) => {
-          const isDone = stepKeys.includes(key) && currentStep !== key;
-          const isActive = currentStep === key;
+          if (!hasReached(key) && !isActive(key)) return null;
+          const done = isDone(key);
+          const active = isActive(key);
+          const elapsed = stepTimes[key];
+
           return (
-            <div
-              key={key}
-              className={`building-step ${isDone ? "done" : isActive ? "active" : "pending"}`}
-            >
-              {isDone ? (
-                <CheckCircle size={14} />
-              ) : isActive ? (
-                <Loader2 size={14} className="spin" />
-              ) : null}
-              <span>{STEP_LABELS[key] || key}</span>
+            <div key={key} className={`pl-step ${done ? "done" : ""} ${active ? "active" : ""}`}>
+              {/* Step header */}
+              <div className="pl-step-header">
+                <span className="pl-step-icon">
+                  {done ? <CheckCircle size={16} /> : active ? <Loader2 size={16} className="spin" /> : STEP_ICONS[key]}
+                </span>
+                <span className="pl-step-label">{STEP_LABELS[key] || key}</span>
+                {elapsed != null && <span className="pl-step-time">{elapsed}s</span>}
+              </div>
+
+              {/* Active step: show pulsing indicator */}
+              {active && (
+                <div className="pl-step-body">
+                  <div className="pl-thinking">
+                    <span /><span /><span />
+                  </div>
+                </div>
+              )}
+
+              {/* GATHER: transcript + notes + photos inline */}
+              {key === "transcribing" && done && transcript && (
+                <div className="pl-step-body">
+                  <div className="pl-data-block">
+                    <div className="pl-data-label"><Mic size={12} /> Transcript</div>
+                    <p className="pl-data-text">{transcript}</p>
+                  </div>
+                  {notes && (
+                    <div className="pl-data-block">
+                      <div className="pl-data-label"><Type size={12} /> Notes</div>
+                      <p className="pl-data-text">{notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes-only (no audio) */}
+              {key === "transcribing" && done && !transcript && notes && (
+                <div className="pl-step-body">
+                  <div className="pl-data-block">
+                    <div className="pl-data-label"><Type size={12} /> Notes</div>
+                    <p className="pl-data-text">{notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* PHOTOS inline */}
+              {key === "describing_photos" && done && photoDescs.length > 0 && (
+                <div className="pl-step-body">
+                  <div className="pl-photos">
+                    {photoUrls.map((url, i) => (
+                      <div key={i} className="pl-photo">
+                        <img src={url} alt={`Photo ${i + 1}`} className="pl-photo-img" />
+                        {photoDescs[i] && <p className="pl-photo-desc">{photoDescs[i]}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* RESEARCH inline */}
+              {key === "researching" && done && (researchContext || researchQueries.length > 0) && (
+                <div className="pl-step-body">
+                  {researchQueries.length > 0 && (
+                    <div className="pl-queries">
+                      {researchQueries.map((q, i) => (
+                        <span key={i} className="pl-query">{q}</span>
+                      ))}
+                    </div>
+                  )}
+                  {researchContext && (
+                    <div className="pl-data-block">
+                      <div className="pl-data-label"><Search size={12} /> Findings</div>
+                      <p className="pl-data-text pl-research-text">{researchContext}</p>
+                    </div>
+                  )}
+                  {researchSources.length > 0 && (
+                    <div className="pl-sources">
+                      <div className="pl-data-label">Sources ({researchSources.length})</div>
+                      <ul>
+                        {researchSources.map((s, i) => (
+                          <li key={i}>
+                            <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || s.url}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* GENERATION metadata inline */}
+              {key === "generating" && done && genData && (
+                <div className="pl-step-body">
+                  <div className="pl-gen-meta">
+                    <span className="pl-badge pl-badge--structure">{STRUCTURE_LABELS[genData.structure] || genData.structure}</span>
+                    <span className="pl-badge pl-badge--category">{genData.category}</span>
+                    <span className="pl-badge pl-badge--words">{genData.word_count} words</span>
+                    <span className="pl-badge pl-badge--confidence">{Math.round(genData.confidence * 100)}% confident</span>
+                  </div>
+                  {genData.missing_context && genData.missing_context.length > 0 && (
+                    <div className="pl-missing">
+                      <div className="pl-data-label">Questions the AI couldn't answer</div>
+                      <ul>
+                        {genData.missing_context.map((q, i) => (
+                          <li key={i}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* REVIEW summary inline */}
+              {key === "reviewing" && done && reviewData && (
+                <div className="pl-step-body">
+                  <div className="pl-review-header">
+                    <GateBadge gate={reviewData.gate} />
+                    <span className="pl-review-stat">{reviewData.verified_claims} claims verified</span>
+                    {reviewData.web_sources > 0 && (
+                      <span className="pl-review-stat">{reviewData.web_sources} web sources</span>
+                    )}
+                  </div>
+                  <div className="pl-scores">
+                    {Object.entries(SCORE_LABELS).map(([key, label]) => (
+                      <ScoreBar key={key} label={label} value={(reviewData.scores as unknown as Record<string, number>)[key] ?? 0} />
+                    ))}
+                  </div>
+                  {reviewData.coaching && reviewData.coaching.celebration && (
+                    <div className="pl-coaching">
+                      <p className="pl-coaching-text">{reviewData.coaching.celebration}</p>
+                    </div>
+                  )}
+                  {reviewData.red_triggers > 0 && (
+                    <span className="pl-badge pl-badge--red">{reviewData.red_triggers} red trigger{reviewData.red_triggers > 1 ? "s" : ""}</span>
+                  )}
+                  {reviewData.yellow_flags > 0 && (
+                    <span className="pl-badge pl-badge--yellow">{reviewData.yellow_flags} yellow flag{reviewData.yellow_flags > 1 ? "s" : ""}</span>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -438,11 +657,7 @@ export default function PostPage() {
           await updateSubmissionMarkdown(submissionId, articleMarkdown);
         }
       }
-      const result = await publishArticle(submissionId);
-      if ("error" in result && result.error === "gate_red") {
-        toast(pt("post.gateRedError"), "error");
-        return;
-      }
+      await publishArticle(submissionId);
       toast(pt("post.published"), "success");
       navigate("/");
     } catch (err) {
