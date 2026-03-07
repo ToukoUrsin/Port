@@ -2,8 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowUp, X, Loader2,
-  CheckCircle, Camera, Type,
-  Mic, ImageIcon, Search, PenTool, ShieldCheck,
+  CheckCircle, Camera, EyeOff,
+  Mic, ImageIcon, Search, PenTool, ShieldCheck, Type,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useToast } from "@/components/Toast.tsx";
@@ -37,7 +37,6 @@ import "./PostPage.css";
 // --- Step 1: Input ---
 function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [text, setText] = useState("");
-  const [showNotes, setShowNotes] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,16 +132,13 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
           </div>
         )}
 
-        {showNotes && (
-          <textarea
-            className="compose-textarea"
-            placeholder={t("post.notesPlaceholder")}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            disabled={isSubmitting}
-            autoFocus
-          />
-        )}
+        <textarea
+          className="compose-textarea"
+          placeholder={t("post.notesPlaceholder")}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          disabled={isSubmitting}
+        />
 
         <div className="compose-toolbar">
           <div className="compose-actions">
@@ -156,15 +152,8 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             </button>
             <VoiceRecorder
               onRecording={(blob) => setAudioBlob(blob)}
+              compact
             />
-            <button
-              type="button"
-              className={`compose-action ${showNotes ? "compose-action--active" : ""}`}
-              onClick={() => setShowNotes(!showNotes)}
-              disabled={isSubmitting}
-            >
-              <Type size={20} />
-            </button>
           </div>
           <input
             ref={fileRef}
@@ -174,34 +163,31 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             style={{ display: "none" }}
             onChange={onFiles}
           />
-          <label className="compose-anon">
-            <input
-              type="checkbox"
-              checked={anonymous}
-              onChange={(e) => setAnonymous(e.target.checked)}
+          <div className="compose-toolbar-right">
+            <button
+              type="button"
+              className={`compose-anon-toggle ${anonymous ? "compose-anon-toggle--active" : ""}`}
+              onClick={() => setAnonymous(!anonymous)}
               disabled={isSubmitting}
-            />
-            <span>Anonymous</span>
-          </label>
-          <button
-            type="submit"
-            className="compose-submit"
-            disabled={!canSubmit || isSubmitting}
-          >
-            {isSubmitting ? (
-              <Loader2 size={20} className="spin" />
-            ) : (
-              <ArrowUp size={20} />
-            )}
-          </button>
+            >
+              <EyeOff size={14} />
+              <span>Anonymous</span>
+            </button>
+            <button
+              type="submit"
+              className="compose-submit"
+              disabled={!canSubmit || isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 size={20} className="spin" />
+              ) : (
+                <ArrowUp size={20} />
+              )}
+            </button>
+          </div>
         </div>
       </form>
 
-      <ul className="compose-tips">
-        <li>{t("post.tip1")}</li>
-        <li>{t("post.tip2")}</li>
-        <li>{t("post.tip3")}</li>
-      </ul>
     </div>
   );
 }
