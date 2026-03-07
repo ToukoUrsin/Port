@@ -308,6 +308,38 @@
 .annotation--red:hover {
   background: var(--color-error-light, #ffebee);
 }
+.annotation--amber {
+  text-decoration: underline wavy var(--color-warning, #f57f17);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.annotation--amber:hover {
+  background: var(--color-warning-light, #fff8e1);
+}
+.annotation--red-verify {
+  text-decoration: underline wavy var(--color-error, #c62828);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.annotation--red-verify:hover {
+  background: var(--color-error-light, #ffebee);
+}
+
+/* Paragraph confidence borders */
+.paragraph-confidence {
+  border-left: 3px solid transparent;
+  padding-left: var(--space-3);
+  transition: border-color 0.3s, background 0.3s;
+}
+.paragraph-confidence--supported {
+  border-color: var(--color-success, #2e7d32);
+}
+.paragraph-confidence--warning {
+  border-color: var(--color-warning, #f57f17);
+}
+.paragraph-confidence--error {
+  border-color: var(--color-error, #c62828);
+}
 
 /* Paragraph highlight (coaching click) */
 .paragraph--highlight {
