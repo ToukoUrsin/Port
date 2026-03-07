@@ -471,6 +471,650 @@ Permissions are set on the profile row and baked into the JWT. The bitmask allow
 
 ---
 
+## Resource-Level Access Control
+
+Identity (`Auth`) and role/permission middleware answer "who are you?" and "what can you do in general?". Resource-level access control answers "can you do this to **this specific resource**?". This is enforced in handlers, not middleware, because it requires loading the resource from the database.
+
+### Design
+
+```
+Request → Auth() → RequireRole/RequirePerm → Handler → loadResource() → checkAccess() → proceed or 403
+                                                 ↑
+                                          resource-level check
+```
+
+Resource checks run inside the handler after the resource is loaded from DB. This avoids double-fetching — the same loaded resource is used for both the access check and the business logic.
+
+### Access Control Service (`services/access.go`)
+
+Central place for all ownership and visibility checks. Every handler calls into this service rather than implementing its own check logic.
+
+```go
+// internal/services/access.go
+
+package services
+
+import (
+    "context"
+
+    "github.com/google/uuid"
+    "github.com/localnews/backend/internal/models"
+    "gorm.io/gorm"
+)
+
+type AccessService struct {
+    db *gorm.DB
+}
+
+func NewAccessService(db *gorm.DB) *AccessService {
+    return &AccessService{db: db}
+}
+
+// Actor represents the authenticated user making the request.
+// Populated from gin.Context values set by Auth() middleware.
+type Actor struct {
+    ProfileID uuid.UUID
+    Role      int
+    Perm      int64
+}
+
+func ActorFromContext(c *gin.Context) Actor {
+    id, _ := c.Get("profile_id")
+    role, _ := c.Get("role")
+    perm, _ := c.Get("perm")
+    pid, _ := uuid.Parse(id.(string))
+    return Actor{
+        ProfileID: pid,
+        Role:      role.(int),
+        Perm:      perm.(int64),
+    }
+}
+
+// IsAdmin returns true if the actor has admin role.
+func (a Actor) IsAdmin() bool { return a.Role >= 2 }
+
+// IsEditor returns true if the actor has editor role or above.
+func (a Actor) IsEditor() bool { return a.Role >= 1 }
+
+// HasPerm checks a specific permission bit.
+func (a Actor) HasPerm(flag int64) bool { return a.Perm&flag != 0 }
+```
+
+### Submission Access
+
+Submissions have an `owner_id` and an optional `submission_contributors` join table for multi-contributor submissions.
+
+```go
+// CanViewSubmission determines if the actor can read a submission.
+// Published submissions are public. Drafts/in-progress are restricted.
+func (s *AccessService) CanViewSubmission(actor Actor, sub *models.Submission) bool {
+    // Published submissions are visible to everyone
+    if sub.Status == models.StatusPublished {
+        return true
+    }
+    // Owner always has access
+    if sub.OwnerID == actor.ProfileID {
+        return true
+    }
+    // Editors and admins can view any submission
+    if actor.IsEditor() {
+        return true
+    }
+    // Check if actor is a listed contributor
+    return s.isSubmissionContributor(sub.ID, actor.ProfileID)
+}
+
+// CanEditSubmission determines if the actor can modify a submission
+// (update notes, retrigger pipeline, edit generated article before publish).
+func (s *AccessService) CanEditSubmission(actor Actor, sub *models.Submission) bool {
+    // Owner can edit their own submissions (unless already published)
+    if sub.OwnerID == actor.ProfileID && sub.Status != models.StatusPublished {
+        return true
+    }
+    // Editors can edit any non-published submission
+    if actor.IsEditor() && sub.Status != models.StatusPublished {
+        return true
+    }
+    // Admins can edit anything
+    if actor.IsAdmin() {
+        return true
+    }
+    return false
+}
+
+// CanDeleteSubmission determines if the actor can delete a submission.
+func (s *AccessService) CanDeleteSubmission(actor Actor, sub *models.Submission) bool {
+    // Owner can delete their own drafts
+    if sub.OwnerID == actor.ProfileID && sub.Status != models.StatusPublished {
+        return true
+    }
+    // Only admins can delete published submissions
+    if actor.IsAdmin() {
+        return true
+    }
+    return false
+}
+
+// CanStreamSubmission determines if the actor can open the SSE pipeline stream.
+// Same as view access — you need to be the owner, a contributor, or an editor.
+func (s *AccessService) CanStreamSubmission(actor Actor, sub *models.Submission) bool {
+    return s.CanViewSubmission(actor, sub)
+}
+
+// isSubmissionContributor checks the join table.
+func (s *AccessService) isSubmissionContributor(submissionID, profileID uuid.UUID) bool {
+    var count int64
+    s.db.Model(&models.SubmissionContributor{}).
+        Where("submission_id = ? AND profile_id = ?", submissionID, profileID).
+        Count(&count)
+    return count > 0
+}
+```
+
+### Article Publishing Access
+
+Publishing transitions a submission to published status. This is a privileged action.
+
+```go
+// CanPublishSubmission determines if the actor can publish a submission as an article.
+func (s *AccessService) CanPublishSubmission(actor Actor, sub *models.Submission) bool {
+    // Must have the Publish permission
+    if !actor.HasPerm(PermPublish) {
+        return false
+    }
+    // Submission must be in reviewed state (pipeline complete)
+    if sub.Status != models.StatusReviewed {
+        return false
+    }
+    // Editors and admins can publish any reviewed submission
+    if actor.IsEditor() {
+        return true
+    }
+    // Contributors with PermPublish can only publish their own
+    return sub.OwnerID == actor.ProfileID
+}
+```
+
+### Profile Access
+
+Profiles have public/private visibility and self-edit restrictions.
+
+```go
+// CanViewProfile determines if the actor can view a profile's full details.
+func (s *AccessService) CanViewProfile(actor Actor, profile *models.Profile) bool {
+    // Public profiles are visible to everyone
+    if profile.Public {
+        return true
+    }
+    // Users can always view their own profile
+    if profile.ID == actor.ProfileID {
+        return true
+    }
+    // Admins and editors can view any profile
+    if actor.IsEditor() {
+        return true
+    }
+    return false
+}
+
+// CanEditProfile determines if the actor can modify a profile.
+func (s *AccessService) CanEditProfile(actor Actor, profile *models.Profile) bool {
+    // Users can edit their own profile
+    if profile.ID == actor.ProfileID {
+        return true
+    }
+    // Only admins can edit other profiles (requires ManageUsers perm)
+    if actor.IsAdmin() && actor.HasPerm(PermManageUsers) {
+        return true
+    }
+    return false
+}
+
+// CanChangeRole determines if the actor can change another user's role.
+func (s *AccessService) CanChangeRole(actor Actor, targetProfile *models.Profile, newRole int) bool {
+    // Cannot change your own role
+    if targetProfile.ID == actor.ProfileID {
+        return false
+    }
+    // Must be admin with ManageUsers
+    if !actor.IsAdmin() || !actor.HasPerm(PermManageUsers) {
+        return false
+    }
+    // Cannot promote someone to a role >= your own
+    if newRole >= actor.Role {
+        return false
+    }
+    // Cannot demote someone at or above your role level
+    if targetProfile.Role >= actor.Role {
+        return false
+    }
+    return true
+}
+```
+
+### Reply Access
+
+Replies are tied to submissions and owned by the posting profile.
+
+```go
+// CanCreateReply determines if the actor can reply to a submission.
+func (s *AccessService) CanCreateReply(actor Actor, sub *models.Submission) bool {
+    // Can only reply to published submissions
+    if sub.Status != models.StatusPublished {
+        return false
+    }
+    // Any authenticated user can reply
+    return true
+}
+
+// CanEditReply determines if the actor can edit a reply.
+func (s *AccessService) CanEditReply(actor Actor, reply *models.Reply) bool {
+    // Authors can edit their own replies
+    if reply.ProfileID == actor.ProfileID {
+        return true
+    }
+    // Admins can edit any reply
+    if actor.IsAdmin() {
+        return true
+    }
+    return false
+}
+
+// CanDeleteReply determines if the actor can delete a reply.
+func (s *AccessService) CanDeleteReply(actor Actor, reply *models.Reply) bool {
+    // Authors can delete their own replies
+    if reply.ProfileID == actor.ProfileID {
+        return true
+    }
+    // Moderators can delete any reply
+    if actor.HasPerm(PermModerate) {
+        return true
+    }
+    return false
+}
+
+// CanModerateReply determines if the actor can change reply status (hide, flag).
+func (s *AccessService) CanModerateReply(actor Actor) bool {
+    return actor.HasPerm(PermModerate)
+}
+```
+
+### Follow Access
+
+Follows are user-initiated actions on locations or profiles.
+
+```go
+// CanFollow determines if the actor can follow/unfollow a target.
+func (s *AccessService) CanFollow(actor Actor) bool {
+    // Any authenticated user can follow
+    return true
+}
+
+// CanDeleteFollow determines if the actor can remove a follow.
+func (s *AccessService) CanDeleteFollow(actor Actor, follow *models.Follow) bool {
+    // Users can only unfollow their own follows
+    if follow.ProfileID == actor.ProfileID {
+        return true
+    }
+    // Admins can remove any follow (e.g., cleaning up bot accounts)
+    if actor.IsAdmin() {
+        return true
+    }
+    return false
+}
+```
+
+### File Access
+
+Files belong to submissions. Access inherits from the parent submission.
+
+```go
+// CanViewFile determines if the actor can access/download a file.
+func (s *AccessService) CanViewFile(actor Actor, file *models.File, sub *models.Submission) bool {
+    // File visibility follows submission visibility
+    return s.CanViewSubmission(actor, sub)
+}
+
+// CanDeleteFile determines if the actor can remove a file from a submission.
+func (s *AccessService) CanDeleteFile(actor Actor, file *models.File, sub *models.Submission) bool {
+    // The file uploader can delete their own files (if submission isn't published)
+    if file.ContributorID == actor.ProfileID && sub.Status != models.StatusPublished {
+        return true
+    }
+    // Submission owner can delete any file on their submission
+    if sub.OwnerID == actor.ProfileID && sub.Status != models.StatusPublished {
+        return true
+    }
+    // Admins can delete any file
+    if actor.IsAdmin() {
+        return true
+    }
+    return false
+}
+```
+
+### Location Access
+
+Locations are managed resources — only privileged users can create or modify them.
+
+```go
+// CanCreateLocation determines if the actor can create a new location.
+func (s *AccessService) CanCreateLocation(actor Actor) bool {
+    return actor.HasPerm(PermManageLocations)
+}
+
+// CanEditLocation determines if the actor can modify a location.
+func (s *AccessService) CanEditLocation(actor Actor) bool {
+    return actor.HasPerm(PermManageLocations)
+}
+```
+
+### Handler Integration Pattern
+
+Every handler that operates on a specific resource follows this pattern:
+
+```go
+// handlers/submissions.go
+
+func (h *Handler) GetSubmission(c *gin.Context) {
+    // 1. Parse resource ID from URL
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid id"})
+        return
+    }
+
+    // 2. Load resource from DB
+    var sub models.Submission
+    if err := h.db.First(&sub, "id = ?", id).Error; err != nil {
+        c.JSON(404, gin.H{"error": "not found"})
+        return
+    }
+
+    // 3. Build actor from auth context
+    actor := services.ActorFromContext(c)
+
+    // 4. Check resource-level access
+    if !h.access.CanViewSubmission(actor, &sub) {
+        c.JSON(403, gin.H{"error": "access denied"})
+        return
+    }
+
+    // 5. Proceed with business logic
+    c.JSON(200, sub)
+}
+
+func (h *Handler) DeleteSubmission(c *gin.Context) {
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid id"})
+        return
+    }
+
+    var sub models.Submission
+    if err := h.db.First(&sub, "id = ?", id).Error; err != nil {
+        c.JSON(404, gin.H{"error": "not found"})
+        return
+    }
+
+    actor := services.ActorFromContext(c)
+
+    if !h.access.CanDeleteSubmission(actor, &sub) {
+        c.JSON(403, gin.H{"error": "access denied"})
+        return
+    }
+
+    h.db.Delete(&sub)
+    c.Status(204)
+}
+
+func (h *Handler) StreamPipeline(c *gin.Context) {
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid id"})
+        return
+    }
+
+    var sub models.Submission
+    if err := h.db.First(&sub, "id = ?", id).Error; err != nil {
+        c.JSON(404, gin.H{"error": "not found"})
+        return
+    }
+
+    actor := services.ActorFromContext(c)
+
+    if !h.access.CanStreamSubmission(actor, &sub) {
+        c.JSON(403, gin.H{"error": "access denied"})
+        return
+    }
+
+    // ... proceed with SSE pipeline
+}
+```
+
+### Handler for Profile Endpoints
+
+```go
+func (h *Handler) UpdateProfile(c *gin.Context) {
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid id"})
+        return
+    }
+
+    var profile models.Profile
+    if err := h.db.First(&profile, "id = ?", id).Error; err != nil {
+        c.JSON(404, gin.H{"error": "not found"})
+        return
+    }
+
+    actor := services.ActorFromContext(c)
+
+    if !h.access.CanEditProfile(actor, &profile) {
+        c.JSON(403, gin.H{"error": "access denied"})
+        return
+    }
+
+    // ... apply updates
+}
+
+func (h *Handler) ChangeUserRole(c *gin.Context) {
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid id"})
+        return
+    }
+
+    var req struct {
+        Role int `json:"role" binding:"required"`
+    }
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(400, gin.H{"error": "invalid request"})
+        return
+    }
+
+    var target models.Profile
+    if err := h.db.First(&target, "id = ?", id).Error; err != nil {
+        c.JSON(404, gin.H{"error": "not found"})
+        return
+    }
+
+    actor := services.ActorFromContext(c)
+
+    if !h.access.CanChangeRole(actor, &target, req.Role) {
+        c.JSON(403, gin.H{"error": "access denied"})
+        return
+    }
+
+    h.db.Model(&target).Update("role", req.Role)
+
+    // Invalidate cached profile so new role takes effect immediately
+    h.cache.DelProfile(c.Request.Context(), target.ID.String())
+
+    c.JSON(200, gin.H{"role": req.Role})
+}
+```
+
+### Handler for Reply Endpoints
+
+```go
+func (h *Handler) CreateReply(c *gin.Context) {
+    subID, err := uuid.Parse(c.Param("submission_id"))
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid id"})
+        return
+    }
+
+    var sub models.Submission
+    if err := h.db.First(&sub, "id = ?", subID).Error; err != nil {
+        c.JSON(404, gin.H{"error": "submission not found"})
+        return
+    }
+
+    actor := services.ActorFromContext(c)
+
+    if !h.access.CanCreateReply(actor, &sub) {
+        c.JSON(403, gin.H{"error": "replies not allowed"})
+        return
+    }
+
+    // ... create reply with actor.ProfileID as author
+}
+
+func (h *Handler) DeleteReply(c *gin.Context) {
+    id, err := uuid.Parse(c.Param("id"))
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid id"})
+        return
+    }
+
+    var reply models.Reply
+    if err := h.db.First(&reply, "id = ?", id).Error; err != nil {
+        c.JSON(404, gin.H{"error": "not found"})
+        return
+    }
+
+    actor := services.ActorFromContext(c)
+
+    if !h.access.CanDeleteReply(actor, &reply) {
+        c.JSON(403, gin.H{"error": "access denied"})
+        return
+    }
+
+    h.db.Delete(&reply)
+    c.Status(204)
+}
+```
+
+### Submission Status Constants
+
+Referenced by access checks:
+
+```go
+// models/submission.go
+
+const (
+    StatusPending      int = 0   // just created, files saved
+    StatusTranscribing int = 1   // audio being transcribed
+    StatusGenerating   int = 2   // article being generated
+    StatusReviewing    int = 3   // article being reviewed
+    StatusReviewed     int = 4   // pipeline complete, awaiting publish decision
+    StatusPublished    int = 5   // live and publicly visible
+    StatusFailed       int = 6   // pipeline error
+)
+```
+
+### Access Control Matrix
+
+Complete matrix of who can do what:
+
+| Resource | Action | Owner | Contributor | Editor | Admin | Public |
+|----------|--------|-------|-------------|--------|-------|--------|
+| **Submission (draft)** | View | Y | Y | Y | Y | - |
+| | Edit | Y | - | Y | Y | - |
+| | Delete | Y | - | - | Y | - |
+| | Stream SSE | Y | Y | Y | Y | - |
+| **Submission (published)** | View | Y | Y | Y | Y | Y |
+| | Edit | - | - | - | Y | - |
+| | Delete | - | - | - | Y | - |
+| **Publish** | Publish | Own only | - | Y | Y | - |
+| **Profile (public)** | View | Y | - | Y | Y | Y |
+| **Profile (private)** | View | Y (self) | - | Y | Y | - |
+| | Edit | Y (self) | - | - | Y + ManageUsers | - |
+| | Change role | - | - | - | Y + ManageUsers | - |
+| **Reply** | Create | Y (on published) | Y (on published) | Y | Y | - |
+| | Edit | Y (own) | - | - | Y | - |
+| | Delete | Y (own) | - | Y + Moderate | Y | - |
+| | Moderate (hide/flag) | - | - | Y + Moderate | Y | - |
+| **Follow** | Create | Y | Y | Y | Y | - |
+| | Delete own | Y | - | - | Y | - |
+| **File** | View | Follows submission | | | | |
+| | Delete | Uploader or sub owner (draft only) | - | - | Y | - |
+| **Location** | Create | - | - | - | Y + ManageLocations | - |
+| | Edit | - | - | - | Y + ManageLocations | - |
+| **Tag** | Create | - | - | Y | Y | - |
+
+### Security: 404 vs 403
+
+When a user lacks access, return **404** (not 403) for resources that should be invisible to unauthorized users. This prevents information leakage — an attacker can't probe for existence of resources.
+
+```go
+// Use 404 when the resource should be invisible
+if !h.access.CanViewSubmission(actor, &sub) {
+    c.JSON(404, gin.H{"error": "not found"})
+    return
+}
+
+// Use 403 when the resource is known to exist but action is denied
+// (e.g., user can view but can't edit)
+if !h.access.CanEditSubmission(actor, &sub) {
+    c.JSON(403, gin.H{"error": "access denied"})
+    return
+}
+```
+
+Rule of thumb:
+- **404** for view checks — hides existence
+- **403** for action checks on resources the user can already see
+
+### List Filtering
+
+List endpoints (`GET /api/submissions`, `GET /api/articles`) must scope queries by access level, not just return everything and filter in Go:
+
+```go
+func (h *Handler) ListSubmissions(c *gin.Context) {
+    actor := services.ActorFromContext(c)
+
+    query := h.db.Model(&models.Submission{})
+
+    if actor.IsEditor() {
+        // Editors see all submissions
+    } else {
+        // Contributors see only their own + submissions they're listed on
+        query = query.Where(
+            "owner_id = ? OR id IN (SELECT submission_id FROM submission_contributors WHERE profile_id = ?)",
+            actor.ProfileID, actor.ProfileID,
+        )
+    }
+
+    // ... apply pagination, filters, etc.
+    var submissions []models.Submission
+    query.Order("created_at DESC").Find(&submissions)
+    c.JSON(200, submissions)
+}
+```
+
+### File Structure Update
+
+```
+backend/internal/
+├── services/
+│   ├── auth.go              # token generation, password hashing
+│   └── access.go            # NEW — resource-level access control
+```
+
+---
+
 ## Route Protection Map
 
 How middleware applies to existing + new routes:
@@ -480,28 +1124,65 @@ How middleware applies to existing + new routes:
 
 public := r.Group("/api")
 {
+    // Auth
     public.POST("/auth/register", h.Register)
     public.POST("/auth/login", h.Login)
     public.POST("/auth/refresh", h.Refresh)
     public.GET("/auth/google", h.GoogleRedirect)
     public.GET("/auth/google/callback", h.GoogleCallback)
 
-    public.GET("/articles", h.ListArticles)
-    public.GET("/articles/:id", h.GetArticle)
-    public.GET("/search", h.Search)
+    // Public reads (published content only)
+    public.GET("/articles", h.ListArticles)                  // only published
+    public.GET("/articles/:id", h.GetArticle)                // only published (OptionalAuth for personalization)
+    public.GET("/search", h.Search)                          // only published results
     public.GET("/locations/:slug/articles", h.LocationArticles)
 }
 
 authed := r.Group("/api", middleware.Auth(jwtSecret))
 {
-    authed.POST("/submissions", h.CreateSubmission)
-    authed.GET("/submissions/:id/stream", h.StreamPipeline)
     authed.POST("/auth/logout", h.Logout)
+
+    // Submissions — resource checks in handler
+    authed.POST("/submissions", h.CreateSubmission)          // PermSubmit checked
+    authed.GET("/submissions", h.ListSubmissions)            // scoped by ownership/role
+    authed.GET("/submissions/:id", h.GetSubmission)          // CanViewSubmission
+    authed.PUT("/submissions/:id", h.UpdateSubmission)       // CanEditSubmission
+    authed.DELETE("/submissions/:id", h.DeleteSubmission)    // CanDeleteSubmission
+    authed.GET("/submissions/:id/stream", h.StreamPipeline)  // CanStreamSubmission
+
+    // Publish — resource check: CanPublishSubmission
+    authed.POST("/submissions/:id/publish", h.PublishSubmission)
+
+    // Profiles — resource checks in handler
+    authed.GET("/profiles/:id", h.GetProfile)                // CanViewProfile (404 if private + no access)
+    authed.PUT("/profiles/:id", h.UpdateProfile)             // CanEditProfile
+    authed.GET("/profiles/me", h.GetMyProfile)               // always own profile
+
+    // Replies — resource checks in handler
+    authed.POST("/submissions/:id/replies", h.CreateReply)   // CanCreateReply
+    authed.PUT("/replies/:id", h.UpdateReply)                // CanEditReply
+    authed.DELETE("/replies/:id", h.DeleteReply)             // CanDeleteReply
+
+    // Follows
+    authed.POST("/follows", h.CreateFollow)                  // any authed user
+    authed.DELETE("/follows/:id", h.DeleteFollow)            // CanDeleteFollow (own only)
+
+    // Files
+    authed.DELETE("/files/:id", h.DeleteFile)                // CanDeleteFile
 }
 
-editor := r.Group("/api", middleware.Auth(jwtSecret), middleware.RequireRole(1))
+// Admin routes — role gate + resource checks in handler
+admin := r.Group("/api", middleware.Auth(jwtSecret), middleware.RequireRole(2))
 {
-    editor.POST("/articles/:id/publish", h.PublishArticle)
+    admin.PUT("/profiles/:id/role", h.ChangeUserRole)        // CanChangeRole
+    admin.POST("/locations", h.CreateLocation)               // CanCreateLocation
+    admin.PUT("/locations/:id", h.UpdateLocation)            // CanEditLocation
+}
+
+// Moderation — permission gate
+mod := r.Group("/api", middleware.Auth(jwtSecret), middleware.RequirePerm(PermModerate))
+{
+    mod.PUT("/replies/:id/moderate", h.ModerateReply)        // CanModerateReply
 }
 ```
 
@@ -520,11 +1201,16 @@ backend/internal/
 │   └── auth.go              # NEW — Auth, OptionalAuth, RequireRole, RequirePerm
 ├── handlers/
 │   ├── auth.go              # NEW — Register, Login, Refresh, Logout, Google*
-│   └── submissions.go       # MODIFY — read profile_id from context
+│   ├── submissions.go       # MODIFY — resource-level access checks via AccessService
+│   ├── profiles.go          # MODIFY — CanViewProfile, CanEditProfile, CanChangeRole
+│   ├── replies.go           # MODIFY — CanCreateReply, CanEditReply, CanDeleteReply
+│   └── follows.go           # MODIFY — CanDeleteFollow (own only)
 ├── services/
-│   └── auth.go              # NEW — token generation, password hashing, refresh rotation
+│   ├── auth.go              # NEW — token generation, password hashing, refresh rotation
+│   └── access.go            # NEW — resource-level access control (Actor, Can* functions)
 └── models/
     ├── profile.go           # existing schema
+    ├── submission.go         # existing — status constants used by access checks
     └── permissions.go       # NEW — permission constants
 ```
 
@@ -576,6 +1262,10 @@ func (s *AuthService) FindOrCreateOAuthProfile(provider int, providerUID, email,
 | Rate limiting on auth | Not in MVP. Production: add per-IP rate limiting on `/auth/login` and `/auth/register`. |
 | OAuth state CSRF | Random state param in short-lived httpOnly cookie, validated on callback. |
 | Token in URL fragment | Google callback puts access token after `#` (fragment), not `?` (query). Fragments aren't sent to servers in HTTP requests. Frontend reads it and clears the URL. |
+| IDOR (Insecure Direct Object Reference) | Every handler that takes a resource ID checks ownership via `AccessService` before proceeding. No resource is returned based on ID alone. |
+| Privilege escalation via role change | `CanChangeRole` prevents self-promotion, promoting above own level, and demoting peers/superiors. |
+| Information leakage on 403 | View checks return 404 (hides existence). Action checks on visible resources return 403. |
+| List endpoint data leakage | List queries are scoped by role/ownership at the DB level — not filtered in Go after a full SELECT. |
 
 ---
 

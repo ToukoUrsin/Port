@@ -78,6 +78,8 @@ backend/
 │   ├── database/
 │   │   └── database.go          # GORM connection + auto-migrate
 │   ├── models/
+│   │   ├── base.go              # Timestamps, JSONB[T] generic wrapper
+│   │   ├── constants.go         # Status, error, tag, entity category constants
 │   │   ├── location.go          # Location model (hierarchical)
 │   │   ├── profile.go           # Profile + auth models
 │   │   ├── submission.go        # Submission model
@@ -89,13 +91,16 @@ backend/
 │   ├── handlers/
 │   │   ├── submissions.go       # POST raw content, GET stream (SSE)
 │   │   ├── articles.go          # GET/list published articles
-│   │   ├── search.go            # GET full-text search
+│   │   ├── search.go            # GET full-text + semantic search
 │   │   └── locations.go         # GET location newspaper data
 │   ├── services/
 │   │   ├── transcription.go     # ElevenLabs STT integration
 │   │   ├── generation.go        # Claude API — article generation
 │   │   ├── review.go            # Claude API — editorial quality review
-│   │   └── media.go             # File upload handling
+│   │   ├── media.go             # File upload handling
+│   │   ├── chunker.go           # Semantic-aware block chunking
+│   │   ├── embedding.go         # Gemini embedding + pgvector storage
+│   │   └── reranker.go          # ONNX cross-encoder reranking (CPU)
 │   ├── cache/
 │   │   └── cache.go             # Redis client, get/set/invalidate helpers
 │   └── middleware/
@@ -113,14 +118,17 @@ module github.com/localnews/backend
 go 1.22
 
 require (
-    github.com/gin-gonic/gin          v1.10+
-    github.com/gin-contrib/cors        v1.7+
-    gorm.io/gorm                       v1.25+
-    gorm.io/driver/postgres            v1.5+
-    github.com/anthropics/anthropic-sdk-go  latest
-    github.com/redis/go-redis/v9       v9.7+
-    github.com/joho/godotenv           v1.5+
-    github.com/google/uuid             v1.6+
+    github.com/gin-gonic/gin              v1.10+
+    github.com/gin-contrib/cors            v1.7+
+    gorm.io/gorm                           v1.25+
+    gorm.io/driver/postgres                v1.5+
+    github.com/anthropics/anthropic-sdk-go latest
+    github.com/redis/go-redis/v9           v9.7+
+    github.com/joho/godotenv               v1.5+
+    github.com/google/uuid                 v1.6+
+    google.golang.org/genai                latest    // Gemini API (embeddings)
+    github.com/pgvector/pgvector-go        latest    // pgvector Go bindings
+    github.com/yalue/onnxruntime_go        latest    // ONNX Runtime (cross-encoder reranker)
 )
 ```
 
@@ -146,12 +154,16 @@ PORT=8000
 CREATE TABLE locations (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name              VARCHAR(200) NOT NULL,
-    slug              VARCHAR(100) NOT NULL,
+    slug              VARCHAR(100) UNIQUE NOT NULL,
     level             SMALLINT NOT NULL,
     parent_id         UUID REFERENCES locations(id),
     path              TEXT NOT NULL,
     description       TEXT,
     is_active         BOOLEAN DEFAULT TRUE,
+
+    -- Coordinates (center point of the location)
+    lat               DOUBLE PRECISION,
+    lng               DOUBLE PRECISION,
 
     -- Aggregate counters (includes all descendants)
     article_count     INTEGER DEFAULT 0,
@@ -171,14 +183,19 @@ CREATE TABLE locations (
 
 CREATE TABLE profiles (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    display_name    VARCHAR(200),
+    profile_name    VARCHAR(100) UNIQUE NOT NULL,
     email           VARCHAR(320) UNIQUE NOT NULL,
-    password_hash   BYTEA NOT NULL,
+    password_hash   BYTEA,                        -- NULL for OAuth-only accounts
     location_id     UUID REFERENCES locations(id),
+    continent_id    UUID REFERENCES locations(id),
+    country_id      UUID REFERENCES locations(id),
+    region_id       UUID REFERENCES locations(id),
+    city_id         UUID REFERENCES locations(id),
     role            SMALLINT DEFAULT 0,
     permissions     BIGINT DEFAULT 0,
     tags            BIGINT DEFAULT 0,
     public          BOOLEAN DEFAULT FALSE,
+    is_adult        BOOLEAN DEFAULT FALSE,
     meta            JSONB DEFAULT '{}',
 
     -- Full-text search (populated from display_name + email)
@@ -221,28 +238,46 @@ CREATE INDEX idx_oauth_profile ON oauth_accounts (profile_id);
 
 CREATE TABLE submissions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id        UUID REFERENCES profiles(id) NOT NULL,
     location_id     UUID REFERENCES locations(id) NOT NULL,
-    contributor_id  UUID NOT NULL,
+    continent_id    UUID REFERENCES locations(id),
+    country_id      UUID REFERENCES locations(id),
+    region_id       UUID REFERENCES locations(id),
+    city_id         UUID REFERENCES locations(id),
+    title           VARCHAR(300) NOT NULL DEFAULT '',
+    description     TEXT NOT NULL DEFAULT '',
     tags            BIGINT DEFAULT 0,
     status          SMALLINT DEFAULT 0,
-    error           SMALLINT DEFAULT 0,          -- 0=none, 1=transcription_failed, 2=generation_failed, etc.
-    transcript      TEXT,                        -- populated after ElevenLabs STT completes
-    notes           TEXT,                        -- contributor-provided notes
-    headline        TEXT,                        -- generated article headline
-    body            TEXT,                        -- generated article body (markdown)
+    error           SMALLINT DEFAULT 0,
+    views           INTEGER DEFAULT 0,
+    share_count     INTEGER DEFAULT 0,
+    lat             DOUBLE PRECISION,
+    lng             DOUBLE PRECISION,
+    reactions       JSONB DEFAULT '{}',
     meta            JSONB DEFAULT '{}',
-
-    -- Full-text search (populated from transcript + notes + headline + body)
     search_vector   TSVECTOR,
-
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_submissions_location ON submissions (location_id);
-CREATE INDEX idx_submissions_contributor ON submissions (contributor_id);
+CREATE INDEX idx_submissions_continent ON submissions (continent_id);
+CREATE INDEX idx_submissions_country ON submissions (country_id);
+CREATE INDEX idx_submissions_region ON submissions (region_id);
+CREATE INDEX idx_submissions_city ON submissions (city_id);
+CREATE INDEX idx_submissions_coords ON submissions (lat, lng) WHERE lat IS NOT NULL;
 CREATE INDEX idx_submissions_status ON submissions (status);
 CREATE INDEX idx_submissions_search ON submissions USING GIN (search_vector);
+
+CREATE TABLE submission_contributors (
+    submission_id   UUID REFERENCES submissions(id) NOT NULL,
+    profile_id      UUID REFERENCES profiles(id) NOT NULL,
+    role            SMALLINT DEFAULT 0,
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (submission_id, profile_id)
+);
+
+CREATE INDEX idx_sub_contrib_profile ON submission_contributors (profile_id);
 
 CREATE TABLE files (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -304,17 +339,507 @@ CREATE INDEX idx_replies_submission ON replies (submission_id);
 CREATE INDEX idx_replies_profile ON replies (profile_id);
 CREATE INDEX idx_replies_parent ON replies (parent_id);
 
+CREATE TABLE advertisers (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name            VARCHAR(300) NOT NULL,
+    status          SMALLINT DEFAULT 0,         -- 0=pending, 1=active, 2=suspended
+    permissions     BIGINT DEFAULT 0,
+    tags            BIGINT DEFAULT 0,           -- targeting categories
+    meta            JSONB DEFAULT '{}',         -- contact, billing, logo, etc.
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE embeddings (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_id       UUID NOT NULL,
     entity_category SMALLINT NOT NULL,
+    chunk_index     SMALLINT NOT NULL DEFAULT 0,
     chunk_text      TEXT NOT NULL,
-    embedding       VECTOR(1536) NOT NULL
+    embedding       VECTOR(768) NOT NULL
 );
 
-CREATE INDEX idx_embeddings_entity ON embeddings (entity_id);
-CREATE INDEX idx_embeddings_category ON embeddings (entity_category);
+CREATE INDEX idx_embeddings_entity ON embeddings (entity_id, entity_category);
 CREATE INDEX idx_embeddings_vector ON embeddings USING ivfflat (embedding vector_cosine_ops);
+```
+
+### Go Structs (GORM Models)
+
+#### Base Types (`internal/models/base.go`)
+
+```go
+package models
+
+import (
+    "database/sql/driver"
+    "encoding/json"
+    "fmt"
+    "time"
+)
+
+type Timestamps struct {
+    CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+    UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+// JSONB[T] — typed wrapper for PostgreSQL JSONB columns.
+// Implements sql.Scanner, driver.Valuer, and JSON marshal/unmarshal.
+type JSONB[T any] struct{ V T }
+
+func (j JSONB[T]) Value() (driver.Value, error) {
+    return json.Marshal(j.V)
+}
+
+func (j *JSONB[T]) Scan(src any) error {
+    if src == nil {
+        return nil
+    }
+    b, ok := src.([]byte)
+    if !ok {
+        return fmt.Errorf("expected []byte, got %T", src)
+    }
+    return json.Unmarshal(b, &j.V)
+}
+
+func (j JSONB[T]) MarshalJSON() ([]byte, error) {
+    return json.Marshal(j.V)
+}
+
+func (j *JSONB[T]) UnmarshalJSON(data []byte) error {
+    return json.Unmarshal(data, &j.V)
+}
+```
+
+#### Constants (`internal/models/constants.go`)
+
+```go
+package models
+
+// --- Submission status ---
+
+const (
+    StatusDraft        int16 = 0 // just created, raw files saved
+    StatusTranscribing int16 = 1 // audio being transcribed
+    StatusGenerating   int16 = 2 // Claude generating article
+    StatusReviewing    int16 = 3 // Claude reviewing article
+    StatusReady        int16 = 4 // pipeline complete, awaiting publish decision
+    StatusPublished    int16 = 5 // publicly visible
+    StatusArchived     int16 = 6 // hidden by owner or editor
+)
+
+// --- Submission error codes (0 = no error) ---
+
+const (
+    ErrNone          int16 = 0
+    ErrTranscription int16 = 1 // ElevenLabs call failed
+    ErrGeneration    int16 = 2 // Claude generation failed
+    ErrReview        int16 = 3 // Claude review failed
+    ErrModeration    int16 = 4 // flagged by moderation
+)
+
+// --- Profile / Submission category tags (bitmask) ---
+// Each bit represents a general content category.
+// Used on both profiles.tags (interests) and submissions.tags (article category).
+
+const (
+    TagCouncil   int64 = 1 << 0  // local government, council meetings
+    TagSchools   int64 = 1 << 1  // education, school boards
+    TagBusiness  int64 = 1 << 2  // local business, economy
+    TagEvents    int64 = 1 << 3  // community events, festivals
+    TagSports    int64 = 1 << 4  // local sports
+    TagCommunity int64 = 1 << 5  // neighborhood, volunteer, civic
+    TagCulture   int64 = 1 << 6  // arts, music, heritage
+    TagSafety    int64 = 1 << 7  // police, fire, public safety
+    TagHealth    int64 = 1 << 8  // health, hospitals, public health
+    TagEnviron   int64 = 1 << 9  // environment, parks, weather
+)
+
+// --- Entity categories (polymorphic type discriminator) ---
+// Used in files.entity_category, entity_tags.entity_category, embeddings.entity_category
+
+const (
+    EntitySubmission int16 = 1
+    EntityProfile    int16 = 2
+    EntityLocation   int16 = 3
+)
+
+// --- Follow target types ---
+
+const (
+    FollowLocation int16 = 1
+    FollowProfile  int16 = 2
+)
+
+// --- Reply status ---
+
+const (
+    ReplyVisible  int16 = 0
+    ReplyHidden   int16 = 1 // hidden by moderator
+    ReplyDeleted  int16 = 2 // soft-deleted by author
+)
+
+// --- Location level ---
+
+const (
+    LevelContinent int16 = 0
+    LevelCountry   int16 = 1
+    LevelRegion    int16 = 2 // state, province, län
+    LevelCity      int16 = 3
+)
+```
+
+#### Slug Convention
+
+Slugs are URL-safe identifiers derived from the entity name. Generation rule:
+
+1. Lowercase the name
+2. Replace spaces and non-alphanumeric characters with hyphens
+3. Collapse consecutive hyphens into one
+4. Trim leading/trailing hyphens
+5. For locations, if a duplicate exists at the same level, append the parent slug: `springfield-il`, `springfield-oh`
+
+Examples: `"Port 2026"` → `port-2026`, `"Gävle kommun"` → `gavle-kommun`, `"Council & Budget"` → `council-budget`
+
+#### Location (`internal/models/location.go`)
+
+```go
+type LocationMeta struct {
+    // Geographic
+    AreaKm2    float64 `json:"area_km2,omitempty"`
+    Timezone   string  `json:"timezone,omitempty"`
+
+    // Descriptive
+    About      string   `json:"about,omitempty"`
+    Highlights []string `json:"highlights,omitempty"`
+    Population int      `json:"population,omitempty"`
+    PostalCode string   `json:"postal_code,omitempty"`
+
+    // Media
+    CoverImage string `json:"cover_image,omitempty"`
+    Icon       string `json:"icon,omitempty"`
+}
+
+type Location struct {
+    ID               uuid.UUID           `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    Name             string              `gorm:"type:varchar(200);not null" json:"name"`
+    Slug             string              `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
+    Level            int16               `gorm:"not null" json:"level"`
+    ParentID         *uuid.UUID          `gorm:"type:uuid" json:"parent_id,omitempty"`
+    Path             string              `gorm:"type:text;not null" json:"path"`
+    Description      *string             `gorm:"type:text" json:"description,omitempty"`
+    IsActive         bool                `gorm:"default:true" json:"is_active"`
+    Lat              *float64            `json:"lat,omitempty"`
+    Lng              *float64            `json:"lng,omitempty"`
+    ArticleCount     int                 `gorm:"default:0" json:"article_count"`
+    SubmissionCount  int                 `gorm:"default:0" json:"submission_count"`
+    ContributorCount int                 `gorm:"default:0" json:"contributor_count"`
+    FollowerCount    int                 `gorm:"default:0" json:"follower_count"`
+    LastActivityAt   *time.Time          `json:"last_activity_at,omitempty"`
+    TrendingScore    float32             `gorm:"default:0" json:"trending_score"`
+    Meta             JSONB[LocationMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+```
+
+#### Profile + Auth (`internal/models/profile.go`)
+
+```go
+type ProfileMeta struct {
+    // Identity
+    FirstName    string   `json:"first_name,omitempty"`
+    LastName     string   `json:"last_name,omitempty"`
+    Avatar       string   `json:"avatar,omitempty"`
+    Bio          string   `json:"bio,omitempty"`
+    About        string   `json:"about,omitempty"`
+    Occupation   string   `json:"occupation,omitempty"`
+    Organization string   `json:"organization,omitempty"`
+    Tags         []string `json:"tags,omitempty"`
+
+    // Contact / links
+    Phone   string            `json:"phone,omitempty"`
+    Website string            `json:"website,omitempty"`
+    Links   map[string]string `json:"links,omitempty"`
+
+    // Activity
+    LastLoginAt *time.Time `json:"last_login_at,omitempty"`
+
+    // Preferences
+    Language    string `json:"language,omitempty"`
+    NotifyEmail bool   `json:"notify_email,omitempty"`
+    NotifyPush  bool   `json:"notify_push,omitempty"`
+}
+
+type Profile struct {
+    ID           uuid.UUID          `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileName  string             `gorm:"type:varchar(100);uniqueIndex;not null" json:"profile_name"`
+    Email        string             `gorm:"type:varchar(320);uniqueIndex;not null" json:"email"`
+    PasswordHash []byte             `gorm:"type:bytea" json:"-"`            // nil for OAuth-only accounts
+    LocationID   *uuid.UUID         `gorm:"type:uuid;index" json:"location_id,omitempty"`
+    ContinentID  *uuid.UUID         `gorm:"type:uuid;index" json:"continent_id,omitempty"`
+    CountryID    *uuid.UUID         `gorm:"type:uuid;index" json:"country_id,omitempty"`
+    RegionID     *uuid.UUID         `gorm:"type:uuid;index" json:"region_id,omitempty"`
+    CityID       *uuid.UUID         `gorm:"type:uuid;index" json:"city_id,omitempty"`
+    Role         int16              `gorm:"default:0;index" json:"role"`
+    Permissions  int64              `gorm:"default:0" json:"permissions"`
+    Tags         int64              `gorm:"default:0" json:"tags"`
+    Public       bool               `gorm:"default:false" json:"public"`
+    IsAdult      bool               `gorm:"default:false" json:"is_adult"`
+    Meta         JSONB[ProfileMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+
+type RefreshTokenMeta struct {
+    Device    string `json:"device,omitempty"`
+    IP        string `json:"ip,omitempty"`
+    UserAgent string `json:"user_agent,omitempty"`
+}
+
+type RefreshToken struct {
+    ID        uuid.UUID               `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileID uuid.UUID               `gorm:"type:uuid;not null;index" json:"profile_id"`
+    TokenHash []byte                  `gorm:"type:bytea;not null" json:"-"`
+    ExpiresAt time.Time               `gorm:"not null;index" json:"expires_at"`
+    Revoked   bool                    `gorm:"default:false" json:"revoked"`
+    Meta      JSONB[RefreshTokenMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    CreatedAt time.Time               `gorm:"autoCreateTime" json:"created_at"`
+}
+
+type OAuthAccountMeta struct {
+    AccessToken  string     `json:"access_token,omitempty"`
+    RefreshToken string     `json:"refresh_token,omitempty"`
+    Scopes       string     `json:"scopes,omitempty"`
+    ExpiresAt    *time.Time `json:"expires_at,omitempty"`
+    DisplayName  string     `json:"display_name,omitempty"`
+    AvatarURL    string     `json:"avatar_url,omitempty"`
+}
+
+type OAuthAccount struct {
+    ID          uuid.UUID                `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileID   uuid.UUID                `gorm:"type:uuid;not null;index" json:"profile_id"`
+    Provider    int16                    `gorm:"not null;uniqueIndex:idx_oauth_provider_uid" json:"provider"`
+    ProviderUID string                   `gorm:"type:varchar(300);not null;uniqueIndex:idx_oauth_provider_uid" json:"provider_uid"`
+    Meta        JSONB[OAuthAccountMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+```
+
+#### Submission (`internal/models/submission.go`)
+
+```go
+type Block struct {
+    Type    string `json:"type"`              // "text", "heading", "image", "audio", "quote", "video"
+    Content string `json:"content,omitempty"`  // text/markdown content
+    Src     string `json:"src,omitempty"`      // media path for image/audio/video
+    Caption string `json:"caption,omitempty"`  // media caption
+    Alt     string `json:"alt,omitempty"`      // image alt text
+    Level   int    `json:"level,omitempty"`    // heading level (1-3)
+    Author  string `json:"author,omitempty"`   // quote attribution
+}
+
+type ReviewFlag struct {
+    Type       string `json:"type"`       // unverified_claim, missing_context, tone, attribution, factual
+    Text       string `json:"text"`
+    Suggestion string `json:"suggestion"`
+}
+
+type ReviewResult struct {
+    Score    int          `json:"score"`
+    Flags    []ReviewFlag `json:"flags"`
+    Approved bool         `json:"approved"`
+}
+
+type EditEntry struct {
+    EditedBy uuid.UUID `json:"edited_by"`
+    EditedAt time.Time `json:"edited_at"`
+    Field    string    `json:"field"`
+    Previous string    `json:"previous"`
+}
+
+type SubmissionMeta struct {
+    // Content blocks
+    Blocks []Block `json:"blocks,omitempty"`
+
+    // AI pipeline output
+    Review   *ReviewResult `json:"review,omitempty"`
+    Summary  string        `json:"summary,omitempty"`
+    Category string        `json:"category,omitempty"`
+
+    // AI pipeline metadata
+    Model       string     `json:"model,omitempty"`
+    GeneratedAt *time.Time `json:"generated_at,omitempty"`
+
+    // Content metadata
+    Slug        string      `json:"slug,omitempty"`
+    FeaturedImg string      `json:"featured_img,omitempty"`
+    Sources     []string    `json:"sources,omitempty"`
+    EventDate   string      `json:"event_date,omitempty"`
+    PlaceName   string      `json:"place_name,omitempty"`
+    CoAuthors   []uuid.UUID `json:"co_authors,omitempty"`
+
+    // Publishing
+    PublishedAt *time.Time `json:"published_at,omitempty"`
+    PublishedBy *uuid.UUID `json:"published_by,omitempty"`
+    ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
+
+    // Moderation
+    Flagged    bool   `json:"flagged,omitempty"`
+    FlagReason string `json:"flag_reason,omitempty"`
+
+    // Edit tracking
+    EditHistory []EditEntry `json:"edit_history,omitempty"`
+}
+
+type Submission struct {
+    ID           uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    OwnerID      uuid.UUID              `gorm:"type:uuid;not null" json:"owner_id"`
+    LocationID   uuid.UUID              `gorm:"type:uuid;not null;index" json:"location_id"`
+    ContinentID  *uuid.UUID             `gorm:"type:uuid;index" json:"continent_id,omitempty"`
+    CountryID    *uuid.UUID             `gorm:"type:uuid;index" json:"country_id,omitempty"`
+    RegionID     *uuid.UUID             `gorm:"type:uuid;index" json:"region_id,omitempty"`
+    CityID       *uuid.UUID             `gorm:"type:uuid;index" json:"city_id,omitempty"`
+    Lat          *float64               `json:"lat,omitempty"`
+    Lng          *float64               `json:"lng,omitempty"`
+    Title        string                 `gorm:"type:varchar(300);not null;default:''" json:"title"`
+    Description  string                 `gorm:"type:text;not null;default:''" json:"description"`
+    Tags         int64                  `gorm:"default:0" json:"tags"`
+    Status       int16                  `gorm:"default:0;index" json:"status"`
+    Error        int16                  `gorm:"default:0" json:"error"`
+    Views        int                    `gorm:"default:0" json:"views"`
+    ShareCount   int                    `gorm:"default:0" json:"share_count"`
+    Reactions    JSONB[map[string]int]  `gorm:"type:jsonb;default:'{}'" json:"reactions"`
+    Meta         JSONB[SubmissionMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+
+type SubmissionContributor struct {
+    SubmissionID uuid.UUID `gorm:"type:uuid;not null;primaryKey" json:"submission_id"`
+    ProfileID    uuid.UUID `gorm:"type:uuid;not null;primaryKey;index:idx_sub_contrib_profile" json:"profile_id"`
+    Role         int16     `gorm:"default:0" json:"role"`
+    CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+```
+
+#### File (`internal/models/file.go`)
+
+```go
+type FileMeta struct {
+    MimeType     string `json:"mime_type,omitempty"`
+    Width        int    `json:"width,omitempty"`
+    Height       int    `json:"height,omitempty"`
+    DurationSecs int    `json:"duration_secs,omitempty"`
+    Thumbnail    string `json:"thumbnail,omitempty"`
+}
+
+type File struct {
+    ID             uuid.UUID       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    EntityID       uuid.UUID       `gorm:"type:uuid;not null" json:"entity_id"`
+    EntityCategory int16           `gorm:"not null" json:"entity_category"`
+    SubmissionID   uuid.UUID       `gorm:"type:uuid;not null;index" json:"submission_id"`
+    ContributorID  uuid.UUID       `gorm:"type:uuid;not null" json:"contributor_id"`
+    FileType       int16           `gorm:"not null;index" json:"file_type"`
+    Name           string          `gorm:"type:varchar(300);not null" json:"name"`
+    Size           int64           `gorm:"not null" json:"size"`
+    UploadedAt     time.Time       `gorm:"autoCreateTime" json:"uploaded_at"`
+    Meta           JSONB[FileMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+}
+```
+
+#### Tag (`internal/models/tag.go`)
+
+```go
+type Tag struct {
+    ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    Name      string    `gorm:"type:varchar(100);not null" json:"name"`
+    Slug      string    `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
+    CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+
+type EntityTag struct {
+    EntityID       uuid.UUID `gorm:"type:uuid;primaryKey" json:"entity_id"`
+    EntityCategory int16     `gorm:"not null;index:idx_entity_tags_entity" json:"entity_category"`
+    TagID          uuid.UUID `gorm:"type:uuid;primaryKey" json:"tag_id"`
+}
+```
+
+#### Follow (`internal/models/follow.go`)
+
+```go
+type Follow struct {
+    ID         uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    ProfileID  uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_follows_unique;index" json:"profile_id"`
+    TargetID   uuid.UUID `gorm:"type:uuid;not null;uniqueIndex:idx_follows_unique" json:"target_id"`
+    TargetType int16     `gorm:"not null;uniqueIndex:idx_follows_unique" json:"target_type"`
+    CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+```
+
+#### Reply (`internal/models/reply.go`)
+
+```go
+type ReplyMeta struct {
+    Reactions  map[string]int `json:"reactions,omitempty"`
+    EditedAt   *time.Time     `json:"edited_at,omitempty"`
+    EditedBody string         `json:"edited_body,omitempty"`
+}
+
+type Reply struct {
+    ID           uuid.UUID        `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    SubmissionID uuid.UUID        `gorm:"type:uuid;not null;index" json:"submission_id"`
+    ProfileID    uuid.UUID        `gorm:"type:uuid;not null;index" json:"profile_id"`
+    ParentID     *uuid.UUID       `gorm:"type:uuid;index" json:"parent_id,omitempty"`
+    Body         string           `gorm:"type:text;not null" json:"body"`
+    Status       int16            `gorm:"default:0" json:"status"`
+    Meta         JSONB[ReplyMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    CreatedAt    time.Time        `gorm:"autoCreateTime" json:"created_at"`
+}
+```
+
+#### Advertiser (`internal/models/advertiser.go`)
+
+```go
+type AdvertiserMeta struct {
+    // Contact
+    ContactName  string `json:"contact_name,omitempty"`
+    ContactEmail string `json:"contact_email,omitempty"`
+    ContactPhone string `json:"contact_phone,omitempty"`
+
+    // Branding
+    Logo        string `json:"logo,omitempty"`
+    Website     string `json:"website,omitempty"`
+    Description string `json:"description,omitempty"`
+
+    // Billing
+    BillingEmail   string `json:"billing_email,omitempty"`
+    BillingAddress string `json:"billing_address,omitempty"`
+    VatID          string `json:"vat_id,omitempty"`
+}
+
+type Advertiser struct {
+    ID          uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    Name        string                 `gorm:"type:varchar(300);not null" json:"name"`
+    Status      int16                  `gorm:"default:0" json:"status"`
+    Permissions int64                  `gorm:"default:0" json:"permissions"`
+    Tags        int64                  `gorm:"default:0" json:"tags"`
+    Meta        JSONB[AdvertiserMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    Timestamps
+}
+```
+
+#### Embedding (`internal/models/embedding.go`)
+
+```go
+import "github.com/pgvector/pgvector-go"
+
+type Embedding struct {
+    ID             uuid.UUID       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    EntityID       uuid.UUID       `gorm:"type:uuid;not null;index:idx_embeddings_entity" json:"entity_id"`
+    EntityCategory int16           `gorm:"not null;index:idx_embeddings_entity" json:"entity_category"`
+    ChunkIndex     int16           `gorm:"not null;default:0" json:"chunk_index"`
+    ChunkText      string          `gorm:"type:text;not null" json:"chunk_text"`
+    Vector         pgvector.Vector `gorm:"column:embedding;type:vector(768);not null" json:"embedding"`
+}
 ```
 
 ### Migrations
@@ -331,43 +856,51 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- trigram fuzzy matching
 
 #### How it works
 
-1. **Write time** — when a row is inserted/updated, a trigger populates the `search_vector` column by normalizing the source text into lexemes (tokenize → remove stop words → stem).
-2. **GIN index** — an inverted index maps each lexeme to the rows containing it. Lookups are O(1) per term instead of full table scans.
-3. **Query time** — the search query goes through the same normalization, then PostgreSQL intersects matching row sets from the index.
+1. **Write time** — a `BEFORE INSERT OR UPDATE` trigger fires when the row changes. The trigger extracts raw text from the source fields (for submissions: iterates `meta->'blocks'` JSONB array and concatenates each block's `content` field; for profiles: reads `profile_name` and `email`). PostgreSQL's `to_tsvector('english', text)` then normalizes this text into lexemes: tokenize into words → lowercase → remove stop words ("the", "and", "is") → stem to root forms ("running" → "run", "cities" → "citi"). The result is stored in the `search_vector TSVECTOR` column. Blocks are weighted: heading blocks get weight A (highest rank), all other block types get weight B, so matches in titles rank higher.
+2. **GIN index** — a Generalized Inverted Index maps each lexeme to the set of row IDs containing it. Searching for a term is an index lookup, not a table scan. The `@@` operator checks if a query matches a vector in O(1) per term.
+3. **Query time** — the user's search string goes through the same normalization via `plainto_tsquery('english', query)`. PostgreSQL intersects the matching row sets from the GIN index and ranks results using `ts_rank()`, which scores based on lexeme frequency, weight, and proximity.
 
 #### Triggers
 
 ```sql
--- Submissions: index transcript, notes, headline, and body
--- headline is weighted A (highest), body B, notes C, transcript D
+-- Submissions: index title (weight A), description + heading blocks (weight B), other blocks (weight C)
 CREATE FUNCTION submissions_search_update() RETURNS trigger AS $$
+DECLARE
+  headings TEXT := '';
+  body_text TEXT := '';
 BEGIN
+  SELECT
+    coalesce(string_agg(CASE WHEN b->>'type' = 'heading' THEN b->>'content' END, ' '), ''),
+    coalesce(string_agg(CASE WHEN b->>'type' != 'heading' THEN b->>'content' END, ' '), '')
+  INTO headings, body_text
+  FROM jsonb_array_elements(coalesce(NEW.meta->'blocks', '[]'::jsonb)) AS b
+  WHERE b->>'content' IS NOT NULL;
+
   NEW.search_vector :=
-    setweight(to_tsvector('english', coalesce(NEW.headline, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(NEW.body, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(NEW.notes, '')), 'C') ||
-    setweight(to_tsvector('english', coalesce(NEW.transcript, '')), 'D');
+    setweight(to_tsvector('english', coalesce(NEW.title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(NEW.description, '') || ' ' || headings), 'B') ||
+    setweight(to_tsvector('english', body_text), 'C');
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_submissions_search
-  BEFORE INSERT OR UPDATE OF transcript, notes, headline, body
+  BEFORE INSERT OR UPDATE OF title, description, meta
   ON submissions
   FOR EACH ROW EXECUTE FUNCTION submissions_search_update();
 
--- Profiles: index display_name and email
+-- Profiles: index profile_name and email
 CREATE FUNCTION profiles_search_update() RETURNS trigger AS $$
 BEGIN
   NEW.search_vector :=
-    setweight(to_tsvector('simple', coalesce(NEW.display_name, '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce(NEW.profile_name, '')), 'A') ||
     setweight(to_tsvector('simple', coalesce(NEW.email, '')), 'B');
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_profiles_search
-  BEFORE INSERT OR UPDATE OF display_name, email
+  BEFORE INSERT OR UPDATE OF profile_name, email
   ON profiles
   FOR EACH ROW EXECUTE FUNCTION profiles_search_update();
 ```
@@ -430,16 +963,16 @@ func (h *Handler) Search(c *gin.Context) {
 For typo-tolerant "search as you type", use trigram similarity on specific columns:
 
 ```sql
--- Optional: add trigram indexes for fuzzy headline/name search
-CREATE INDEX idx_submissions_headline_trgm ON submissions USING GIN (headline gin_trgm_ops);
-CREATE INDEX idx_profiles_name_trgm ON profiles USING GIN (display_name gin_trgm_ops);
+-- Trigram indexes for fuzzy search
+CREATE INDEX idx_profiles_name_trgm ON profiles USING GIN (profile_name gin_trgm_ops);
+CREATE INDEX idx_submissions_title_trgm ON submissions USING GIN (title gin_trgm_ops);
 ```
 
 ```go
 // Fuzzy search example (for autocomplete)
 var submissions []models.Submission
-h.db.Where("similarity(headline, ?) > 0.3", q).
-    Order("similarity(headline, ?) DESC", q).
+h.db.Where("similarity(title, ?) > 0.3", q).
+    Order("similarity(title, ?) DESC", q).
     Limit(10).
     Find(&submissions)
 ```
@@ -662,6 +1195,15 @@ func (h *Handler) StreamPipeline(c *gin.Context) {
             return false
         }
 
+        // Step 4: Embed
+        c.SSEvent("status", gin.H{"step": "embedding", "message": "Indexing for search..."})
+        c.Writer.Flush()
+        chunks := services.ChunkBlocks(article.Blocks, services.ChunkConfig{})
+        if err := h.embeddingService.EmbedChunks(c, submissionID, models.EntitySubmission, chunks); err != nil {
+            // Non-fatal — log but don't fail the pipeline
+            log.Printf("embedding failed for %s: %v", submissionID, err)
+        }
+
         // Done
         c.SSEvent("complete", gin.H{"article": article, "review": review})
         return false // close stream
@@ -822,6 +1364,403 @@ Two-request pattern with SSE for real-time progress:
 ```
 
 The full pipeline takes ~20-30 seconds. The frontend shows real-time step progress via the SSE stream. If any step fails, the submission is marked `failed` with an error message, and an error event is sent.
+
+---
+
+## Embedding System — Semantic Search & Similarity
+
+Complements the full-text search with vector similarity for "find articles like this" and semantic queries where keyword matching fails. Uses Gemini's embedding model via the Google GenAI Go SDK, with a two-stage retrieval pipeline: fast vector recall followed by cross-encoder reranking for precision.
+
+### Dependencies
+
+```
+// go.mod
+google.golang.org/genai              latest   // Gemini API (embeddings + cross-encoder reranking)
+github.com/pgvector/pgvector-go      latest   // pgvector Go bindings
+```
+
+### Environment Variables
+
+```bash
+GEMINI_API_KEY=...                     # Google AI API key
+EMBEDDING_MODEL=gemini-embedding-001   # default model
+EMBEDDING_DIMENSIONS=768               # 768 | 1536 | 3072 (768 = good quality/storage tradeoff)
+```
+
+### Architecture
+
+```
+Submission created/updated
+    │
+    ▼
+Semantic Chunker (split blocks into meaningful chunks)
+    │
+    ▼
+Gemini EmbedContent API (batch embed all chunks)
+    │
+    ▼
+pgvector (store + index)
+
+Query time:
+    User query → embed query → pgvector ANN recall (top 50) → cross-encoder rerank (top 10) → return
+```
+
+### Semantic-Aware Chunking (`internal/services/chunker.go`)
+
+Content blocks from `SubmissionMeta.Blocks` are not chunked naively by character count. The chunker respects content boundaries:
+
+```go
+package services
+
+// Chunk represents a semantically coherent piece of content.
+type Chunk struct {
+    Index int    // position in the original document
+    Text  string // chunk content
+    Type  string // source block type: "heading+body", "quote", "text"
+}
+
+// ChunkConfig controls chunking behavior.
+type ChunkConfig struct {
+    MaxTokens   int // soft limit per chunk (default 300)
+    OverlapSent int // sentence overlap between adjacent chunks (default 1)
+}
+
+// ChunkBlocks splits submission blocks into semantic chunks.
+func ChunkBlocks(blocks []models.Block, cfg ChunkConfig) []Chunk
+```
+
+**Chunking rules:**
+
+1. **Heading + following body** — a heading block and the text blocks immediately after it form one chunk. This preserves "section" semantics. If the combined text exceeds `MaxTokens`, split the body at sentence boundaries.
+2. **Quotes** — each quote block is its own chunk (attribution + quote text together). Quotes are short and semantically self-contained.
+3. **Consecutive text blocks** — merge until `MaxTokens` is reached, then split at the nearest sentence boundary. Adjacent chunks overlap by `OverlapSent` sentences so that context isn't lost at split points.
+4. **Media blocks** (image, audio, video) — skip for embedding. Captions and alt text are included as part of the surrounding text chunk.
+5. **Minimum chunk size** — chunks under 20 tokens are merged with the previous chunk rather than embedded standalone (avoids noisy short vectors).
+
+**Example:** A submission with `[heading, text, text, quote, text, heading, text]` blocks produces:
+
+```
+Chunk 0: "heading + text + text"     (section 1, merged)
+Chunk 1: "quote with attribution"    (standalone)
+Chunk 2: "text"                      (bridge paragraph)
+Chunk 3: "heading + text"            (section 2)
+```
+
+### Embedding Service (`internal/services/embedding.go`)
+
+```go
+package services
+
+import (
+    "context"
+    "google.golang.org/genai"
+    "github.com/pgvector/pgvector-go"
+)
+
+type EmbeddingService struct {
+    client     *genai.Client
+    model      string  // "gemini-embedding-001"
+    dimensions int32   // 768
+    db         *gorm.DB
+}
+
+func NewEmbeddingService(apiKey string, model string, dims int32, db *gorm.DB) (*EmbeddingService, error) {
+    client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
+        APIKey:  apiKey,
+        Backend: genai.BackendGeminiAPI,
+    })
+    if err != nil {
+        return nil, err
+    }
+    return &EmbeddingService{client: client, model: model, dimensions: dims, db: db}, nil
+}
+
+// EmbedChunks embeds a batch of chunks and stores them in the database.
+// Deletes any existing embeddings for the entity first (re-embed on update).
+func (s *EmbeddingService) EmbedChunks(ctx context.Context, entityID uuid.UUID, category int16, chunks []Chunk) error {
+    // Build contents for batch embedding
+    contents := make([]*genai.Content, len(chunks))
+    for i, chunk := range chunks {
+        contents[i] = genai.NewContentFromText(chunk.Text)
+    }
+
+    // Call Gemini embedding API
+    dims := s.dimensions
+    result, err := s.client.Models.EmbedContent(ctx, s.model, contents, &genai.EmbedContentConfig{
+        OutputDimensionality: &dims,
+        TaskType:             genai.TaskTypeRetrievalDocument,
+    })
+    if err != nil {
+        return fmt.Errorf("embed content: %w", err)
+    }
+
+    // Delete old embeddings for this entity
+    s.db.Where("entity_id = ? AND entity_category = ?", entityID, category).Delete(&models.Embedding{})
+
+    // Store new embeddings
+    embeddings := make([]models.Embedding, len(result.Embeddings))
+    for i, emb := range result.Embeddings {
+        embeddings[i] = models.Embedding{
+            EntityID:       entityID,
+            EntityCategory: category,
+            ChunkIndex:     int16(chunks[i].Index),
+            ChunkText:      chunks[i].Text,
+            Vector:         pgvector.NewVector(emb.Values),
+        }
+    }
+    return s.db.Create(&embeddings).Error
+}
+
+// EmbedQuery embeds a search query using the RETRIEVAL_QUERY task type.
+func (s *EmbeddingService) EmbedQuery(ctx context.Context, query string) (pgvector.Vector, error) {
+    dims := s.dimensions
+    result, err := s.client.Models.EmbedContent(ctx, s.model, []*genai.Content{
+        genai.NewContentFromText(query),
+    }, &genai.EmbedContentConfig{
+        OutputDimensionality: &dims,
+        TaskType:             genai.TaskTypeRetrievalQuery,
+    })
+    if err != nil {
+        return pgvector.Vector{}, err
+    }
+    return pgvector.NewVector(result.Embeddings[0].Values), nil
+}
+```
+
+**Task types used:**
+- `TaskTypeRetrievalDocument` — when embedding submission content (optimized for document storage)
+- `TaskTypeRetrievalQuery` — when embedding a user's search query (optimized for query matching)
+
+Using asymmetric task types improves retrieval quality — the model learns that queries are short/intent-driven while documents are longer/information-dense.
+
+### Cross-Encoder Reranking (`internal/services/reranker.go`)
+
+Vector similarity (ANN) is fast but approximate — it retrieves candidates based on geometric distance, which can miss nuance. A cross-encoder reranker takes the top-N candidates and scores each (query, document) pair jointly, capturing token-level interactions that bi-encoder embeddings lose.
+
+**Model:** [`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2) — 22.7M parameters, 6-layer MiniLM. Runs as a quantized ONNX model on CPU via [`onnxruntime_go`](https://github.com/yalue/onnxruntime_go). The int8-quantized ONNX file is ~80MB, scores 50 candidates in <100ms on a modern CPU.
+
+**Two-stage pipeline:** vector recall (fast, coarse) → cross-encoder rerank (slow, precise).
+
+**Setup:** Export the quantized ONNX model and tokenizer once:
+
+```bash
+# Download quantized model + tokenizer to backend/models/reranker/
+pip install optimum[onnxruntime]
+optimum-cli export onnx --model cross-encoder/ms-marco-MiniLM-L6-v2 \
+    --optimize O3 --device cpu backend/models/reranker/
+```
+
+Files needed at runtime:
+```
+backend/models/reranker/
+├── model.onnx            # quantized ONNX model (~80MB)
+├── tokenizer.json        # HuggingFace fast tokenizer
+└── special_tokens_map.json
+```
+
+**Dependencies:**
+
+```
+// go.mod
+github.com/yalue/onnxruntime_go   latest   // ONNX Runtime Go bindings
+github.com/AlanVerbner/go-tokenizer latest  // HuggingFace tokenizer in Go (or similar)
+```
+
+Also requires the ONNX Runtime shared library installed on the system:
+```bash
+# macOS
+brew install onnxruntime
+# Linux
+apt install libonnxruntime-dev  # or download from https://github.com/microsoft/onnxruntime/releases
+```
+
+```go
+package services
+
+import (
+    "sort"
+    ort "github.com/yalue/onnxruntime_go"
+)
+
+type RerankerService struct {
+    session   *ort.AdvancedSession
+    tokenizer *Tokenizer  // wraps tokenizer.json for WordPiece encoding
+    maxLen    int          // max token length (default 512)
+}
+
+type RankedResult struct {
+    EntityID       uuid.UUID
+    EntityCategory int16
+    ChunkText      string
+    Score          float64 // cross-encoder relevance score
+}
+
+func NewRerankerService(modelDir string) (*RerankerService, error) {
+    ort.SetSharedLibraryPath(findOrtLib()) // path to libonnxruntime.so / .dylib
+    if err := ort.InitializeEnvironment(); err != nil {
+        return nil, err
+    }
+
+    // Load ONNX model session
+    session, err := ort.NewAdvancedSession(
+        filepath.Join(modelDir, "model.onnx"),
+        []string{"input_ids", "attention_mask", "token_type_ids"},
+        []string{"logits"},
+        nil, // default session options (CPU)
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    tokenizer, err := LoadTokenizer(filepath.Join(modelDir, "tokenizer.json"))
+    if err != nil {
+        return nil, err
+    }
+
+    return &RerankerService{session: session, tokenizer: tokenizer, maxLen: 512}, nil
+}
+
+// Rerank scores each (query, chunk) pair through the cross-encoder
+// and returns the top-K results sorted by relevance.
+func (r *RerankerService) Rerank(query string, candidates []models.Embedding, topK int) ([]RankedResult, error) {
+    results := make([]RankedResult, len(candidates))
+
+    for i, cand := range candidates {
+        // Tokenize as a sentence pair: [CLS] query [SEP] document [SEP]
+        ids, mask, typeIDs := r.tokenizer.EncodePair(query, cand.ChunkText, r.maxLen)
+
+        // Create input tensors
+        inputIDs, _ := ort.NewTensor(ort.NewShape(1, int64(len(ids))), ids)
+        attnMask, _ := ort.NewTensor(ort.NewShape(1, int64(len(mask))), mask)
+        tokenTypes, _ := ort.NewTensor(ort.NewShape(1, int64(len(typeIDs))), typeIDs)
+        output, _ := ort.NewEmptyTensor[float32](ort.NewShape(1, 1))
+
+        // Run inference
+        err := r.session.Run(
+            []ort.ArbitraryTensor{inputIDs, attnMask, tokenTypes},
+            []ort.ArbitraryTensor{output},
+        )
+        inputIDs.Destroy()
+        attnMask.Destroy()
+        tokenTypes.Destroy()
+
+        score := float64(0)
+        if err == nil {
+            score = float64(output.GetData()[0])
+        }
+        output.Destroy()
+
+        results[i] = RankedResult{
+            EntityID:       cand.EntityID,
+            EntityCategory: cand.EntityCategory,
+            ChunkText:      cand.ChunkText,
+            Score:          score,
+        }
+    }
+
+    sort.Slice(results, func(i, j int) bool { return results[i].Score > results[j].Score })
+    if len(results) > topK {
+        results = results[:topK]
+    }
+    return results, nil
+}
+
+func (r *RerankerService) Close() {
+    r.session.Destroy()
+    ort.DestroyEnvironment()
+}
+```
+
+**Why this model:**
+- **22.7M params** — small enough for CPU, no GPU needed
+- **ONNX int8 quantized** — ~80MB, fits in memory on any server
+- **~2ms per pair** on CPU — 50 candidates reranked in <100ms
+- **MiniLM-L6** — 6 transformer layers, trained on MS MARCO passage ranking. Good enough for local news content where queries and documents share a language domain
+
+**Why a cross-encoder on top of vector search:**
+- Vector search finds chunks that are geometrically close to the query — good recall but can surface false positives (similar words, different meaning)
+- The cross-encoder sees query and document tokens together, understanding relationships like "school budgets" matching "education funding" even when few words overlap
+- Cost tradeoff: we only run the cross-encoder on 50 candidates, not the entire corpus. No API calls, no latency — it runs locally
+
+### Semantic Search Handler (`handlers/search.go`)
+
+Integrates with the existing search endpoint. When `mode=semantic` is passed, uses the two-stage vector + rerank pipeline instead of full-text search:
+
+```go
+// GET /api/search?q=...&mode=semantic&location_id=...&limit=10
+
+func (h *Handler) SemanticSearch(c *gin.Context) {
+    q := c.Query("q")
+    limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+    locationID := c.Query("location_id")
+
+    // Stage 1: Embed query
+    queryVec, err := h.embeddingService.EmbedQuery(c, q)
+    if err != nil {
+        c.JSON(500, gin.H{"error": "embedding failed"})
+        return
+    }
+
+    // Stage 2: ANN recall — top 50 candidates from pgvector
+    var candidates []models.Embedding
+    stmt := h.db.Order("embedding <=> ?", queryVec).Limit(50)
+    if locationID != "" {
+        // Join submissions to filter by location hierarchy
+        stmt = stmt.Joins("JOIN submissions ON submissions.id = embeddings.entity_id").
+            Where("embeddings.entity_category = ? AND (submissions.city_id = ? OR submissions.region_id = ? OR submissions.country_id = ?)",
+                models.EntitySubmission, locationID, locationID, locationID)
+    }
+    stmt.Find(&candidates)
+
+    // Stage 3: Cross-encoder rerank — top K
+    ranked, err := h.reranker.Rerank(c, q, candidates, limit)
+    if err != nil {
+        c.JSON(500, gin.H{"error": "reranking failed"})
+        return
+    }
+
+    c.JSON(200, ranked)
+}
+```
+
+### Pipeline Integration
+
+Embeddings are generated as part of the submission pipeline, after the article is generated and reviewed:
+
+```
+POST /api/submissions → save files → return { submission_id }
+GET  /api/submissions/{id}/stream → SSE connection:
+  → ElevenLabs transcribe → event: status "transcribing"
+  → Claude generate       → event: status "generating"
+  → Claude review         → event: status "reviewing"
+  → Gemini embed chunks   → event: status "embedding"
+  → save to DB            → event: complete { article, review }
+```
+
+The embedding step runs after review because it needs the final article content. It adds ~1-2 seconds to the pipeline.
+
+### When Embeddings Are Created / Updated
+
+| Event | Action |
+|-------|--------|
+| Pipeline completes (article generated) | Chunk + embed all blocks |
+| Article edited by contributor | Re-chunk + re-embed (delete old, insert new) |
+| Article deleted | Delete all embeddings for that entity |
+
+### Project Structure (additions)
+
+```
+backend/
+├── models/
+│   └── reranker/
+│       ├── model.onnx               # MiniLM-L6 quantized ONNX (~80MB, not in git)
+│       ├── tokenizer.json           # HuggingFace fast tokenizer
+│       └── special_tokens_map.json
+├── internal/services/
+│   ├── chunker.go                   # semantic-aware block chunking
+│   ├── embedding.go                 # Gemini embedding + pgvector storage
+│   └── reranker.go                  # ONNX cross-encoder reranking (CPU)
+```
 
 ---
 
