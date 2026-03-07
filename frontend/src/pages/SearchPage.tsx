@@ -71,7 +71,7 @@ export default function SearchPage() {
       });
   }, [sessionId, currentChunk, totalChunks]);
 
-  const hasMore = currentChunk < totalChunks;
+  const hasMore = currentChunk < totalChunks - 1;
 
   return (
     <>
@@ -112,8 +112,8 @@ export default function SearchPage() {
               ))}
             </div>
 
-            {hasMore && (
-              <div className="search-load-more">
+            <div className="search-load-more">
+              {hasMore ? (
                 <button
                   className="btn btn-secondary"
                   onClick={loadMore}
@@ -128,8 +128,10 @@ export default function SearchPage() {
                     t("search.loadMore")
                   )}
                 </button>
-              </div>
-            )}
+              ) : (
+                <p className="search-end-message">{t("search.noMoreResults")}</p>
+              )}
+            </div>
           </>
         )}
       </main>
