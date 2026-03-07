@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Loader2, SearchX } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
+import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import { search, searchSessionChunk } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
@@ -132,7 +133,7 @@ export default function SearchPage() {
           </>
         )}
       </main>
-
+      <Footer />
       <div className="home-fade-bottom" />
       <BottomBar />
     </>

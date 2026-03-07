@@ -3,7 +3,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
+import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
+import FilterChips from "@/components/FilterChips";
+import type { FilterChip } from "@/components/FilterChips";
 import { useApi } from "@/hooks/useApi.ts";
 import { getArticles, getLocations } from "@/lib/api.ts";
 import { apiToArticle } from "@/lib/types.ts";
@@ -276,7 +279,7 @@ function NewsSection({
 }
 
 export default function HomePage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { language, t } = useLanguage();
   const locationSlug = searchParams.get("location");
 
@@ -290,7 +293,11 @@ export default function HomePage() {
   );
 
   const selectedLocation = locations.find((l) => l.slug === locationSlug);
-  const savedLocationIds = useMemo(() => getSavedLocationIds(), []);
+  const [savedLocIds, setSavedLocIds] = useState(() => getSavedLocationIds());
+  const regionLocationIds = useMemo(
+    () => locations.filter((l) => l.article_count > 0).map((l) => l.id),
+    [locations],
+  );
 
   // Fetch articles, filtered by location when one is selected
   const fetchArticles = useCallback(
@@ -298,18 +305,55 @@ export default function HomePage() {
       if (selectedLocation) {
         return getArticles({ limit: 100, location_id: selectedLocation.id });
       }
-      if (savedLocationIds.length > 0) {
-        return getArticles({ limit: 100, location_ids: savedLocationIds });
+      if (savedLocIds.length > 0) {
+        return getArticles({ limit: 100, location_ids: savedLocIds });
+      }
+      if (regionLocationIds.length > 0) {
+        return getArticles({ limit: 100, location_ids: regionLocationIds });
       }
       return getArticles({ limit: 100 });
     },
-    [selectedLocation?.id, savedLocationIds],
+    [selectedLocation?.id, savedLocIds, regionLocationIds],
   );
-  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id, savedLocationIds]);
+  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id, savedLocIds, regionLocationIds]);
   const allArticles = useMemo(
     () => (apiData?.articles ?? []).map((a) => apiToArticle(a, t)),
     [apiData, t],
   );
+
+  // Build filter chips from active location filters
+  const filterChips = useMemo(() => {
+    const chips: FilterChip[] = [];
+    if (selectedLocation) {
+      chips.push({ type: "location", id: selectedLocation.id, label: selectedLocation.name });
+    } else if (savedLocIds.length > 0) {
+      for (const locId of savedLocIds) {
+        const loc = locations.find((l) => l.id === locId);
+        if (loc) chips.push({ type: "location", id: loc.id, label: loc.name });
+      }
+    }
+    return chips;
+  }, [selectedLocation, savedLocIds, locations]);
+
+  const handleRemoveChip = useCallback((chip: FilterChip) => {
+    if (chip.type === "location") {
+      if (selectedLocation && chip.id === selectedLocation.id) {
+        searchParams.delete("location");
+        setSearchParams(searchParams);
+      } else {
+        const updated = savedLocIds.filter((id) => id !== chip.id);
+        localStorage.setItem("selected_locations", JSON.stringify(updated));
+        setSavedLocIds(updated);
+      }
+    }
+  }, [selectedLocation, savedLocIds, searchParams, setSearchParams]);
+
+  const handleClearAll = useCallback(() => {
+    searchParams.delete("location");
+    setSearchParams(searchParams);
+    localStorage.setItem("selected_locations", JSON.stringify([]));
+    setSavedLocIds([]);
+  }, [searchParams, setSearchParams]);
 
   const recentArticles = allArticles.slice(0, 10);
   const bestOfWeek = useMemo(
@@ -328,6 +372,7 @@ export default function HomePage() {
   return (
     <>
       <Navbar />
+      <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
 
       <nav className="city-bar">
         <div className="city-bar__scroll">
@@ -370,19 +415,36 @@ export default function HomePage() {
             <RecentSection articles={recentArticles} t={t} />
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <BestOfWeekSection articles={bestOfWeek} t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <OpinionSection articles={opinionArticles} t={t} />
+            {bestOfWeek.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <BestOfWeekSection articles={bestOfWeek} t={t} />
+              </>
+            )}
+            {opinionArticles.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <OpinionSection articles={opinionArticles} t={t} />
+              </>
+            )}
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <EventsSection articles={eventArticles} t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <NewsSection headlines={newsHeadlines} featured={newsFeatured} t={t} />
+            {eventArticles.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <EventsSection articles={eventArticles} t={t} />
+              </>
+            )}
+            {(newsHeadlines.length > 0 || newsFeatured.length > 0) && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <NewsSection headlines={newsHeadlines} featured={newsFeatured} t={t} />
+              </>
+            )}
           </>
         )}
       </main>
+      <Footer />
       <div className="home-fade-bottom" />
       <BottomBar />
     </>

@@ -33,6 +33,9 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "home.loadError": "Artikkeleiden lataus epäonnistui. Yritä myöhemmin uudelleen.",
     "home.noArticles": "Ei artikkeleita vielä. Ole ensimmäinen kirjoittaja!",
 
+    // Filter chips
+    "filter.clearAll": "Tyhjennä kaikki",
+
     // Login
     "login.title": "PORT",
     "login.subtitle": "Kirjaudu sisään",
@@ -207,6 +210,15 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "editor.currentVersion": "Nykyinen versio",
     "editor.previousVersion": "Edellinen versio",
 
+    // Footer
+    "footer.desc": "Tekoalyllä toimiva paikallinen uutisalusta. Kansalaiset kertovat, me kirjoitamme.",
+    "footer.navigate": "Navigointi",
+    "footer.about": "Tietoa",
+    "footer.contact": "Ota yhteyttä",
+    "footer.terms": "Käyttöehdot",
+    "footer.privacy": "Tietosuoja",
+    "footer.madeWith": "Tehty Suomessa",
+
     // Time
     "time.minutesAgo": "{n}min sitten",
     "time.hoursAgo": "{n}h sitten",
@@ -247,6 +259,9 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "home.advertisement": "Advertisement",
     "home.loadError": "Failed to load articles. Please try again later.",
     "home.noArticles": "No articles yet. Be the first to contribute!",
+
+    // Filter chips
+    "filter.clearAll": "Clear all",
 
     // Login
     "login.title": "PORT",
@@ -421,6 +436,15 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "editor.versionLabel": "Version {n}",
     "editor.currentVersion": "Current version",
     "editor.previousVersion": "Previous version",
+
+    // Footer
+    "footer.desc": "AI-powered local news platform. Citizens report, we write.",
+    "footer.navigate": "Navigate",
+    "footer.about": "About",
+    "footer.contact": "Contact",
+    "footer.terms": "Terms of Service",
+    "footer.privacy": "Privacy Policy",
+    "footer.madeWith": "Made in Finland",
 
     // Time
     "time.minutesAgo": "{n}m ago",
