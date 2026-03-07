@@ -144,6 +144,8 @@ textarea.input {
 .badge-events    { background: #5C4C1610; color: var(--color-cat-events); }
 .badge-sports    { background: #5C1A1A10; color: var(--color-cat-sports); }
 .badge-community { background: #451A3810; color: var(--color-cat-community); }
+.badge-opinion   { background: #3B2D5C10; color: var(--color-cat-opinion); }
+.badge-news      { background: #2A3A4A10; color: var(--color-cat-news); }
 
 /* ========================================
    REVIEW FLAGS

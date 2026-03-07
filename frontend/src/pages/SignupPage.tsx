@@ -1,14 +1,23 @@
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import Navbar from "@/components/Navbar";
 import "./LoginPage.css";
 
 export default function SignupPage() {
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-masthead">The Local Herald</h1>
-          <p className="auth-subtitle">Create your account</p>
-        </div>
+    <>
+      <Navbar
+        left={
+          <Link to="/" className="home-nav__icon-btn" title="Back">
+            <ArrowLeft size={18} />
+          </Link>
+        }
+      />
+      <div className="auth-page">
+        <div className="auth-card">
+          <div className="auth-header">
+            <p className="auth-subtitle">Create your account</p>
+          </div>
 
         <form className="auth-form" onSubmit={(e) => e.preventDefault()}>
           <div className="auth-field">
@@ -69,5 +78,6 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

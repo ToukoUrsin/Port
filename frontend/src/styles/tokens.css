@@ -38,7 +38,7 @@
   /* ========================================
      COLORS — Surface & Background
      ======================================== */
-  --color-bg:            #FFFFFF;
+  --color-bg:            #F7F6F3;
   --color-bg-secondary:  #FAFAF8;
   --color-bg-tertiary:   #F4F4F1;
   --color-surface:       #FFFFFF;
@@ -65,6 +65,8 @@
   --color-cat-events:    #5C4C16;
   --color-cat-sports:    #5C1A1A;
   --color-cat-community: #451A38;
+  --color-cat-opinion:   #3B2D5C;
+  --color-cat-news:      #2A3A4A;
 
   /* ========================================
      TYPOGRAPHY

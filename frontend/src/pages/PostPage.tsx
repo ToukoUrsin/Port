@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Upload, ArrowLeft, Send, X, Loader2, Image, FileAudio,
-  FileVideo, File, CheckCircle, GripVertical, Move, Type, Heading2, Plus,
+  ArrowLeft, ArrowUp, Send, X, Loader2, Image,
+  CheckCircle, GripVertical, Move, Type, Heading2, Plus, MapPin, Sparkles,
 } from "lucide-react";
+import Navbar from "@/components/Navbar";
+import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
 
 const AI_ARTICLE = {
@@ -79,11 +81,16 @@ function LocationInput({ value, onChange }: { value: string; onChange: (v: strin
   );
 }
 
-// ─── Step 1: Input ─────────────────────────────────────────
+// ─── Step 1: Conversational input ───────────────────────────
 function InputStep({ onSubmit }: { onSubmit: () => void }) {
+  const [text, setText] = useState("");
   const [location, setLocation] = useState("");
+  const [showLocation, setShowLocation] = useState(false);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { textRef.current?.focus(); }, []);
 
   function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const sel = e.target.files;
@@ -99,13 +106,6 @@ function InputStep({ onSubmit }: { onSubmit: () => void }) {
     setFiles((p) => { if (p[i].preview) URL.revokeObjectURL(p[i].preview); return p.filter((_, j) => j !== i); });
   }
 
-  function icon(type: string) {
-    if (type.startsWith("image/")) return <Image size={16} />;
-    if (type.startsWith("audio/")) return <FileAudio size={16} />;
-    if (type.startsWith("video/")) return <FileVideo size={16} />;
-    return <File size={16} />;
-  }
-
   function typeLabel(type: string) {
     if (type.startsWith("image/")) return "IMG";
     if (type.startsWith("audio/")) return "AUD";
@@ -114,63 +114,76 @@ function InputStep({ onSubmit }: { onSubmit: () => void }) {
     return ext?.slice(0, 3) || "FILE";
   }
 
-  function size(b: number) {
-    if (b < 1024) return `${b} B`;
-    if (b < 1048576) return `${(b / 1024).toFixed(0)} KB`;
-    return `${(b / 1048576).toFixed(1)} MB`;
-  }
+  const canSubmit = text.trim().length > 0 || files.length > 0;
 
   return (
     <>
-      <header className="post-header">
-        <Link to="/" className="post-back"><ArrowLeft size={20} /><span>Back</span></Link>
-        <h1 className="post-title">Submit a Story</h1>
-      </header>
-      <form className="post-form" onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
-        {/* Attachments first */}
-        <div className="post-field">
-          <label>Attachments</label>
-          <div className="post-upload-card">
-            <div className="post-dropzone" onClick={() => fileRef.current?.click()}>
-              <Upload size={22} />
-              <span className="post-dropzone-text">Drop your files here or browse</span>
-              <span className="post-dropzone-hint">Images, audio, video</span>
+      <div className="compose">
+        <h1 className="compose-prompt">What happened?</h1>
+        <p className="compose-hint">Tell us in your own words. Add photos, audio, or video if you have them.</p>
+
+        <form className="compose-form" onSubmit={(e) => { e.preventDefault(); if (canSubmit) onSubmit(); }}>
+          {/* File thumbnails */}
+          {files.length > 0 && (
+            <div className="compose-files">
+              {files.map((f, i) => (
+                <div key={i} className="compose-file">
+                  {f.preview ? (
+                    <img src={f.preview} alt={f.file.name} className="compose-file-thumb" />
+                  ) : (
+                    <div className="compose-file-badge">
+                      {typeLabel(f.file.type)}
+                    </div>
+                  )}
+                  <button type="button" className="compose-file-remove" onClick={() => removeFile(i)}>
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Main text area */}
+          <textarea
+            ref={textRef}
+            className="compose-textarea"
+            placeholder="A pipe burst on Elm Street and the road is flooded..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+
+          {/* Location chip (optional) */}
+          {showLocation ? (
+            <div className="compose-location">
+              <MapPin size={14} />
+              <LocationInput value={location} onChange={setLocation} />
+              <button type="button" className="compose-location-close" onClick={() => { setShowLocation(false); setLocation(""); }}>
+                <X size={14} />
+              </button>
+            </div>
+          ) : null}
+
+          {/* Bottom toolbar */}
+          <div className="compose-toolbar">
+            <div className="compose-actions">
+              <button type="button" className="compose-action" onClick={() => fileRef.current?.click()}>
+                <Image size={20} />
+              </button>
+              <button
+                type="button"
+                className={`compose-action ${showLocation ? "compose-action--active" : ""}`}
+                onClick={() => setShowLocation(!showLocation)}
+              >
+                <MapPin size={20} />
+              </button>
             </div>
             <input ref={fileRef} type="file" accept="image/*,audio/*,video/*" multiple style={{ display: "none" }} onChange={onFiles} />
-            {files.length > 0 && (
-              <>
-                <div className="post-files-header">Uploads</div>
-                <div className="post-files">
-                  {files.map((f, i) => (
-                    <div key={i} className="post-file">
-                      <span className="post-file-badge">{typeLabel(f.file.type)}</span>
-                      <div className="post-file-info">
-                        <span className="post-file-name">{f.file.name}</span>
-                        <span className="post-file-size">{size(f.file.size)}</span>
-                      </div>
-                      <button type="button" className="post-file-remove" onClick={() => removeFile(i)}><X size={14} /></button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+            <button type="submit" className="compose-submit" disabled={!canSubmit}>
+              <ArrowUp size={20} />
+            </button>
           </div>
-        </div>
-
-        {/* Location second */}
-        <div className="post-field">
-          <label htmlFor="location">Location</label>
-          <LocationInput value={location} onChange={setLocation} />
-        </div>
-
-        {/* Details last */}
-        <div className="post-field">
-          <label htmlFor="details">Details</label>
-          <textarea id="details" className="input" placeholder="Share what you know — who, what, where, when..." rows={5} />
-        </div>
-
-        <button type="submit" className="btn btn-primary btn-lg"><Send size={18} /> Submit Story</button>
-      </form>
+        </form>
+      </div>
     </>
   );
 }
@@ -391,6 +404,29 @@ function SlashMenu({
   );
 }
 
+// ─── AI edit responses (hardcoded for demo) ─────────────────
+const AI_EDITS: Record<string, { headline: string; body: string }> = {
+  shorter: {
+    headline: "New Community Park Approved for Elm Street",
+    body: `Riverside City Council unanimously approved a new 2.5-acre park at 412 Elm Street, featuring a playground, walking trails, and amphitheater.\n\nConstruction begins this summer with a fall opening, funded by $1.8M in city bonds and state grants. Sign up for the planning committee at the city website.`,
+  },
+  formal: {
+    headline: "Riverside City Council Unanimously Approves Elm Street Community Park Development",
+    body: `In a unanimous decision during Tuesday evening's regular session, the Riverside City Council approved Resolution 2026-47 authorizing the construction of a municipal community park on the currently vacant parcel at 412 Elm Street.\n\nThe approved plan encompasses 2.5 acres and includes a children's recreational area, paved walking trails, a 200-seat amphitheater for municipal and community programming, and an engineered rain garden for neighborhood stormwater management.\n\n"This has been a long time coming," stated Council Member Maria Torres, the resolution's primary sponsor. "Families in this part of town have been requesting dedicated green space for over a decade."\n\nThe project timeline anticipates groundbreaking in early summer 2026, with public access targeted for autumn. Funding is secured through a combination of municipal bonds and a State Department of Recreation grant, totaling $1.8 million.\n\nResidents interested in participating in the park planning committee may register through the city's official website or attend the upcoming town hall meeting scheduled for March 20.`,
+  },
+  default: {
+    headline: "Elm Street Gets a New Park — Here's What to Know",
+    body: `Great news for Riverside residents: the city council just greenlit a brand-new community park on Elm Street.\n\nThe 2.5-acre space at 412 Elm Street will feature a kids' playground, walking trails, a small amphitheater, and a rain garden to help with stormwater in the area.\n\nCouncil Member Maria Torres, who championed the project, called it "a long time coming" — noting that local families have wanted green space in the neighborhood for over ten years.\n\nThe park is expected to break ground this summer and open by fall, with $1.8 million in funding from city bonds and a state recreation grant.\n\nWant to get involved? Sign up for the park planning committee on the city website or show up to the March 20 town hall.`,
+  },
+};
+
+function matchAiEdit(prompt: string): { headline: string; body: string } {
+  const p = prompt.toLowerCase();
+  if (p.includes("short") || p.includes("concise") || p.includes("brief")) return AI_EDITS.shorter;
+  if (p.includes("formal") || p.includes("professional") || p.includes("official")) return AI_EDITS.formal;
+  return AI_EDITS.default;
+}
+
 // ─── Step 3: Preview & edit (Notion-style) ─────────────────
 function PreviewStep() {
   const navigate = useNavigate();
@@ -398,6 +434,23 @@ function PreviewStep() {
   const [blocks, setBlocks] = useState<Block[]>(() => initBlocks(AI_ARTICLE.body));
   const [publishing, setPublishing] = useState(false);
   const [slashMenu, setSlashMenu] = useState<{ blockId: string; query: string; top: number; left: number } | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiInputRef = useRef<HTMLInputElement>(null);
+
+  function handleAiEdit(override?: string) {
+    const prompt = override ?? aiPrompt;
+    if (!prompt.trim() || aiLoading) return;
+    setAiPrompt(prompt);
+    setAiLoading(true);
+    setTimeout(() => {
+      const result = matchAiEdit(prompt);
+      setHeadline(result.headline);
+      setBlocks(initBlocks(result.body));
+      setAiPrompt("");
+      setAiLoading(false);
+    }, 1500);
+  }
 
   const slashFiltered = slashMenu
     ? SLASH_COMMANDS.filter((cmd) =>
@@ -458,6 +511,48 @@ function PreviewStep() {
     <div className="editor" style={{ animation: "fadeIn 0.4s ease", position: "relative" }}>
       {/* Cover image */}
       <CoverImage />
+
+      {/* AI edit bar — sticky below cover */}
+      <div className="ai-bar">
+        <div className={`ai-bar-input-wrap ${aiLoading ? "ai-bar--loading" : ""}`}>
+          <Sparkles size={16} className="ai-bar-icon" />
+          <input
+            ref={aiInputRef}
+            className="ai-bar-input"
+            placeholder="Ask AI to edit — shorter, more formal..."
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAiEdit(); }}
+            disabled={aiLoading}
+          />
+          {aiLoading ? (
+            <Loader2 size={16} className="ai-bar-spinner spin" />
+          ) : (
+            <button
+              type="button"
+              className="ai-bar-send"
+              disabled={!aiPrompt.trim()}
+              onClick={handleAiEdit}
+            >
+              <ArrowUp size={16} />
+            </button>
+          )}
+        </div>
+        {!aiLoading && !aiPrompt && (
+          <div className="ai-bar-chips">
+            {["Shorter", "More formal", "Simpler language", "Add details"].map((label) => (
+              <button
+                key={label}
+                type="button"
+                className="ai-bar-chip"
+                onClick={() => handleAiEdit(label)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Content area */}
       <div className="editor-content">
@@ -538,10 +633,14 @@ export default function PostPage() {
   const [step, setStep] = useState<FlowStep>("input");
 
   return (
-    <div className={`post-page ${step === "processing" ? "post-page--centered" : ""}`}>
-      {step === "input" && <InputStep onSubmit={() => setStep("processing")} />}
-      {step === "processing" && <ProcessingStep onDone={() => setStep("preview")} />}
-      {step === "preview" && <PreviewStep />}
-    </div>
+    <>
+      <Navbar />
+      <div className={`post-page ${step === "processing" ? "post-page--centered" : ""}`}>
+        {step === "input" && <InputStep onSubmit={() => setStep("processing")} />}
+        {step === "processing" && <ProcessingStep onDone={() => setStep("preview")} />}
+        {step === "preview" && <PreviewStep />}
+      </div>
+      <BottomBar />
+    </>
   );
 }

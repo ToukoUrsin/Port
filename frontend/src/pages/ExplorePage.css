@@ -4,8 +4,14 @@
 
 .explore {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 49px - 56px);
   overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .explore {
+    height: calc(100vh - 49px);
+  }
 }
 
 /* Left panel — article list */
@@ -207,6 +213,17 @@
   padding-top: var(--space-2);
 }
 
+.explore-card__author-link {
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.explore-card__author-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
 /* Map area markers */
 .explore-area-marker {
   display: flex;
@@ -242,7 +259,7 @@
 .explore__map-toggle {
   display: flex;
   position: fixed;
-  bottom: var(--space-6);
+  bottom: calc(56px + var(--space-4));
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;

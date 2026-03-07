@@ -1,114 +1,26 @@
 import { useState, useEffect, useRef } from "react";
-import { NavLink } from "react-router-dom";
-import { Clock, ImageIcon, ChevronDown, MapPin, X, User } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Clock, ImageIcon, ChevronDown, MapPin, X } from "lucide-react";
+import Navbar from "@/components/Navbar";
+import BottomBar from "@/components/BottomBar";
+import { ARTICLES, BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
 import "./HomePage.css";
 
-interface Article {
-  id: number;
-  title: string;
-  excerpt: string;
-  category: string;
-  author: string;
-  timeAgo: string;
-  image: string;
-  isLead?: boolean;
-}
-
-const TODAY_ARTICLES: Article[] = [
-  {
-    id: 1,
-    title: "City Council Approves New Downtown Revitalization Plan",
-    excerpt:
-      "The $12M initiative aims to transform vacant lots into mixed-use spaces, with construction expected to begin this fall. Residents voiced support during Tuesday's packed public hearing.",
-    category: "council",
-    author: "Maria Santos",
-    timeAgo: "2 hours ago",
-    image: "https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800&h=500&fit=crop",
-    isLead: true,
-  },
-  {
-    id: 2,
-    title: "Lincoln High Robotics Team Heads to State Championship",
-    excerpt:
-      "After an undefeated regional season, the team will compete against 40 schools next month in Austin.",
-    category: "schools",
-    author: "James Liu",
-    timeAgo: "4 hours ago",
-    image: "https://images.unsplash.com/photo-1561557944-6e7860d1a7eb?w=600&h=400&fit=crop",
-  },
-  {
-    id: 3,
-    title: "Local Bakery Expands to Second Location on Main Street",
-    excerpt:
-      "Sweet Rise Bakery will open its new storefront in the former hardware store space, creating 15 new jobs.",
-    category: "business",
-    author: "Ana Gutierrez",
-    timeAgo: "5 hours ago",
-    image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop",
-  },
-  {
-    id: 4,
-    title: "Weekend Farmers Market Adds Evening Hours for Summer",
-    excerpt:
-      "Starting in June, the market will stay open until 8 PM on Thursdays to accommodate working families.",
-    category: "events",
-    author: "Tom Bradley",
-    timeAgo: "6 hours ago",
-    image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=600&h=400&fit=crop",
-  },
-];
-
-const WEEK_ARTICLES: Article[] = [
-  {
-    id: 5,
-    title: "Community Garden Project Breaks Ground in East Side Park",
-    excerpt:
-      "Volunteers gathered Saturday to build 40 raised beds, with plots available to residents on a first-come basis.",
-    category: "community",
-    author: "Priya Sharma",
-    timeAgo: "2 days ago",
-    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&h=400&fit=crop",
-  },
-  {
-    id: 6,
-    title: "High School Soccer Team Wins Regional Finals in Overtime",
-    excerpt:
-      "A last-minute goal from sophomore Daniela Cruz sealed the victory, sending the team to state playoffs.",
-    category: "sports",
-    author: "Marcus Johnson",
-    timeAgo: "3 days ago",
-    image: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=600&h=400&fit=crop",
-  },
-  {
-    id: 7,
-    title: "Water Main Replacement Project Starts Next Week on Oak Avenue",
-    excerpt:
-      "Expect lane closures and detours for approximately six weeks as aging infrastructure is replaced.",
-    category: "council",
-    author: "Sarah Chen",
-    timeAgo: "4 days ago",
-    image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&h=400&fit=crop",
-  },
-  {
-    id: 8,
-    title: "New After-School Program Launches at Three Elementary Schools",
-    excerpt:
-      "The free program offers tutoring, arts, and sports activities until 6 PM for working families.",
-    category: "schools",
-    author: "James Liu",
-    timeAgo: "5 days ago",
-    image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&h=400&fit=crop",
-  },
-];
-
-const BADGE_CLASS: Record<string, string> = {
-  council: "badge-council",
-  schools: "badge-schools",
-  business: "badge-business",
-  events: "badge-events",
-  sports: "badge-sports",
-  community: "badge-community",
-};
+const RECENT_ARTICLES = ARTICLES.filter((a) =>
+  ["2 hours ago", "4 hours ago", "5 hours ago", "8 hours ago", "10 hours ago", "12 hours ago"].includes(a.timeAgo)
+);
+const BEST_OF_WEEK = [...ARTICLES]
+  .filter((a) => a.image)
+  .sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+  .slice(0, 5);
+const OPINION_ARTICLES = ARTICLES.filter((a) => a.category === "opinion");
+const EVENT_ARTICLES = ARTICLES.filter((a) => a.category === "events");
+const NEWS_HEADLINES = ARTICLES.filter((a) =>
+  ["council", "news", "community"].includes(a.category) && !a.image
+);
+const NEWS_WITH_IMAGES = ARTICLES.filter((a) =>
+  ["council", "news", "community"].includes(a.category) && !!a.image
+);
 
 const RADIUS_OPTIONS = [5, 10, 25, 50, 100];
 
@@ -302,11 +214,17 @@ function LocationModal({
   );
 }
 
-const INITIAL_COUNT = 2;
+/* ========================================
+   CARD VARIANTS
+   ======================================== */
 
 function ArticleCard({ article, featured }: { article: Article; featured?: boolean }) {
   return (
-    <article className={`card article-card ${article.isLead ? "article-card--lead" : ""} ${featured ? "article-card--featured" : ""}`}>
+    <Link
+      to={`/article/${article.id}`}
+      className={`card article-card ${article.isLead ? "article-card--lead" : ""} ${featured ? "article-card--featured" : ""}`}
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
       <div className="article-card__img">
         {article.image ? (
           <img src={article.image} alt={article.title} />
@@ -325,34 +243,156 @@ function ArticleCard({ article, featured }: { article: Article; featured?: boole
         <h2 className="article-card__title">{article.title}</h2>
         <p className="article-card__excerpt">{article.excerpt}</p>
         <div className="article-card__footer">
-          <span>{article.author}</span>
+          <Link
+            to={`/profile/${authorSlug(article.author)}`}
+            className="article-card__author-link"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {article.author}
+          </Link>
           <span>&middot;</span>
           <Clock size={12} />
           <span>{article.timeAgo}</span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 
-function ArticleSection({
-  title,
-  articles,
-}: {
-  title: string;
-  articles: Article[];
-}) {
+function RankedCard({ article, rank }: { article: Article; rank: number }) {
+  return (
+    <Link
+      to={`/article/${article.id}`}
+      className="ranked-card"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      <span className="ranked-card__rank">{rank}</span>
+      <div className="ranked-card__thumb">
+        {article.image ? (
+          <img src={article.image} alt={article.title} />
+        ) : (
+          <div className="ranked-card__thumb-placeholder">
+            <ImageIcon size={16} />
+          </div>
+        )}
+      </div>
+      <div className="ranked-card__body">
+        <div className="ranked-card__meta">
+          <span className={`badge ${BADGE_CLASS[article.category]}`}>
+            {article.category}
+          </span>
+        </div>
+        <h3 className="ranked-card__title">{article.title}</h3>
+        <div className="ranked-card__footer">
+          <span>{article.author}</span>
+          <span>&middot;</span>
+          <Clock size={11} />
+          <span>{article.timeAgo}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function OpinionCard({ article }: { article: Article }) {
+  return (
+    <Link
+      to={`/article/${article.id}`}
+      className="card opinion-card"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      <div className="opinion-card__body">
+        <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          {article.category}
+        </span>
+        <h2 className="opinion-card__title">{article.title}</h2>
+        <p className="opinion-card__excerpt">{article.excerpt}</p>
+        <div className="opinion-card__author">
+          <div className="opinion-card__avatar">
+            {article.author.split(" ").map(n => n[0]).join("")}
+          </div>
+          <div>
+            <span className="opinion-card__name">{article.author}</span>
+            <span className="opinion-card__time">{article.timeAgo}</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function EventCard({ article }: { article: Article }) {
+  return (
+    <Link
+      to={`/article/${article.id}`}
+      className="card event-card"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      {article.image && (
+        <div className="event-card__img">
+          <img src={article.image} alt={article.title} />
+        </div>
+      )}
+      <div className="event-card__body">
+        <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          {article.category}
+        </span>
+        <h3 className="event-card__title">{article.title}</h3>
+        <p className="event-card__excerpt">{article.excerpt}</p>
+        <div className="event-card__footer">
+          <MapPin size={12} />
+          <span>{article.area}</span>
+          <span>&middot;</span>
+          <Clock size={12} />
+          <span>{article.timeAgo}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function HeadlineItem({ article }: { article: Article }) {
+  return (
+    <Link
+      to={`/article/${article.id}`}
+      className="headline-item"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      <div className="headline-item__content">
+        <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          {article.category}
+        </span>
+        <h3 className="headline-item__title">{article.title}</h3>
+        <p className="headline-item__excerpt">{article.excerpt}</p>
+      </div>
+      <div className="headline-item__meta">
+        <span>{article.author}</span>
+        <span>&middot;</span>
+        <Clock size={11} />
+        <span>{article.timeAgo}</span>
+      </div>
+    </Link>
+  );
+}
+
+/* ========================================
+   SECTION LAYOUTS
+   ======================================== */
+
+const INITIAL_COUNT = 2;
+
+function RecentSection({ articles }: { articles: Article[] }) {
   const [expanded, setExpanded] = useState(false);
-  const lead = articles.find((a) => a.isLead);
-  const rest = articles.filter((a) => !a.isLead);
+  const lead = articles[0];
+  const rest = articles.slice(1);
   const visible = expanded ? rest : rest.slice(0, INITIAL_COUNT);
   const hasMore = rest.length > INITIAL_COUNT;
 
   return (
     <section className="home-section">
-      <h2 className="home-section__title">{title}</h2>
+      <h2 className="home-section__title">Recent</h2>
       <div className="article-grid">
-        {lead && <ArticleCard article={lead} />}
+        {lead && <ArticleCard article={{ ...lead, isLead: true }} />}
         {lead && visible.length > 0 && <hr className="home-divider" />}
         {visible.map((article, i) => (
           <ArticleCard key={article.id} article={article} featured={i === 0} />
@@ -370,22 +410,82 @@ function ArticleSection({
   );
 }
 
+function BestOfWeekSection({ articles }: { articles: Article[] }) {
+  return (
+    <section className="home-section">
+      <h2 className="home-section__title">Best of the Week</h2>
+      <div className="ranked-list">
+        {articles.map((article, i) => (
+          <RankedCard key={article.id} article={article} rank={i + 1} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function OpinionSection({ articles }: { articles: Article[] }) {
+  return (
+    <section className="home-section">
+      <h2 className="home-section__title">Opinions</h2>
+      <div className="opinion-grid">
+        {articles.map((article) => (
+          <OpinionCard key={article.id} article={article} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function EventsSection({ articles }: { articles: Article[] }) {
+  return (
+    <section className="home-section">
+      <h2 className="home-section__title">Events</h2>
+      <div className="events-grid">
+        {articles.map((article) => (
+          <EventCard key={article.id} article={article} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function NewsSection({
+  headlines,
+  featured,
+}: {
+  headlines: Article[];
+  featured: Article[];
+}) {
+  return (
+    <section className="home-section">
+      <h2 className="home-section__title">News</h2>
+      <div className="news-layout">
+        <div className="news-layout__headlines">
+          {headlines.map((article) => (
+            <HeadlineItem key={article.id} article={article} />
+          ))}
+        </div>
+        {featured.length > 0 && (
+          <div className="news-layout__featured">
+            {featured.slice(0, 2).map((article) => (
+              <ArticleCard key={article.id} article={article} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState(25);
-  const [modalOpen, setModalOpen] = useState(true);
-
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <>
-      <nav className="home-nav">
-        <div className="home-nav__left">
+      <Navbar
+        left={
           <button
             className="home-nav__icon-btn"
             onClick={() => setModalOpen(true)}
@@ -393,21 +493,8 @@ export default function HomePage() {
           >
             <MapPin size={18} />
           </button>
-        </div>
-
-        <NavLink to="/" className="home-nav__brand" end>
-          The Local Herald
-        </NavLink>
-
-        <div className="home-nav__right">
-          <NavLink to="/explore" className="home-nav__icon-btn" title="Explore">
-            <Clock size={18} />
-          </NavLink>
-          <NavLink to="/login" className="home-nav__icon-btn" title="Profile">
-            <User size={18} />
-          </NavLink>
-        </div>
-      </nav>
+        }
+      />
 
       <LocationModal
         open={modalOpen}
@@ -419,10 +506,14 @@ export default function HomePage() {
       />
 
       <main className="home-container">
-        <ArticleSection title="Today" articles={TODAY_ARTICLES} />
-        <ArticleSection title="This Week" articles={WEEK_ARTICLES} />
+        <RecentSection articles={RECENT_ARTICLES} />
+        <BestOfWeekSection articles={BEST_OF_WEEK} />
+        <OpinionSection articles={OPINION_ARTICLES} />
+        <EventsSection articles={EVENT_ARTICLES} />
+        <NewsSection headlines={NEWS_HEADLINES} featured={NEWS_WITH_IMAGES} />
       </main>
       <div className="home-fade-bottom" />
+      <BottomBar />
     </>
   );
 }
