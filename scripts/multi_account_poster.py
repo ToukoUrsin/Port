@@ -258,6 +258,7 @@ async def main():
     go = "--go" in args
     fi_only = "--fi" in args
     us_only = "--us" in args
+    auto_yes = "--yes" in args
 
     if not go and not dry_run:
         accounts = get_accounts()
@@ -315,7 +316,7 @@ async def main():
         can_post = min(len(batch), DAILY_LIMIT - today)
         print(f"  {account}: {can_post} groups (limit: {DAILY_LIMIT - today} remaining today)")
 
-    if not dry_run:
+    if not dry_run and not auto_yes:
         print(f"\nThis will post to real Facebook groups. Continue? [y/N]")
         confirm = input().strip().lower()
         if confirm != "y":
