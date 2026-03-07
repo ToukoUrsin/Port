@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
@@ -240,7 +240,11 @@ function ArticleCard({ article, featured }: { article: Article; featured?: boole
             {article.category}
           </span>
         </div>
-        <h2 className="article-card__title">{article.title}</h2>
+        <h2 className="article-card__title">
+          <span className="title-prefix">{article.category}</span>
+          <span className="title-sep"> | </span>
+          {article.title}
+        </h2>
         <p className="article-card__excerpt">{article.excerpt}</p>
         <div className="article-card__footer">
           <Link
@@ -282,7 +286,11 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
             {article.category}
           </span>
         </div>
-        <h3 className="ranked-card__title">{article.title}</h3>
+        <h3 className="ranked-card__title">
+          <span className="title-prefix">{article.category}</span>
+          <span className="title-sep"> | </span>
+          {article.title}
+        </h3>
         <div className="ranked-card__footer">
           <span>{article.author}</span>
           <span>&middot;</span>
@@ -305,7 +313,11 @@ function OpinionCard({ article }: { article: Article }) {
         <span className={`badge ${BADGE_CLASS[article.category]}`}>
           {article.category}
         </span>
-        <h2 className="opinion-card__title">{article.title}</h2>
+        <h2 className="opinion-card__title">
+          <span className="title-prefix">{article.category}</span>
+          <span className="title-sep"> | </span>
+          {article.title}
+        </h2>
         <p className="opinion-card__excerpt">{article.excerpt}</p>
         <div className="opinion-card__author">
           <div className="opinion-card__avatar">
@@ -337,7 +349,11 @@ function EventCard({ article }: { article: Article }) {
         <span className={`badge ${BADGE_CLASS[article.category]}`}>
           {article.category}
         </span>
-        <h3 className="event-card__title">{article.title}</h3>
+        <h3 className="event-card__title">
+          <span className="title-prefix">{article.category}</span>
+          <span className="title-sep"> | </span>
+          {article.title}
+        </h3>
         <p className="event-card__excerpt">{article.excerpt}</p>
         <div className="event-card__footer">
           <MapPin size={12} />
@@ -362,7 +378,11 @@ function HeadlineItem({ article }: { article: Article }) {
         <span className={`badge ${BADGE_CLASS[article.category]}`}>
           {article.category}
         </span>
-        <h3 className="headline-item__title">{article.title}</h3>
+        <h3 className="headline-item__title">
+          <span className="title-prefix">{article.category}</span>
+          <span className="title-sep"> | </span>
+          {article.title}
+        </h3>
         <p className="headline-item__excerpt">{article.excerpt}</p>
       </div>
       <div className="headline-item__meta">
@@ -372,6 +392,24 @@ function HeadlineItem({ article }: { article: Article }) {
         <span>{article.timeAgo}</span>
       </div>
     </Link>
+  );
+}
+
+/* ========================================
+   AD BANNER
+   ======================================== */
+
+function AdBanner() {
+  return (
+    <section className="ad-banner">
+      <div className="ad-banner__inner">
+        <span className="ad-banner__label">Ad</span>
+        <div className="ad-banner__placeholder">
+          <ImageIcon size={24} />
+          <span>Advertisement</span>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -478,6 +516,9 @@ function NewsSection({
 }
 
 export default function HomePage() {
+  const [searchParams] = useSearchParams();
+  const cities = searchParams.getAll("city");
+  const city = cities.length > 0 ? cities.join(", ") : null;
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState(25);
   const [modalOpen, setModalOpen] = useState(false);
@@ -486,15 +527,43 @@ export default function HomePage() {
     <>
       <Navbar
         left={
-          <button
-            className="home-nav__icon-btn"
-            onClick={() => setModalOpen(true)}
-            title={location ? `${location} · ${radius} km` : "Set location"}
+          <Link
+            to={cities.length > 0 ? `/explore?${cities.map((c) => `city=${encodeURIComponent(c)}`).join("&")}` : "/explore"}
+            className="home-nav__city-btn"
           >
-            <MapPin size={18} />
-          </button>
+            <MapPin size={16} />
+            <span>
+              {cities.length === 0
+                ? "Select cities"
+                : cities.length <= 2
+                  ? city
+                  : `${cities.slice(0, 2).join(", ")} +${cities.length - 2}`}
+            </span>
+          </Link>
         }
       />
+
+      <nav className="city-bar">
+        <div className="city-bar__scroll">
+          {["Helsinki", "Espoo", "Vantaa", "Tampere", "Turku", "Oulu", "Jyväskylä", "Lahti", "Kuopio", "Rovaniemi"].map((c) => {
+            const isActive = cities.includes(c);
+            const toggled = isActive
+              ? cities.filter((x) => x !== c)
+              : [...cities, c];
+            const params = new URLSearchParams();
+            toggled.forEach((t) => params.append("city", t));
+            return (
+              <Link
+                key={c}
+                to={`/?${params.toString()}`}
+                className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
+              >
+                {c}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
       <LocationModal
         open={modalOpen}
@@ -507,8 +576,10 @@ export default function HomePage() {
 
       <main className="home-container">
         <RecentSection articles={RECENT_ARTICLES} />
+        <AdBanner />
         <BestOfWeekSection articles={BEST_OF_WEEK} />
         <OpinionSection articles={OPINION_ARTICLES} />
+        <AdBanner />
         <EventsSection articles={EVENT_ARTICLES} />
         <NewsSection headlines={NEWS_HEADLINES} featured={NEWS_WITH_IMAGES} />
       </main>

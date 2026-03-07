@@ -8,6 +8,7 @@ import PostPage from "./pages/PostPage";
 import ProfilePage from "./pages/ProfilePage";
 import ArticlePage from "./pages/ArticlePage";
 
+
 function App() {
   return (
     <BrowserRouter>

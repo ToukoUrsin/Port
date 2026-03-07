@@ -15,10 +15,6 @@ export default function LoginPage() {
       />
       <div className="auth-page">
         <div className="auth-card">
-          <div className="auth-header">
-            <p className="auth-subtitle">Sign in to your account</p>
-          </div>
-
         <form className="auth-form" onSubmit={(e) => e.preventDefault()}>
           <div className="auth-field">
             <label className="auth-label" htmlFor="email">
