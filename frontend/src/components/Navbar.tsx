@@ -1,6 +1,7 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { User, Search, X, Clock, Loader2, PenSquare } from "lucide-react";
+import { User, LogIn, Search, X, Clock, Loader2, PenSquare } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { search } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
 import type { SearchResponse } from "@/lib/types";
@@ -13,6 +14,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [query, setQuery] = useState(initialQuery);
@@ -125,9 +127,16 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
               <button className="home-nav__search-btn" onClick={openSearch} title="Search">
                 <Search size={18} />
               </button>
-              <NavLink to="/profile" className="home-nav__icon-btn" title="Profile">
-                <User size={18} />
-              </NavLink>
+              {isAuthenticated ? (
+                <NavLink to="/profile" className="home-nav__icon-btn" title="Profile">
+                  <User size={18} />
+                </NavLink>
+              ) : (
+                <NavLink to="/login" className="home-nav__login-btn" title="Log in">
+                  <LogIn size={16} />
+                  <span>Log in</span>
+                </NavLink>
+              )}
             </>
           )}
         </div>

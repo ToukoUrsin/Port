@@ -115,4 +115,44 @@ func (s *GeminiEmbeddingService) EmbedQuery(ctx context.Context, query string) (
 	return pgvector.NewVector(vec), nil
 }
 
+func (s *GeminiEmbeddingService) EmbedTexts(ctx context.Context, texts []string) ([][]float32, error) {
+	if len(texts) == 0 {
+		return nil, nil
+	}
+
+	const batchSize = 100
+	result := make([][]float32, 0, len(texts))
+
+	for i := 0; i < len(texts); i += batchSize {
+		end := i + batchSize
+		if end > len(texts) {
+			end = len(texts)
+		}
+		batch := texts[i:end]
+
+		contents := make([]*genai.Content, len(batch))
+		for j, text := range batch {
+			contents[j] = genai.NewContentFromText(text, "user")
+		}
+
+		resp, err := s.client.Models.EmbedContent(ctx, s.model, contents, &genai.EmbedContentConfig{
+			TaskType:             "CLUSTERING",
+			OutputDimensionality: int32Ptr(int32(s.dimensions)),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("gemini embed texts batch %d: %w", i/batchSize, err)
+		}
+
+		for _, emb := range resp.Embeddings {
+			vec := make([]float32, len(emb.Values))
+			for k, v := range emb.Values {
+				vec[k] = v
+			}
+			result = append(result, vec)
+		}
+	}
+
+	return result, nil
+}
+
 func int32Ptr(v int32) *int32 { return &v }

@@ -42,14 +42,15 @@ func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 			}
 			hits = append(hits, subHits...)
 		}
-		// Profile embeddings: no location filter
+		// Profile embeddings: no location filter, but filter by public
 		if p.Type == "" || p.Type == "profiles" {
 			var profHits []entityHit
 			if err := s.db.WithContext(ctx).
-				Table("embeddings").
-				Select("entity_id, entity_category, chunk_text, 1 - (embedding <=> ?) AS score", queryVec).
-				Where("entity_category = ?", models.EntityProfile).
-				Order(s.db.Raw("embedding <=> ?", queryVec)).
+				Table("embeddings e").
+				Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
+				Joins("JOIN profiles p ON p.id = e.entity_id").
+				Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
+				Order(s.db.Raw("e.embedding <=> ?", queryVec)).
 				Limit(p.Limit).
 				Find(&profHits).Error; err != nil {
 				return nil, fmt.Errorf("vector search profiles: %w", err)
@@ -72,14 +73,15 @@ func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 			}
 			hits = append(hits, subHits...)
 		}
-		// Profiles: no status filter needed
+		// Profiles: filter by public
 		if p.Type == "" || p.Type == "profiles" {
 			var profHits []entityHit
 			if err := s.db.WithContext(ctx).
-				Table("embeddings").
-				Select("entity_id, entity_category, chunk_text, 1 - (embedding <=> ?) AS score", queryVec).
-				Where("entity_category = ?", models.EntityProfile).
-				Order(s.db.Raw("embedding <=> ?", queryVec)).
+				Table("embeddings e").
+				Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
+				Joins("JOIN profiles p ON p.id = e.entity_id").
+				Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
+				Order(s.db.Raw("e.embedding <=> ?", queryVec)).
 				Limit(p.Limit).
 				Find(&profHits).Error; err != nil {
 				return nil, fmt.Errorf("vector search profiles: %w", err)
@@ -166,7 +168,7 @@ func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 
 	if len(profileIDs) > 0 && (p.Type == "" || p.Type == "profiles") {
 		var profs []models.Profile
-		if err := s.db.WithContext(ctx).Where("id IN ?", profileIDs).Find(&profs).Error; err != nil {
+		if err := s.db.WithContext(ctx).Where("id IN ? AND public = ?", profileIDs, true).Find(&profs).Error; err != nil {
 			return nil, fmt.Errorf("load profiles: %w", err)
 		}
 		profMap := make(map[string]models.Profile, len(profs))

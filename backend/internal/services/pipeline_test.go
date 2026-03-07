@@ -101,6 +101,10 @@ func (m *mockEmbedding) EmbedQuery(_ context.Context, _ string) (pgvector.Vector
 	return pgvector.Vector{}, nil
 }
 
+func (m *mockEmbedding) EmbedTexts(_ context.Context, _ []string) ([][]float32, error) {
+	return nil, fmt.Errorf("mock: EmbedTexts not configured")
+}
+
 // --- Test DB setup ---
 
 func setupTestDB(t *testing.T) *gorm.DB {
@@ -761,8 +765,12 @@ func TestPipeline_EmbeddingCalledAfterSave(t *testing.T) {
 	if emb.entityID != sub.ID {
 		t.Errorf("embedding entityID = %s, want %s", emb.entityID, sub.ID)
 	}
-	if len(emb.chunks) != 1 || emb.chunks[0].Text != "chunk one" {
-		t.Errorf("embedding chunks = %v, want [{0 chunk one section}]", emb.chunks)
+	if len(emb.chunks) == 0 {
+		t.Fatal("expected at least one embedding chunk")
+	}
+	// Semantic grouper (fallback mode) produces chunks from the article text
+	if emb.chunks[0].Type != "semantic" {
+		t.Errorf("chunk type = %q, want 'semantic'", emb.chunks[0].Type)
 	}
 
 	// Verify article was saved (embedding happens after DB save)

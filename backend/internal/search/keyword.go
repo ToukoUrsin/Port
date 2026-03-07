@@ -28,7 +28,7 @@ func (s *Service) Keyword(ctx context.Context, p Params) (*Result, error) {
 	if p.Type == "" || p.Type == "profiles" {
 		var profiles []models.Profile
 		if err := s.db.WithContext(ctx).
-			Where("profile_name % ?", p.Query).
+			Where("public = ? AND profile_name % ?", true, p.Query).
 			Clauses(clause.OrderBy{Expression: clause.Expr{SQL: "similarity(profile_name, ?) DESC", Vars: []interface{}{p.Query}}}).
 			Limit(p.Limit).Offset(p.Offset).
 			Find(&profiles).Error; err != nil {

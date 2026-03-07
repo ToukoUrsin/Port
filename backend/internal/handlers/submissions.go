@@ -16,6 +16,10 @@ import (
 
 func (h *Handler) CreateSubmission(c *gin.Context) {
 	actor := services.ActorFromContext(c)
+	if !actor.HasPerm(models.PermSubmit) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
 
 	locationIDStr := c.PostForm("location_id")
 	locationID, err := uuid.Parse(locationIDStr)
@@ -110,7 +114,7 @@ func (h *Handler) StreamPipeline(c *gin.Context) {
 
 	actor := services.ActorFromContext(c)
 	if !h.access.CanStreamSubmission(actor, &sub) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
 
@@ -207,6 +211,10 @@ func (h *Handler) UpdateSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if !h.access.CanViewSubmission(actor, &sub) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.access.CanEditSubmission(actor, &sub) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
@@ -251,6 +259,10 @@ func (h *Handler) DeleteSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if !h.access.CanViewSubmission(actor, &sub) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.access.CanDeleteSubmission(actor, &sub) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
@@ -274,6 +286,10 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if !h.access.CanViewSubmission(actor, &sub) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.access.CanPublishSubmission(actor, &sub) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
@@ -328,6 +344,10 @@ func (h *Handler) RefineSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if !h.access.CanViewSubmission(actor, &sub) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.access.CanRefineSubmission(actor, &sub) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
@@ -414,6 +434,10 @@ func (h *Handler) AppealSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if !h.access.CanViewSubmission(actor, &sub) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.access.CanAppealSubmission(actor, &sub) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
