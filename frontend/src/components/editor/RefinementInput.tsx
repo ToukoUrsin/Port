@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { VoiceRecorder } from "./VoiceRecorder";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { GeneralRefinement } from "./types";
 
 type RefinementInputProps = {
@@ -7,6 +8,7 @@ type RefinementInputProps = {
 };
 
 export function RefinementInput({ onRefine }: RefinementInputProps) {
+  const { t } = useLanguage();
   const [text, setText] = useState("");
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
 
@@ -28,7 +30,7 @@ export function RefinementInput({ onRefine }: RefinementInputProps) {
         <VoiceRecorder onRecording={setVoiceBlob} compact />
         <textarea
           className="refinement-textarea"
-          placeholder="Or type a response..."
+          placeholder={t("editor.typeResponse")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={2}
@@ -39,7 +41,7 @@ export function RefinementInput({ onRefine }: RefinementInputProps) {
         onClick={handleSubmit}
         disabled={!canSubmit}
       >
-        Update article
+        {t("editor.updateArticle")}
       </button>
     </div>
   );

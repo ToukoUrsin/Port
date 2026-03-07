@@ -883,7 +883,8 @@ func TestPipeline_Refinement_PhotoPlaceholdersReplaced(t *testing.T) {
 	if strings.Contains(article, "photo_1") {
 		t.Errorf("photo_1 placeholder should be replaced, got %q", article)
 	}
-	if !strings.Contains(article, "/photos/img1.jpg") {
-		t.Errorf("article should contain actual photo URL, got %q", article)
+	expectedURL := fmt.Sprintf("/api/media/%s/img1.jpg", sub.ID)
+	if !strings.Contains(article, expectedURL) {
+		t.Errorf("article should contain %q, got %q", expectedURL, article)
 	}
 }

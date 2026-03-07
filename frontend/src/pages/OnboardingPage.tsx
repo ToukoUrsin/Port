@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext.tsx";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { checkProfileName, updateProfile, ApiError } from "@/lib/api.ts";
 import Navbar from "@/components/Navbar.tsx";
 import "./OnboardingPage.css";
@@ -23,6 +24,7 @@ function validateName(name: string): string | null {
 
 export default function OnboardingPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [nameStatus, setNameStatus] = useState<NameStatus>("idle");
@@ -79,9 +81,9 @@ export default function OnboardingPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setNameStatus("taken");
-        setSubmitError("That username was just taken. Try another.");
+        setSubmitError(t("onboarding.errorTaken"));
       } else {
-        setSubmitError("Something went wrong. Please try again.");
+        setSubmitError(t("onboarding.errorGeneric"));
       }
     } finally {
       setSubmitting(false);
@@ -103,14 +105,14 @@ export default function OnboardingPage() {
       <div className="auth-page">
         <div className="auth-card">
           <div className="auth-header">
-            <h1 className="auth-masthead">Welcome!</h1>
-            <p className="auth-subtitle">Choose your username</p>
+            <h1 className="auth-masthead">{t("onboarding.welcome")}</h1>
+            <p className="auth-subtitle">{t("onboarding.chooseUsername")}</p>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="auth-field">
               <label className="auth-label" htmlFor="profile-name">
-                Username
+                {t("onboarding.username")}
               </label>
               <div className="onboarding-input-wrapper">
                 <input
@@ -119,7 +121,7 @@ export default function OnboardingPage() {
                   type="text"
                   value={name}
                   onChange={(e) => handleChange(e.target.value)}
-                  placeholder="your-username"
+                  placeholder={t("onboarding.usernamePlaceholder")}
                   autoFocus
                   autoComplete="off"
                   maxLength={30}
@@ -133,17 +135,17 @@ export default function OnboardingPage() {
               )}
               {nameStatus === "taken" && !validationError && (
                 <p className="onboarding-hint" style={{ color: "var(--color-error)" }}>
-                  Already taken
+                  {t("onboarding.taken")}
                 </p>
               )}
               {nameStatus === "available" && (
                 <p className="onboarding-hint" style={{ color: "var(--color-success, #16a34a)" }}>
-                  Available
+                  {t("onboarding.available")}
                 </p>
               )}
               {nameStatus === "idle" && name.length === 0 && (
                 <p className="onboarding-hint">
-                  3-30 characters. Lowercase letters, numbers, and hyphens.
+                  {t("onboarding.hintIdle")}
                 </p>
               )}
             </div>
@@ -152,10 +154,10 @@ export default function OnboardingPage() {
 
             <button
               type="submit"
-              className="btn-primary"
+              className="btn btn-primary btn-lg"
               disabled={submitting || nameStatus !== "available"}
             >
-              {submitting ? "Saving..." : "Continue"}
+              {submitting ? t("onboarding.saving") : t("onboarding.continue")}
             </button>
           </form>
 
@@ -164,7 +166,7 @@ export default function OnboardingPage() {
             className="onboarding-skip"
             onClick={() => navigate("/", { replace: true })}
           >
-            Skip for now
+            {t("onboarding.skip")}
           </button>
         </div>
       </div>

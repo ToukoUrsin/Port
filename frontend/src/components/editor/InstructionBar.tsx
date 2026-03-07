@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Send, Mic, Square, X } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { TargetedRefinement, RephraseRequest, TextSelection, ParagraphTap } from "./types";
 
 type InstructionBarProps = {
@@ -23,6 +24,7 @@ export function InstructionBar({
   onRemove,
   onDismiss,
 }: InstructionBarProps) {
+  const { t } = useLanguage();
   const [text, setText] = useState("");
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -113,7 +115,7 @@ export function InstructionBar({
         <input
           type="text"
           className="instruction-bar-text"
-          placeholder="What should change?"
+          placeholder={t("editor.whatShouldChange")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -134,7 +136,7 @@ export function InstructionBar({
           className="instruction-chip"
           onClick={() => handleChip("not-accurate")}
         >
-          Not accurate
+          {t("editor.notAccurate")}
         </button>
         {!isMobile && (
           <button
@@ -142,7 +144,7 @@ export function InstructionBar({
             className="instruction-chip"
             onClick={() => handleChip("add-detail")}
           >
-            Add detail
+            {t("editor.addDetail")}
           </button>
         )}
         <button
@@ -150,7 +152,7 @@ export function InstructionBar({
           className="instruction-chip"
           onClick={() => handleChip("rephrase")}
         >
-          Rephrase
+          {t("editor.rephrase")}
         </button>
         {!isMobile && (
           <button
@@ -158,7 +160,7 @@ export function InstructionBar({
             className="instruction-chip"
             onClick={() => handleChip("remove")}
           >
-            Remove
+            {t("editor.remove")}
           </button>
         )}
       </div>

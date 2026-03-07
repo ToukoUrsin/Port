@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type RephraseOptionsProps = {
   options: string[];
@@ -14,20 +15,21 @@ export function RephraseOptions({
   onSelect,
   onCancel,
 }: RephraseOptionsProps) {
+  const { t } = useLanguage();
   const [selected, setSelected] = useState<number | null>(null);
 
   if (loading) {
     return (
       <div className="rephrase-options rephrase-options--loading">
         <Loader2 size={16} className="spin" />
-        <span>Generating alternatives...</span>
+        <span>{t("editor.generating")}</span>
       </div>
     );
   }
 
   return (
     <div className="rephrase-options">
-      <p className="rephrase-label">Pick a version:</p>
+      <p className="rephrase-label">{t("editor.pickVersion")}:</p>
       <div className="rephrase-list">
         {options.map((opt, i) => (
           <label key={i} className="rephrase-option">
@@ -47,7 +49,7 @@ export function RephraseOptions({
           className="btn btn-ghost"
           onClick={onCancel}
         >
-          Keep original
+          {t("editor.keepOriginal")}
         </button>
         <button
           type="button"
@@ -55,7 +57,7 @@ export function RephraseOptions({
           disabled={selected === null}
           onClick={() => selected !== null && onSelect(options[selected])}
         >
-          Apply
+          {t("editor.apply")}
         </button>
       </div>
     </div>

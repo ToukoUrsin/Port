@@ -54,12 +54,14 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 		return
 	}
 
+	maxSize := int64(h.cfg.MaxUploadSizeMB) * 1024 * 1024
+
 	// Save audio file
 	audioFile, err := c.FormFile("audio")
 	if err == nil {
-		path, size, err := h.media.SaveUploadedFile(audioFile, sub.ID)
+		path, size, err := h.media.SaveUploadedFile(audioFile, sub.ID, maxSize)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save audio"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "audio upload failed: " + err.Error()})
 			return
 		}
 		file := models.File{
@@ -78,10 +80,15 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 	form, _ := c.MultipartForm()
 	if form != nil {
 		photos := form.File["photos[]"]
+		if len(photos) > h.cfg.MaxPhotos {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("too many photos: max %d allowed", h.cfg.MaxPhotos)})
+			return
+		}
 		for _, photo := range photos {
-			path, size, err := h.media.SaveUploadedFile(photo, sub.ID)
+			path, size, err := h.media.SaveUploadedFile(photo, sub.ID, maxSize)
 			if err != nil {
-				continue
+				c.JSON(http.StatusBadRequest, gin.H{"error": "photo upload failed: " + err.Error()})
+				return
 			}
 			file := models.File{
 				EntityID:       sub.ID,
@@ -385,7 +392,8 @@ func (h *Handler) RefineSubmission(c *gin.Context) {
 
 	// Transcribe voice clip if present
 	if voiceErr == nil {
-		path, _, saveErr := h.media.SaveUploadedFile(voiceFile, sub.ID)
+		maxSize := int64(h.cfg.MaxUploadSizeMB) * 1024 * 1024
+		path, _, saveErr := h.media.SaveUploadedFile(voiceFile, sub.ID, maxSize)
 		if saveErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save voice clip"})
 			return

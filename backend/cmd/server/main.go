@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -125,11 +126,18 @@ func main() {
 	chunker := services.NewStubChunkerService()
 	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embeddingSvc)
 
+	// Batch service (admin batch publishing)
+	var batchSvc *services.BatchService
+	if cfg.AdminAPIToken != "" {
+		batchSvc = services.NewBatchService(db, c, chunker, embeddingSvc, cfg.BatchDelay, cfg.BatchWorkers)
+		log.Printf("Admin batch API enabled (%d workers, %s delay)", cfg.BatchWorkers, cfg.BatchDelay)
+	}
+
 	// Search service
 	searchSvc := search.NewService(db, embeddingSvc, rerankerSvc)
 
 	// Handler
-	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc)
+	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc, batchSvc)
 
 	// Router
 	r := gin.New()
@@ -139,14 +147,25 @@ func main() {
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	// Serve uploaded media files
-	r.Static("/uploads", cfg.MediaStoragePath)
+	// Upload size limit
+	r.MaxMultipartMemory = int64(cfg.MaxUploadSizeMB) * 1024 * 1024
+
+	// Backwards-compatible redirect for existing article markdown referencing /uploads/
+	r.GET("/uploads/:submissionID/:filename", func(c *gin.Context) {
+		subID := c.Param("submissionID")
+		fname := c.Param("filename")
+		c.Redirect(http.StatusMovedPermanently, "/api/media/"+subID+"/"+fname)
+	})
 
 	// Rate limiting
 	rl := middleware.NewRateLimiter(c.Client(), cfg)
 	r.Use(rl.Middleware())
 
 	jwtSecret := []byte(cfg.JWTSecret)
+
+	// Authenticated media serving
+	mediaGroup := r.Group("/api", middleware.OptionalAuth(jwtSecret))
+	mediaGroup.GET("/media/:submissionID/:filename", h.ServeMedia)
 
 	// --- Public routes ---
 	public := r.Group("/api")
@@ -236,6 +255,15 @@ func main() {
 	mod := r.Group("/api", middleware.Auth(jwtSecret), middleware.RequirePerm(models.PermModerate))
 	{
 		mod.PUT("/replies/:id/moderate", h.ModerateReply)
+	}
+
+	// --- Admin API routes (static token auth) ---
+	if cfg.AdminAPIToken != "" {
+		adminAPI := r.Group("/api/admin", middleware.AdminToken(cfg.AdminAPIToken))
+		{
+			adminAPI.POST("/batch", h.CreateBatch)
+			adminAPI.GET("/batch/:id", h.GetBatchStatus)
+		}
 	}
 
 	log.Printf("Starting server on :%s", cfg.Port)

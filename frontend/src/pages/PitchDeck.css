@@ -1,0 +1,398 @@
+.pitch-deck {
+  position: fixed;
+  inset: 0;
+  background: var(--color-gray-900);
+  color: var(--color-text-inverse);
+  overflow: hidden;
+  font-family: var(--font-sans);
+}
+
+.pitch-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-12) var(--space-16);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.pitch-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ─── Progress bar ─── */
+.pitch-progress {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--color-primary);
+  transition: width 0.3s ease;
+  z-index: 10;
+}
+
+.pitch-slide-counter {
+  position: fixed;
+  bottom: var(--space-4);
+  right: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+  font-family: var(--font-mono);
+  z-index: 10;
+}
+
+/* ─── Typography ─── */
+.pitch-hero-number {
+  font-family: var(--font-heading);
+  font-size: 8rem;
+  font-weight: var(--font-bold);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-primary);
+}
+
+.pitch-hero-text {
+  font-family: var(--font-heading);
+  font-size: var(--text-5xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  max-width: 900px;
+  text-align: center;
+}
+
+.pitch-subtext {
+  font-size: var(--text-xl);
+  color: var(--color-gray-400);
+  max-width: 700px;
+  text-align: center;
+  line-height: var(--leading-relaxed);
+  margin-top: var(--space-6);
+}
+
+.pitch-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--color-primary);
+  margin-bottom: var(--space-4);
+}
+
+/* ─── Stats row ─── */
+.pitch-stats {
+  display: flex;
+  gap: var(--space-16);
+  margin-top: var(--space-10);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pitch-stat {
+  text-align: center;
+}
+
+.pitch-stat-number {
+  font-family: var(--font-heading);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+}
+
+.pitch-stat-label {
+  font-size: var(--text-sm);
+  color: var(--color-gray-400);
+  margin-top: var(--space-1);
+}
+
+/* ─── Comparison table ─── */
+.pitch-table {
+  border-collapse: collapse;
+  margin-top: var(--space-8);
+  font-size: var(--text-lg);
+}
+
+.pitch-table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-8);
+  color: var(--color-gray-400);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--color-gray-700);
+}
+
+.pitch-table td {
+  padding: var(--space-4) var(--space-8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pitch-table .row-label {
+  color: var(--color-gray-400);
+  font-weight: var(--font-medium);
+}
+
+.pitch-table .old {
+  color: var(--color-error);
+  font-weight: var(--font-semibold);
+}
+
+.pitch-table .new {
+  color: var(--color-primary);
+  font-weight: var(--font-bold);
+  font-size: var(--text-xl);
+}
+
+/* ─── Impact list ─── */
+.pitch-impacts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-12);
+  margin-top: var(--space-8);
+  max-width: 800px;
+}
+
+.pitch-impact {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.pitch-impact-value {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-error);
+  white-space: nowrap;
+}
+
+.pitch-impact-text {
+  font-size: var(--text-base);
+  color: var(--color-gray-300);
+}
+
+/* ─── Pipeline steps ─── */
+.pitch-pipeline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+.pitch-pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pitch-pipeline-icon {
+  width: 72px;
+  height: 72px;
+  border: 2px solid var(--color-gray-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+}
+
+.pitch-pipeline-label {
+  font-size: var(--text-sm);
+  color: var(--color-gray-400);
+  font-weight: var(--font-medium);
+}
+
+.pitch-pipeline-arrow {
+  font-size: var(--text-2xl);
+  color: var(--color-gray-600);
+}
+
+/* ─── Quality review mock ─── */
+.pitch-review-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-gray-700);
+  padding: var(--space-8);
+  max-width: 700px;
+  width: 100%;
+  margin-top: var(--space-6);
+}
+
+.pitch-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.pitch-review-score {
+  font-family: var(--font-heading);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+}
+
+.pitch-review-score.low { color: var(--color-warning); }
+.pitch-review-score.high { color: var(--color-primary); }
+
+.pitch-review-flag {
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-warning);
+  background: rgba(138, 122, 43, 0.1);
+  margin-bottom: var(--space-3);
+}
+
+.pitch-review-flag-title {
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  color: var(--color-warning);
+  margin-bottom: var(--space-1);
+}
+
+.pitch-review-flag-text {
+  font-size: var(--text-sm);
+  color: var(--color-gray-300);
+  line-height: var(--leading-relaxed);
+}
+
+/* ─── Quote ─── */
+.pitch-quote {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  font-style: italic;
+  color: var(--color-gray-300);
+  max-width: 750px;
+  text-align: center;
+  line-height: var(--leading-relaxed);
+}
+
+.pitch-quote-attr {
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+  margin-top: var(--space-4);
+}
+
+/* ─── CTA / Close ─── */
+.pitch-cta {
+  font-family: var(--font-heading);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  text-align: center;
+  line-height: var(--leading-tight);
+  margin-bottom: var(--space-8);
+}
+
+.pitch-url {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  color: var(--color-primary);
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--color-primary);
+}
+
+/* ─── Title slide ─── */
+.pitch-title-logo {
+  font-family: var(--font-heading);
+  font-size: 6rem;
+  font-weight: var(--font-bold);
+  letter-spacing: var(--tracking-tight);
+  margin-bottom: var(--space-2);
+}
+
+.pitch-title-tagline {
+  font-size: var(--text-xl);
+  color: var(--color-gray-400);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── Pelkosenniemi ─── */
+.pitch-town-stats {
+  display: flex;
+  gap: var(--space-12);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.pitch-town-stat {
+  text-align: center;
+}
+
+.pitch-town-stat-number {
+  font-family: var(--font-heading);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-inverse);
+}
+
+.pitch-town-stat-label {
+  font-size: var(--text-sm);
+  color: var(--color-gray-500);
+  margin-top: var(--space-1);
+}
+
+/* ─── Revenue / market ─── */
+.pitch-revenue-highlight {
+  font-family: var(--font-heading);
+  font-size: 5rem;
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.pitch-revenue-context {
+  font-size: var(--text-lg);
+  color: var(--color-gray-400);
+  margin-top: var(--space-2);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .pitch-slide {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .pitch-hero-number {
+    font-size: 4rem;
+  }
+
+  .pitch-hero-text {
+    font-size: var(--text-3xl);
+  }
+
+  .pitch-stats {
+    gap: var(--space-8);
+  }
+
+  .pitch-impacts {
+    grid-template-columns: 1fr;
+  }
+
+  .pitch-pipeline {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pitch-table {
+    font-size: var(--text-base);
+  }
+
+  .pitch-table td,
+  .pitch-table th {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .pitch-title-logo {
+    font-size: 3.5rem;
+  }
+
+  .pitch-revenue-highlight {
+    font-size: 3rem;
+  }
+}

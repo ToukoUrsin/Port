@@ -12,7 +12,18 @@ import (
 
 func (h *Handler) ListLocations(c *gin.Context) {
 	var locations []models.Location
-	h.db.Where("is_active = ?", true).Order("level ASC, name ASC").Find(&locations)
+	q := h.db.Where("is_active = ?", true)
+
+	if country := c.Query("country"); country != "" {
+		q = q.Where("path LIKE ? OR slug = ?", "%/"+country+"/%", country)
+	}
+	if level := c.Query("level"); level != "" {
+		if lvl, err := strconv.Atoi(level); err == nil {
+			q = q.Where("level = ?", lvl)
+		}
+	}
+
+	q.Order("level ASC, name ASC").Find(&locations)
 	c.JSON(http.StatusOK, gin.H{"locations": locations})
 }
 

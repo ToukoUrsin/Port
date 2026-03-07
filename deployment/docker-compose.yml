@@ -32,6 +32,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 6g
     restart: unless-stopped
     networks:
       - news-network
@@ -57,6 +61,7 @@ services:
       TRUSTED_PROXIES: 172.18.0.0/16
       RERANKER_MODEL_PATH: /app/models/model.onnx
       RERANKER_VOCAB_PATH: /app/models/vocab.txt
+      ADMIN_API_TOKEN: ${NEWS_ADMIN_API_TOKEN}
       ONNX_LIB_PATH: /usr/lib/libonnxruntime.so
       GIN_MODE: release
     volumes:

@@ -1,0 +1,18 @@
+/* ========================================
+   CONFIRM DIALOG — Imperative confirm/alert
+   ======================================== */
+
+.confirm-message {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+
+.confirm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
