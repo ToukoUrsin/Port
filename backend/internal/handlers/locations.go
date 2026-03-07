@@ -101,12 +101,6 @@ func (h *Handler) CreateLocation(c *gin.Context) {
 }
 
 func (h *Handler) UpdateLocation(c *gin.Context) {
-	actor := services.ActorFromContext(c)
-	if !h.access.CanEditLocation(actor) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
-		return
-	}
-
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -116,6 +110,12 @@ func (h *Handler) UpdateLocation(c *gin.Context) {
 	var loc models.Location
 	if err := h.db.First(&loc, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanEditLocation(actor) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
 	}
 

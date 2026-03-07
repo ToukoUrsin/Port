@@ -36,6 +36,7 @@ type PipelineService struct {
 	photoDescription PhotoDescriptionService
 	chunker          ChunkerService
 	embedding        EmbeddingService
+	semanticGrouper  *SemanticGrouper
 }
 
 func NewPipelineService(
@@ -55,6 +56,7 @@ func NewPipelineService(
 		photoDescription: photoDescription,
 		chunker:          chunker,
 		embedding:        embedding,
+		semanticGrouper:  NewSemanticGrouper(embedding),
 	}
 }
 
@@ -195,7 +197,20 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "embedding", Message: "Indexing for search..."}) {
 		return
 	}
-	chunks := p.chunker.ChunkMarkdown(article, ChunkConfig{MaxTokens: 300})
+	var chunks []Chunk
+	if p.semanticGrouper != nil {
+		sentences := SplitSentences(article)
+		if len(sentences) > 0 {
+			var groupErr error
+			chunks, groupErr = p.semanticGrouper.Group(ctx, sentences, DefaultSemanticGrouperConfig())
+			if groupErr != nil {
+				log.Printf("semantic chunking failed for %s, falling back: %v", submissionID, groupErr)
+			}
+		}
+	}
+	if len(chunks) == 0 {
+		chunks = p.chunker.ChunkMarkdown(article, ChunkConfig{MaxTokens: 300})
+	}
 	if len(chunks) > 0 {
 		if err := p.embedding.EmbedChunks(ctx, sub.ID, models.EntitySubmission, chunks); err != nil {
 			log.Printf("embedding failed for submission %s: %v", submissionID, err)

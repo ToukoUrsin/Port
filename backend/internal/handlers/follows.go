@@ -21,6 +21,22 @@ func (h *Handler) CreateFollow(c *gin.Context) {
 		return
 	}
 
+	switch req.TargetType {
+	case models.FollowLocation:
+		if err := h.db.First(&models.Location{}, "id = ?", req.TargetID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "target not found"})
+			return
+		}
+	case models.FollowProfile:
+		if err := h.db.First(&models.Profile{}, "id = ?", req.TargetID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "target not found"})
+			return
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid target_type"})
+		return
+	}
+
 	follow := models.Follow{
 		ProfileID:  actor.ProfileID,
 		TargetID:   req.TargetID,
@@ -49,8 +65,8 @@ func (h *Handler) DeleteFollow(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
-	if !h.access.CanDeleteFollow(actor, &follow) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+	if follow.ProfileID != actor.ProfileID && !actor.IsAdmin() {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
 

@@ -86,6 +86,12 @@ func (h *Handler) UpdateReply(c *gin.Context) {
 		return
 	}
 
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ? AND status = ?", reply.SubmissionID, models.StatusPublished).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
 	actor := services.ActorFromContext(c)
 	if !h.access.CanEditReply(actor, &reply) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
@@ -115,6 +121,12 @@ func (h *Handler) DeleteReply(c *gin.Context) {
 
 	var reply models.Reply
 	if err := h.db.First(&reply, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ? AND status = ?", reply.SubmissionID, models.StatusPublished).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}

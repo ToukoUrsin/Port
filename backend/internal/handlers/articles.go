@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
+	"github.com/localnews/backend/internal/services"
 )
 
 func (h *Handler) ListArticles(c *gin.Context) {
@@ -116,6 +117,12 @@ func (h *Handler) UpdateArticle(c *gin.Context) {
 	var sub models.Submission
 	if err := h.db.First(&sub, "id = ? AND status = ?", id, models.StatusPublished).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanEditSubmission(actor, &sub) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
 	}
 

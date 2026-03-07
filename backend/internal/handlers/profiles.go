@@ -76,6 +76,10 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if !h.access.CanViewProfile(actor, &profile) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
 	if !h.access.CanEditProfile(actor, &profile) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
