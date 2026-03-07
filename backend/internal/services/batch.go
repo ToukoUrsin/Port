@@ -14,12 +14,14 @@ import (
 )
 
 type BatchArticleInput struct {
-	Title      string    `json:"title"`
-	Content    string    `json:"content"`
-	LocationID uuid.UUID `json:"location_id"`
-	OwnerID    uuid.UUID `json:"owner_id"`
-	Category   string    `json:"category"`
-	Tags       int64     `json:"tags"`
+	Title       string    `json:"title"`
+	Content     string    `json:"content"`
+	LocationID  uuid.UUID `json:"location_id"`
+	OwnerID     uuid.UUID `json:"owner_id"`
+	Category    string    `json:"category"`
+	Tags        int64     `json:"tags"`
+	FeaturedImg string    `json:"featured_img,omitempty"`
+	Summary     string    `json:"summary,omitempty"`
 }
 
 type BatchJob struct {
@@ -160,10 +162,19 @@ func (s *BatchService) processArticle(job *BatchJob, index int, input BatchArtic
 	}
 
 	now := time.Now()
+	summary := input.Summary
+	if summary == "" {
+		summary = ExtractFirstParagraph(input.Content)
+	}
+	featuredImg := input.FeaturedImg
+	if featuredImg == "" {
+		featuredImg = ExtractFirstImage(input.Content)
+	}
 	meta := models.SubmissionMeta{
 		ArticleMarkdown: input.Content,
-		Summary:         ExtractFirstParagraph(input.Content),
+		Summary:         summary,
 		Category:        input.Category,
+		FeaturedImg:     featuredImg,
 		PublishedAt:     &now,
 	}
 
