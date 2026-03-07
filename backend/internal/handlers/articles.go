@@ -25,15 +25,29 @@ func (h *Handler) ListArticles(c *gin.Context) {
 
 	if locationIDs != "" {
 		ids := strings.Split(locationIDs, ",")
-		query = query.Where(
-			"location_id IN (SELECT l2.id FROM locations l1 JOIN locations l2 ON l2.id = l1.id OR l2.path LIKE l1.path || '/%' WHERE l1.id IN ?)",
-			ids,
-		)
+		// Resolve paths for all requested locations, then use constant-prefix
+		// LIKE queries so Postgres can use the text_pattern_ops btree index.
+		var locs []models.Location
+		h.db.Select("id", "path").Where("id IN ?", ids).Find(&locs)
+		if len(locs) > 0 {
+			conds := make([]string, 0, len(locs)*2)
+			args := make([]interface{}, 0, len(locs)*2)
+			for _, loc := range locs {
+				conds = append(conds, "location_id = ?")
+				args = append(args, loc.ID)
+				conds = append(conds, "location_id IN (SELECT id FROM locations WHERE path LIKE ?)")
+				args = append(args, loc.Path+"/%")
+			}
+			query = query.Where(strings.Join(conds, " OR "), args...)
+		}
 	} else if locationID != "" {
-		query = query.Where(
-			"location_id IN (SELECT l2.id FROM locations l1 JOIN locations l2 ON l2.id = l1.id OR l2.path LIKE l1.path || '/%' WHERE l1.id = ?)",
-			locationID,
-		)
+		var loc models.Location
+		if h.db.Select("id", "path").First(&loc, "id = ?", locationID).Error == nil {
+			query = query.Where(
+				"location_id IN (SELECT id FROM locations WHERE id = ? OR path LIKE ?)",
+				loc.ID, loc.Path+"/%",
+			)
+		}
 	}
 
 	// Filter by country: match locations whose path contains this country segment
