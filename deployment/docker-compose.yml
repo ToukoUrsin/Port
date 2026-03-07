@@ -54,6 +54,7 @@ services:
       GOOGLE_REDIRECT_URL: https://news.minir.ai/api/auth/google/callback
       MEDIA_STORAGE_PATH: /app/uploads
       ALLOWED_ORIGINS: https://news.minir.ai
+      TRUSTED_PROXIES: 172.18.0.0/16
       RERANKER_MODEL_PATH: /app/models/model.onnx
       RERANKER_VOCAB_PATH: /app/models/vocab.txt
       ONNX_LIB_PATH: /usr/lib/libonnxruntime.so
