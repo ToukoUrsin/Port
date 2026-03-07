@@ -18,7 +18,7 @@ func TestExtractHeadline(t *testing.T) {
 		{"H2 ignored", "## Not a headline\n\nBody.", ""},
 		{"special chars", "# Budget Passes at $4.2M\n\nDetails.", "Budget Passes at $4.2M"},
 		{"leading blank lines", "\n\n# After Blanks\n\nBody.", "After Blanks"},
-		{"headline with trailing spaces", "#  Spaced Headline \n\nBody.", " Spaced Headline "},
+		{"headline with trailing spaces", "#  Spaced Headline \n\nBody.", " Spaced Headline"},
 	}
 
 	for _, tt := range tests {

@@ -86,8 +86,42 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&models.Submission{}, &models.File{}); err != nil {
-		t.Fatalf("automigrate: %v", err)
+	// Create tables with raw SQL to avoid PostgreSQL-specific defaults (gen_random_uuid)
+	for _, ddl := range []string{
+		`CREATE TABLE submissions (
+			id TEXT PRIMARY KEY,
+			owner_id TEXT NOT NULL,
+			location_id TEXT NOT NULL,
+			continent_id TEXT, country_id TEXT, region_id TEXT, city_id TEXT,
+			lat REAL, lng REAL,
+			title TEXT NOT NULL DEFAULT '',
+			description TEXT NOT NULL DEFAULT '',
+			tags INTEGER DEFAULT 0,
+			status INTEGER DEFAULT 0,
+			error INTEGER DEFAULT 0,
+			views INTEGER DEFAULT 0,
+			share_count INTEGER DEFAULT 0,
+			reactions BLOB,
+			meta BLOB,
+			search_vector TEXT,
+			created_at DATETIME, updated_at DATETIME
+		)`,
+		`CREATE TABLE files (
+			id TEXT PRIMARY KEY,
+			entity_id TEXT NOT NULL,
+			entity_category INTEGER NOT NULL,
+			submission_id TEXT NOT NULL,
+			contributor_id TEXT NOT NULL,
+			file_type INTEGER NOT NULL,
+			name TEXT NOT NULL,
+			size INTEGER NOT NULL,
+			uploaded_at DATETIME,
+			meta BLOB
+		)`,
+	} {
+		if err := db.Exec(ddl).Error; err != nil {
+			t.Fatalf("create table: %v", err)
+		}
 	}
 	return db
 }
@@ -122,6 +156,10 @@ func insertSubmission(t *testing.T, db *gorm.DB, sub *models.Submission) {
 	if sub.ID == uuid.Nil {
 		sub.ID = uuid.New()
 	}
+	// Initialize JSONB fields to avoid SQLite default string scan issues
+	if sub.Reactions.V == nil {
+		sub.Reactions = models.JSONB[map[string]int]{V: map[string]int{}}
+	}
 	if err := db.Create(sub).Error; err != nil {
 		t.Fatalf("insert submission: %v", err)
 	}
@@ -138,6 +176,7 @@ func insertFile(t *testing.T, db *gorm.DB, submissionID uuid.UUID, fileType int1
 		FileType:       fileType,
 		Name:           name,
 		Size:           1024,
+		Meta:           models.JSONB[models.FileMeta]{V: models.FileMeta{}},
 	}
 	if err := db.Create(&f).Error; err != nil {
 		t.Fatalf("insert file: %v", err)
