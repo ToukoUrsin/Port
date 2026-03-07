@@ -1,4 +1,9 @@
-import type { ReviewResult, ArticleMetadata, ArticleVersion } from "@/lib/types";
+import type { ReviewResult, ArticleMetadata, RedTrigger } from "@/lib/types";
+
+export type CoachingSuggestion = {
+  text: string;
+  paragraph_ref?: number;
+};
 
 export type TargetedRefinement = {
   selected_text: string;
@@ -11,43 +16,19 @@ export type GeneralRefinement = {
   text_note?: string;
 };
 
-export type RephraseRequest = {
-  selected_text: string;
-  paragraph_index: number;
-};
-
-export type RephraseResponse = {
-  options: string[];
-};
-
-export type CoachingSuggestion = {
-  text: string;
-  paragraph_ref?: number;
-};
-
-export type TextSelection = {
-  text: string;
+export type ActiveAnnotation = {
+  trigger: RedTrigger;
   rect: DOMRect;
-  paragraphIndex: number;
-};
-
-export type ParagraphTap = {
-  index: number;
-  element: HTMLElement;
-  rect: DOMRect;
-};
+} | null;
 
 export type EditorialScreenProps = {
   articleMarkdown: string;
   review: ReviewResult;
   metadata: ArticleMetadata;
   userName: string;
-  versions?: ArticleVersion[];
   currentRound?: number;
 
-  onRefineTargeted: (r: TargetedRefinement) => Promise<void>;
   onRefineGeneral: (r: GeneralRefinement) => Promise<void>;
-  onRephrase: (r: RephraseRequest) => Promise<RephraseResponse>;
   onPublish: () => Promise<void>;
   onAppeal: () => Promise<void>;
   onBack: () => void;

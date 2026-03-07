@@ -10,7 +10,6 @@ import {
   createSubmission,
   publishArticle,
   refineSubmission,
-  rephraseSubmission,
   appealSubmission,
   getToken,
 } from "@/lib/api.ts";
@@ -22,7 +21,7 @@ import type {
 } from "@/lib/types.ts";
 import { EditorialScreen } from "@/components/editor";
 import { VoiceRecorder } from "@/components/editor/VoiceRecorder";
-import type { TargetedRefinement, GeneralRefinement, RephraseRequest } from "@/components/editor/types";
+import type { GeneralRefinement } from "@/components/editor/types";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
@@ -345,21 +344,6 @@ export default function PostPage() {
 
   // --- Editorial screen callback wiring ---
 
-  const handleRefineTargeted = useCallback(
-    async (r: TargetedRefinement) => {
-      setStep("processing");
-      try {
-        await refineSubmission(submissionId, { type: "targeted", ...r });
-        setCurrentRound((n) => n + 1);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Refinement failed";
-        toast(msg, "error");
-        setStep("preview");
-      }
-    },
-    [submissionId, toast],
-  );
-
   const handleRefineGeneral = useCallback(
     async (r: GeneralRefinement) => {
       setStep("processing");
@@ -383,13 +367,6 @@ export default function PostPage() {
       }
     },
     [submissionId, toast],
-  );
-
-  const handleRephrase = useCallback(
-    async (r: RephraseRequest) => {
-      return rephraseSubmission(submissionId, r);
-    },
-    [submissionId],
   );
 
   const handlePublish = useCallback(async () => {
@@ -451,9 +428,7 @@ export default function PostPage() {
             metadata={metadata}
             userName={user?.profile_name || "Anonymous"}
             currentRound={currentRound}
-            onRefineTargeted={handleRefineTargeted}
             onRefineGeneral={handleRefineGeneral}
-            onRephrase={handleRephrase}
             onPublish={handlePublish}
             onAppeal={handleAppeal}
             onBack={handleBack}

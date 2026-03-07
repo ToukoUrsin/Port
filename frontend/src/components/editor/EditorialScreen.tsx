@@ -1,22 +1,13 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
-import { ArticleRenderer } from "./ArticleRenderer";
+import { ArticlePreview } from "./ArticleRenderer";
 import { CoachingPanel } from "./CoachingPanel";
 import { RefinementInput } from "./RefinementInput";
-import { InstructionBar } from "./InstructionBar";
-import { RephraseOptions } from "./RephraseOptions";
 import { GateBadge } from "./GateBadge";
 import { PublishButton } from "./PublishButton";
 import { VersionInfo } from "./VersionInfo";
-import { useTextSelection } from "./hooks/useTextSelection";
-import { useParagraphTap } from "./hooks/useParagraphTap";
-import type {
-  EditorialScreenProps,
-  RephraseRequest,
-  RephraseResponse,
-  TextSelection,
-  ParagraphTap,
-} from "./types";
+import type { EditorialScreenProps, ActiveAnnotation } from "./types";
+import type { RedTrigger } from "@/lib/types";
 import "./editor.css";
 
 export function EditorialScreen({
@@ -25,91 +16,53 @@ export function EditorialScreen({
   metadata,
   userName,
   currentRound = 0,
-  onRefineTargeted,
   onRefineGeneral,
-  onRephrase,
   onPublish,
   onAppeal,
   onBack,
 }: EditorialScreenProps) {
-  const articleRef = useRef<HTMLElement>(null);
-  const textSelection = useTextSelection(articleRef);
-  const paragraphTap = useParagraphTap(articleRef);
+  const [activeAnnotation, setActiveAnnotation] = useState<ActiveAnnotation>(null);
+  const [highlightParagraph, setHighlightParagraph] = useState<number | undefined>();
+  const highlightTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const [highlightedParagraph, setHighlightedParagraph] = useState<number | undefined>();
-  const [rephraseState, setRephraseState] = useState<{
-    loading: boolean;
-    request: RephraseRequest | null;
-    response: RephraseResponse | null;
-  }>({ loading: false, request: null, response: null });
-
-  // Active selection: text selection takes priority over paragraph tap
-  const activeSelection: TextSelection | ParagraphTap | null =
-    textSelection || paragraphTap;
-
-  // Coaching suggestion click: scroll to paragraph and highlight
-  const handleSuggestionClick = useCallback(
-    (paragraphRef: number) => {
-      setHighlightedParagraph(paragraphRef);
-      const container = articleRef.current;
-      if (!container) return;
-
-      const paragraphs = container.querySelectorAll("p, blockquote, h1, h2, h3");
-      const target = paragraphs[paragraphRef];
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        target.classList.add("paragraph-highlighted");
-        setTimeout(() => target.classList.remove("paragraph-highlighted"), 3000);
+  // Click-outside to dismiss suggestion card
+  useEffect(() => {
+    if (!activeAnnotation) return;
+    function handleClick(e: MouseEvent) {
+      const card = document.querySelector(".suggestion-card");
+      if (card && !card.contains(e.target as Node)) {
+        setActiveAnnotation(null);
       }
-    },
-    [],
-  );
-
-  // Instruction bar handlers
-  function handleInstructionSubmit(r: {
-    selected_text?: string;
-    instruction: string;
-    paragraph_index: number;
-  }) {
-    onRefineTargeted({
-      selected_text: r.selected_text || "",
-      instruction: r.instruction,
-      paragraph_index: r.paragraph_index,
-    });
-  }
-
-  async function handleRephrase(r: RephraseRequest) {
-    setRephraseState({ loading: true, request: r, response: null });
-    try {
-      const response = await onRephrase(r);
-      setRephraseState({ loading: false, request: r, response });
-    } catch {
-      setRephraseState({ loading: false, request: null, response: null });
     }
-  }
+    // Delay listener to avoid catching the click that opened the card
+    const id = setTimeout(() => document.addEventListener("click", handleClick), 0);
+    return () => {
+      clearTimeout(id);
+      document.removeEventListener("click", handleClick);
+    };
+  }, [activeAnnotation]);
 
-  function handleRephraseSelect(text: string) {
-    if (!rephraseState.request) return;
-    onRefineTargeted({
-      selected_text: rephraseState.request.selected_text,
-      instruction: `Replace with: "${text}"`,
-      paragraph_index: rephraseState.request.paragraph_index,
-    });
-    setRephraseState({ loading: false, request: null, response: null });
-  }
+  const handleAnnotationClick = useCallback((trigger: RedTrigger, rect: DOMRect) => {
+    setActiveAnnotation({ trigger, rect });
+  }, []);
 
-  function handleRemove(paragraphIndex: number, selectedText: string) {
-    onRefineTargeted({
-      selected_text: selectedText,
-      instruction: "Remove this text from the article.",
-      paragraph_index: paragraphIndex,
-    });
-  }
+  const handleAnnotationDismiss = useCallback(() => {
+    setActiveAnnotation(null);
+  }, []);
 
-  function dismissInstructionBar() {
-    window.getSelection()?.removeAllRanges();
-    setHighlightedParagraph(undefined);
-  }
+  const handleSuggestionClick = useCallback((paragraphRef: number) => {
+    setHighlightParagraph(paragraphRef);
+    // Scroll paragraph into view
+    const el = document.querySelector(`[data-paragraph="${paragraphRef}"]`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Auto-clear highlight after 3s
+    clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => setHighlightParagraph(undefined), 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => clearTimeout(highlightTimer.current);
+  }, []);
 
   return (
     <div className="editorial" style={{ animation: "fadeIn 0.4s ease" }}>
@@ -126,39 +79,18 @@ export function EditorialScreen({
 
       {/* Two-column body */}
       <div className="editorial-body">
-        {/* Left: Article (selectable, not editable) */}
+        {/* Left: Read-only article with annotations */}
         <div className="editorial-article-wrapper">
-          <ArticleRenderer
-            ref={articleRef}
+          <ArticlePreview
             markdown={articleMarkdown}
             userName={userName}
             category={metadata.category}
-            highlightedParagraph={highlightedParagraph}
+            redTriggers={review.red_triggers}
+            activeAnnotation={activeAnnotation}
+            onAnnotationClick={handleAnnotationClick}
+            onAnnotationDismiss={handleAnnotationDismiss}
+            highlightParagraph={highlightParagraph}
           />
-
-          {/* Floating instruction bar on selection */}
-          {activeSelection && !rephraseState.request && (
-            <InstructionBar
-              selection={activeSelection}
-              articleRef={articleRef}
-              onSubmit={handleInstructionSubmit}
-              onRephrase={handleRephrase}
-              onRemove={handleRemove}
-              onDismiss={dismissInstructionBar}
-            />
-          )}
-
-          {/* Rephrase options overlay */}
-          {rephraseState.request && (
-            <RephraseOptions
-              options={rephraseState.response?.options || []}
-              loading={rephraseState.loading}
-              onSelect={handleRephraseSelect}
-              onCancel={() =>
-                setRephraseState({ loading: false, request: null, response: null })
-              }
-            />
-          )}
         </div>
 
         {/* Right: Coaching sidebar */}
