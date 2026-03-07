@@ -1,58 +1,96 @@
 package services
 
 import (
-	"hash/fnv"
-	"math/rand"
+	"encoding/json"
+	"fmt"
+	"log"
 	"net"
+	"net/http"
+	"sync"
+	"time"
 
 	"github.com/localnews/backend/internal/middleware"
 )
 
-type demoCity struct {
-	Name string
-	Lat  float64
-	Lng  float64
+// GeoIPResolver does real GeoIP lookups via ip-api.com with in-memory caching.
+type GeoIPResolver struct {
+	mu    sync.RWMutex
+	cache map[string]cachedGeo
+	client *http.Client
 }
 
-var demoCities = []demoCity{
-	{"Helsinki", 60.1699, 24.9384},
-	{"Stockholm", 59.3293, 18.0686},
-	{"London", 51.5074, -0.1278},
-	{"New York", 40.7128, -74.0060},
-	{"Tokyo", 35.6762, 139.6503},
-	{"Berlin", 52.5200, 13.4050},
-	{"Paris", 48.8566, 2.3522},
-	{"Sydney", -33.8688, 151.2093},
-	{"Mumbai", 19.0760, 72.8777},
-	{"Singapore", 1.3521, 103.8198},
-	{"Cape Town", -33.9249, 18.4241},
-	{"Toronto", 43.6532, -79.3832},
-	{"Seoul", 37.5665, 126.9780},
-	{"Dubai", 25.2048, 55.2708},
-	{"Bangkok", 13.7563, 100.5018},
-	{"Sao Paulo", -23.5505, -46.6333},
-	{"Lagos", 6.5244, 3.3792},
-	{"Moscow", 55.7558, 37.6173},
-	{"Buenos Aires", -34.6037, -58.3816},
-	{"Mexico City", 19.4326, -99.1332},
+type cachedGeo struct {
+	result    middleware.StatsGeoResult
+	expiresAt time.Time
 }
 
-type DemoGeoResolver struct{}
-
-func NewDemoGeoResolver() *DemoGeoResolver {
-	return &DemoGeoResolver{}
+type ipAPIResponse struct {
+	Status  string  `json:"status"`
+	City    string  `json:"city"`
+	Lat     float64 `json:"lat"`
+	Lon     float64 `json:"lon"`
+	Country string  `json:"country"`
 }
 
-func (d *DemoGeoResolver) Resolve(ip string) middleware.StatsGeoResult {
-	if isPrivateIP(ip) {
-		city := demoCities[rand.Intn(len(demoCities))]
-		return middleware.StatsGeoResult{Lat: city.Lat, Lng: city.Lng, CityName: city.Name}
+func NewGeoIPResolver() *GeoIPResolver {
+	return &GeoIPResolver{
+		cache:  make(map[string]cachedGeo),
+		client: &http.Client{Timeout: 2 * time.Second},
 	}
-	h := fnv.New32a()
-	h.Write([]byte(ip))
-	idx := int(h.Sum32()) % len(demoCities)
-	city := demoCities[idx]
-	return middleware.StatsGeoResult{Lat: city.Lat, Lng: city.Lng, CityName: city.Name}
+}
+
+func (g *GeoIPResolver) Resolve(ip string) middleware.StatsGeoResult {
+	if isPrivateIP(ip) {
+		return middleware.StatsGeoResult{Lat: 60.1867, Lng: 24.8283, CityName: "Local"}
+	}
+
+	// Check cache
+	g.mu.RLock()
+	if cached, ok := g.cache[ip]; ok && time.Now().Before(cached.expiresAt) {
+		g.mu.RUnlock()
+		return cached.result
+	}
+	g.mu.RUnlock()
+
+	// Lookup
+	result := g.lookup(ip)
+
+	// Cache for 1 hour
+	g.mu.Lock()
+	g.cache[ip] = cachedGeo{result: result, expiresAt: time.Now().Add(time.Hour)}
+	// Evict old entries if cache gets large
+	if len(g.cache) > 10000 {
+		now := time.Now()
+		for k, v := range g.cache {
+			if now.After(v.expiresAt) {
+				delete(g.cache, k)
+			}
+		}
+	}
+	g.mu.Unlock()
+
+	return result
+}
+
+func (g *GeoIPResolver) lookup(ip string) middleware.StatsGeoResult {
+	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=status,city,lat,lon,country", ip)
+	resp, err := g.client.Get(url)
+	if err != nil {
+		log.Printf("geoip lookup failed for %s: %v", ip, err)
+		return middleware.StatsGeoResult{Lat: 60.1867, Lng: 24.8283, CityName: "Unknown"}
+	}
+	defer resp.Body.Close()
+
+	var data ipAPIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || data.Status != "success" {
+		return middleware.StatsGeoResult{Lat: 60.1867, Lng: 24.8283, CityName: "Unknown"}
+	}
+
+	return middleware.StatsGeoResult{
+		Lat:      data.Lat,
+		Lng:      data.Lon,
+		CityName: data.City,
+	}
 }
 
 func isPrivateIP(ipStr string) bool {
@@ -60,32 +98,5 @@ func isPrivateIP(ipStr string) bool {
 	if ip == nil {
 		return true
 	}
-	privateRanges := []struct{ start, end net.IP }{
-		{net.ParseIP("10.0.0.0"), net.ParseIP("10.255.255.255")},
-		{net.ParseIP("172.16.0.0"), net.ParseIP("172.31.255.255")},
-		{net.ParseIP("192.168.0.0"), net.ParseIP("192.168.255.255")},
-		{net.ParseIP("127.0.0.0"), net.ParseIP("127.255.255.255")},
-	}
-	ip4 := ip.To4()
-	if ip4 == nil {
-		return true
-	}
-	for _, r := range privateRanges {
-		if bytesInRange(ip4, r.start.To4(), r.end.To4()) {
-			return true
-		}
-	}
-	return false
-}
-
-func bytesInRange(ip, start, end net.IP) bool {
-	for i := 0; i < 4; i++ {
-		if ip[i] < start[i] {
-			return false
-		}
-		if ip[i] > end[i] {
-			return false
-		}
-	}
-	return true
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
 }

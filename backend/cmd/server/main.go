@@ -146,7 +146,7 @@ func main() {
 	searchSvc := search.NewService(db, embeddingSvc, rerankerSvc)
 
 	// Stats service
-	geoResolver := services.NewDemoGeoResolver()
+	geoResolver := services.NewGeoIPResolver()
 	statsSvc := services.NewStatsService(c)
 
 	// Handler
