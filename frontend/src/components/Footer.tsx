@@ -10,7 +10,7 @@ export default function Footer() {
       <div className="site-footer__inner">
         <div className="site-footer__top">
           <div>
-            <div className="site-footer__brand">Local News</div>
+            <div className="site-footer__brand">{t("navbar.brandName")}</div>
             <p className="site-footer__desc">{t("footer.desc")}</p>
           </div>
 
@@ -35,7 +35,7 @@ export default function Footer() {
         </div>
 
         <div className="site-footer__bottom">
-          <span>&copy; {new Date().getFullYear()} Local News</span>
+          <span>&copy; {new Date().getFullYear()} {t("navbar.brandName")}</span>
           <span>{t("footer.madeWith")}</span>
         </div>
       </div>

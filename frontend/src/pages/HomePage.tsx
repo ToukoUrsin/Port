@@ -23,6 +23,7 @@ import "./HomePage.css";
 
 function RankedCard({ article, rank }: { article: Article; rank: number }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   return (
     <Link
       to={`/article/${article.id}`}
@@ -51,7 +52,7 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
               navigate(`/tag/${article.category}`);
             }}
           >
-            {article.category}
+            {t("tag." + article.category)}
           </span>
         </div>
         <h3 className="ranked-card__title">
@@ -69,6 +70,7 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
 }
 
 function OpinionCard({ article }: { article: Article }) {
+  const { t } = useLanguage();
   return (
     <Link
       to={`/article/${article.id}`}
@@ -77,7 +79,7 @@ function OpinionCard({ article }: { article: Article }) {
     >
       <div className="opinion-card__body">
         <h2 className="opinion-card__title">
-          <span className="title-prefix">{article.category}</span>
+          <span className="title-prefix">{t("tag." + article.category)}</span>
           <span className="title-sep"> | </span>
           {article.title}
         </h2>
@@ -87,7 +89,7 @@ function OpinionCard({ article }: { article: Article }) {
             {(article.author ?? "?").split(" ").map(n => n[0]).join("")}
           </div>
           <div>
-            <span className="opinion-card__name">{article.author ?? "Anonymous"}</span>
+            <span className="opinion-card__name">{article.author ?? t("home.anonymous")}</span>
             <span className="opinion-card__time">{article.timeAgo}</span>
           </div>
         </div>
@@ -97,6 +99,7 @@ function OpinionCard({ article }: { article: Article }) {
 }
 
 function EventCard({ article }: { article: Article }) {
+  const { t } = useLanguage();
   return (
     <Link
       to={`/article/${article.id}`}
@@ -110,7 +113,7 @@ function EventCard({ article }: { article: Article }) {
       )}
       <div className="event-card__body">
         <h3 className="event-card__title">
-          <span className="title-prefix">{article.category}</span>
+          <span className="title-prefix">{t("tag." + article.category)}</span>
           <span className="title-sep"> | </span>
           {article.title}
         </h3>
@@ -128,6 +131,7 @@ function EventCard({ article }: { article: Article }) {
 }
 
 function HeadlineItem({ article }: { article: Article }) {
+  const { t } = useLanguage();
   return (
     <Link
       to={`/article/${article.id}`}
@@ -136,7 +140,7 @@ function HeadlineItem({ article }: { article: Article }) {
     >
       <div className="headline-item__content">
         <h3 className="headline-item__title">
-          <span className="title-prefix">{article.category}</span>
+          <span className="title-prefix">{t("tag." + article.category)}</span>
           <span className="title-sep"> | </span>
           {article.title}
         </h3>

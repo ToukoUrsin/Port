@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getLocations } from "@/lib/api";
 import type { ApiLocation } from "@/lib/types";
 import Navbar from "@/components/Navbar";
@@ -85,6 +86,7 @@ function MapEventHandler({
 }
 
 export default function ExplorePage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [areas, setAreas] = useState<Area[]>([]);
@@ -188,8 +190,8 @@ export default function ExplorePage() {
             disabled={selectedIds.size === 0}
           >
             {selectedIds.size === 0
-              ? "Select areas on the map"
-              : `Apply (${selectedIds.size})`}
+              ? t("explore.selectAreas")
+              : `${t("explore.apply")} (${selectedIds.size})`}
           </button>
         </div>
       </div>

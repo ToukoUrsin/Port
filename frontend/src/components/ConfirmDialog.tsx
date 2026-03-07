@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import Modal from "./Modal";
+import { useLanguage } from "@/contexts/LanguageContext";
 import "./ConfirmDialog.css";
 
 interface ConfirmOptions {
@@ -29,6 +30,7 @@ interface ConfirmContextValue {
 const ConfirmContext = createContext<ConfirmContextValue | null>(null);
 
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const { t } = useLanguage();
   const [state, setState] = useState<ConfirmState>({
     open: false,
     title: "",
@@ -71,14 +73,14 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               onClick={() => handleClose(false)}
               type="button"
             >
-              {state.cancelLabel || "Cancel"}
+              {state.cancelLabel || t("confirm.cancel")}
             </button>
             <button
               className={confirmBtnClass}
               onClick={() => handleClose(true)}
               type="button"
             >
-              {state.confirmLabel || "Confirm"}
+              {state.confirmLabel || t("confirm.confirm")}
             </button>
           </div>
         </Modal.Body>

@@ -16,6 +16,7 @@ import Modal from "@/components/Modal";
 import "./ArticlePage.css";
 
 function ArticleReactions({ articleId }: { articleId: string }) {
+  const { t } = useLanguage();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [counts, setCounts] = useState<ReactionCounts>({ likes: 0, dislikes: 0 });
   const [userReaction, setUserReaction] = useState<number>(0);
@@ -77,7 +78,7 @@ function ArticleReactions({ articleId }: { articleId: string }) {
           <div className="article-reactions__bar">
             <div className="article-reactions__bar-fill" style={{ width: `${likePercent}%` }} />
           </div>
-          <span className="article-reactions__percent">{likePercent}% liked</span>
+          <span className="article-reactions__percent">{likePercent}% {t("article.liked")}</span>
         </div>
       )}
     </div>
@@ -146,6 +147,7 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
   onSubmitted: (reply: ApiReply) => void;
   onCancel: () => void;
 }) {
+  const { t } = useLanguage();
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -175,7 +177,7 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
         <textarea
           ref={inputRef}
           className="input comment-form__input"
-          placeholder="Write a reply..."
+          placeholder={t("article.writeReply")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -188,7 +190,7 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
           rows={1}
         />
         <div className="comment-reply-form__actions">
-          <button className="comment-reply-form__cancel" onClick={onCancel}>Cancel</button>
+          <button className="comment-reply-form__cancel" onClick={onCancel}>{t("article.cancel")}</button>
           <button
             className="comment-reply-form__submit"
             onClick={handleSubmit}
@@ -260,7 +262,7 @@ function CommentItem({ reply, depth, replyReactions, articleId, onNewReply, onDe
               onClick={() => setShowReplyForm((v) => !v)}
             >
               <ReplyIcon size={12} />
-              Reply
+              {t("article.reply")}
             </button>
           )}
           {isOwner && (
@@ -539,7 +541,7 @@ export default function ArticlePage() {
       <div className="article-content">
         <div className="article-meta">
           <Link to={`/tag/${article.category}`} className={`badge badge--clickable ${BADGE_CLASS[article.category] || "badge-community"}`}>
-            {article.category}
+            {t("tag." + article.category)}
           </Link>
           <span className="article-meta__time">
             <Clock size={12} />
@@ -585,7 +587,7 @@ export default function ArticlePage() {
           </div>
           {apiData?.meta?.article_metadata?.category && (
             <Link to={`/tag/${apiData.meta.article_metadata.category}`} className={`badge badge--clickable ${BADGE_CLASS[apiData.meta.article_metadata.category] || "badge-community"}`}>
-              {apiData.meta.article_metadata.category}
+              {t("tag." + apiData.meta.article_metadata.category)}
             </Link>
           )}
         </div>
@@ -596,13 +598,13 @@ export default function ArticlePage() {
           <div className="report-section">
             {!showReport ? (
               <button className="report-trigger" onClick={() => setShowReport(true)}>
-                <Flag size={14} /> Report this article
+                <Flag size={14} /> {t("article.reportArticle")}
               </button>
             ) : (
               <div className="report-form">
                 <textarea
                   className="input"
-                  placeholder="Why are you reporting this article?"
+                  placeholder={t("article.reportPlaceholder")}
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
                   rows={3}
@@ -624,10 +626,10 @@ export default function ArticlePage() {
                       }
                     }}
                   >
-                    {reportSubmitting ? <Loader2 size={14} className="animate-spin" /> : "Submit report"}
+                    {reportSubmitting ? <Loader2 size={14} className="animate-spin" /> : t("article.submitReport")}
                   </button>
                   <button className="btn btn-secondary" onClick={() => setShowReport(false)}>
-                    Cancel
+                    {t("article.cancel")}
                   </button>
                 </div>
               </div>
@@ -636,7 +638,7 @@ export default function ArticlePage() {
         )}
         {reportDone && (
           <p style={{ color: "var(--color-text-tertiary)", fontSize: "var(--text-sm)", fontFamily: "var(--font-sans)", marginTop: "var(--space-4)" }}>
-            Thank you for your report. Our team will review it.
+            {t("article.reportThanks")}
           </p>
         )}
 
@@ -673,7 +675,7 @@ export default function ArticlePage() {
                           navigate(`/tag/${a.category}`);
                         }}
                       >
-                        {a.category}
+                        {t("tag." + a.category)}
                       </span>
                       <h3 className="similar-card__title">{a.title}</h3>
                       <div className="similar-card__meta">
@@ -709,11 +711,11 @@ export default function ArticlePage() {
                   className={`badge badge--clickable ${BADGE_CLASS[a.category] || "badge-community"}`}
                   onClick={() => setModalArticle(null)}
                 >
-                  {a.category}
+                  {t("tag." + a.category)}
                 </Link>
                 <h2 className="article-modal__title">{a.title}</h2>
                 <p className="article-modal__author">
-                  By{" "}
+                  {t("article.by")}{" "}
                   <Link
                     to={`/profile/${a.authorId}`}
                     className="article-author__link"
@@ -731,7 +733,7 @@ export default function ArticlePage() {
                   className="btn btn-secondary article-modal__cta"
                   onClick={() => setModalArticle(null)}
                 >
-                  Read full article
+                  {t("article.readFull")}
                 </Link>
               </div>
             </>

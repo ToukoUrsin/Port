@@ -88,7 +88,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       const res = await createSubmission(formData);
       onSubmit(res.submission_id);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Submission failed";
+      const msg = err instanceof Error ? err.message : t("post.submissionFailed");
       if (msg === "public_profile_required") {
         setShowPublicModal(true);
         setIsSubmitting(false);
@@ -207,7 +207,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
               disabled={isSubmitting}
             >
               <EyeOff size={14} />
-              <span>Anonymous</span>
+              <span>{t("post.anonymous")}</span>
             </button>
             <button
               type="submit"
@@ -245,38 +245,7 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
   reviewing: <ShieldCheck size={16} />,
 };
 
-const STEP_LABELS_EN: Record<string, string> = {
-  transcribing: "Listening to your recording",
-  describing_photos: "Analyzing your photos",
-  researching: "Researching background",
-  generating: "Writing the article",
-  reviewing: "Quality review",
-};
-
-const STEP_LABELS_FI: Record<string, string> = {
-  transcribing: "Kuunnellaan äänitettä",
-  describing_photos: "Analysoidaan kuvia",
-  researching: "Tutkitaan taustaa",
-  generating: "Kirjoitetaan artikkelia",
-  reviewing: "Laaduntarkistus",
-};
-
-const STRUCTURE_LABELS: Record<string, string> = {
-  news_report: "News Report",
-  feature: "Feature Story",
-  photo_essay: "Photo Essay",
-  brief: "Brief",
-  narrative: "Narrative",
-};
-
-const SCORE_LABELS: Record<string, string> = {
-  evidence: "Evidence",
-  perspectives: "Perspectives",
-  representation: "Representation",
-  ethical_framing: "Ethics",
-  cultural_context: "Cultural",
-  manipulation: "Integrity",
-};
+const SCORE_KEYS = ["evidence", "perspectives", "representation", "ethical_framing", "cultural_context", "manipulation"];
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   const pct = Math.round(value * 100);
@@ -293,15 +262,16 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 }
 
 function GateBadge({ gate }: { gate: string }) {
+  const { t } = useLanguage();
   const colors: Record<string, string> = {
     GREEN: "var(--color-success, #22c55e)",
     YELLOW: "var(--color-warning, #f59e0b)",
     RED: "var(--color-error, #ef4444)",
   };
   const labels: Record<string, string> = {
-    GREEN: "Ready to publish",
-    YELLOW: "Needs review",
-    RED: "Issues found",
+    GREEN: t("gate.readyToPublish"),
+    YELLOW: t("gate.needsReview"),
+    RED: t("gate.issuesFound"),
   };
   return (
     <span className="pl-gate" style={{ background: colors[gate] || colors.YELLOW }}>
@@ -320,7 +290,13 @@ function ProcessingStep({
   onError: (message: string) => void;
 }) {
   const { language, t } = useLanguage();
-  const STEP_LABELS = language === "fi" ? STEP_LABELS_FI : STEP_LABELS_EN;
+  const STEP_LABELS: Record<string, string> = {
+    transcribing: t("post.stepListening"),
+    describing_photos: t("post.stepPhotos"),
+    researching: language === "fi" ? "Tutkitaan taustaa" : "Researching background",
+    generating: t("post.stepWriting"),
+    reviewing: t("post.stepReviewing"),
+  };
   const [stepKeys, setStepKeys] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState<string>("");
   const [stepTimes, setStepTimes] = useState<Record<string, number>>({});
@@ -439,12 +415,12 @@ function ProcessingStep({
               {key === "transcribing" && done && transcript && (
                 <div className="pl-step-body">
                   <div className="pl-data-block">
-                    <div className="pl-data-label"><Mic size={12} /> Transcript</div>
+                    <div className="pl-data-label"><Mic size={12} /> {t("pipeline.transcript")}</div>
                     <p className="pl-data-text">{transcript}</p>
                   </div>
                   {notes && (
                     <div className="pl-data-block">
-                      <div className="pl-data-label"><Type size={12} /> Notes</div>
+                      <div className="pl-data-label"><Type size={12} /> {t("pipeline.notes")}</div>
                       <p className="pl-data-text">{notes}</p>
                     </div>
                   )}
@@ -455,7 +431,7 @@ function ProcessingStep({
               {key === "transcribing" && done && !transcript && notes && (
                 <div className="pl-step-body">
                   <div className="pl-data-block">
-                    <div className="pl-data-label"><Type size={12} /> Notes</div>
+                    <div className="pl-data-label"><Type size={12} /> {t("pipeline.notes")}</div>
                     <p className="pl-data-text">{notes}</p>
                   </div>
                 </div>
@@ -487,13 +463,13 @@ function ProcessingStep({
                   )}
                   {researchContext && (
                     <div className="pl-data-block">
-                      <div className="pl-data-label"><Search size={12} /> Findings</div>
+                      <div className="pl-data-label"><Search size={12} /> {t("pipeline.findings")}</div>
                       <p className="pl-data-text pl-research-text">{researchContext}</p>
                     </div>
                   )}
                   {researchSources.length > 0 && (
                     <div className="pl-sources">
-                      <div className="pl-data-label">Sources ({researchSources.length})</div>
+                      <div className="pl-data-label">{t("pipeline.sources")} ({researchSources.length})</div>
                       <ul>
                         {researchSources.map((s, i) => (
                           <li key={i}>
@@ -510,14 +486,14 @@ function ProcessingStep({
               {key === "generating" && done && genData && (
                 <div className="pl-step-body">
                   <div className="pl-gen-meta">
-                    <span className="pl-badge pl-badge--structure">{STRUCTURE_LABELS[genData.structure] || genData.structure}</span>
+                    <span className="pl-badge pl-badge--structure">{t("structure." + genData.structure)}</span>
                     <span className="pl-badge pl-badge--category">{genData.category}</span>
-                    <span className="pl-badge pl-badge--words">{genData.word_count} words</span>
-                    <span className="pl-badge pl-badge--confidence">{Math.round(genData.confidence * 100)}% confident</span>
+                    <span className="pl-badge pl-badge--words">{genData.word_count} {t("pipeline.words")}</span>
+                    <span className="pl-badge pl-badge--confidence">{Math.round(genData.confidence * 100)}% {t("pipeline.confident")}</span>
                   </div>
                   {genData.missing_context && genData.missing_context.length > 0 && (
                     <div className="pl-missing">
-                      <div className="pl-data-label">Questions the AI couldn't answer</div>
+                      <div className="pl-data-label">{t("pipeline.missingContext")}</div>
                       <ul>
                         {genData.missing_context.map((q, i) => (
                           <li key={i}>{q}</li>
@@ -533,14 +509,14 @@ function ProcessingStep({
                 <div className="pl-step-body">
                   <div className="pl-review-header">
                     <GateBadge gate={reviewData.gate} />
-                    <span className="pl-review-stat">{reviewData.verified_claims} claims verified</span>
+                    <span className="pl-review-stat">{reviewData.verified_claims} {t("pipeline.claimsVerified")}</span>
                     {reviewData.web_sources > 0 && (
-                      <span className="pl-review-stat">{reviewData.web_sources} web sources</span>
+                      <span className="pl-review-stat">{reviewData.web_sources} {t("pipeline.webSources")}</span>
                     )}
                   </div>
                   <div className="pl-scores">
-                    {Object.entries(SCORE_LABELS).map(([key, label]) => (
-                      <ScoreBar key={key} label={label} value={(reviewData.scores as unknown as Record<string, number>)[key] ?? 0} />
+                    {SCORE_KEYS.map((key) => (
+                      <ScoreBar key={key} label={t("score." + key)} value={(reviewData.scores as unknown as Record<string, number>)[key] ?? 0} />
                     ))}
                   </div>
                   {reviewData.coaching && reviewData.coaching.celebration && (
@@ -549,10 +525,10 @@ function ProcessingStep({
                     </div>
                   )}
                   {reviewData.red_triggers > 0 && (
-                    <span className="pl-badge pl-badge--red">{reviewData.red_triggers} red trigger{reviewData.red_triggers > 1 ? "s" : ""}</span>
+                    <span className="pl-badge pl-badge--red">{reviewData.red_triggers} {reviewData.red_triggers > 1 ? t("pipeline.redTriggers") : t("pipeline.redTrigger")}</span>
                   )}
                   {reviewData.yellow_flags > 0 && (
-                    <span className="pl-badge pl-badge--yellow">{reviewData.yellow_flags} yellow flag{reviewData.yellow_flags > 1 ? "s" : ""}</span>
+                    <span className="pl-badge pl-badge--yellow">{reviewData.yellow_flags} {reviewData.yellow_flags > 1 ? t("pipeline.yellowFlags") : t("pipeline.yellowFlag")}</span>
                   )}
                 </div>
               )}
@@ -743,17 +719,17 @@ export default function PostPage() {
             setIsRefining(false);
           },
           onError: (err) => {
-            toast(err.message || "Refinement failed", "error");
+            toast(err.message || pt("post.refineFailed"), "error");
             setIsRefining(false);
           },
         });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Refinement failed";
+        const msg = err instanceof Error ? err.message : pt("post.refineFailed");
         toast(msg, "error");
         setIsRefining(false);
       }
     },
-    [submissionId, articleMarkdown, toast],
+    [submissionId, articleMarkdown, toast, pt],
   );
 
   const handlePublish = useCallback(async () => {
@@ -770,7 +746,7 @@ export default function PostPage() {
       toast(pt("post.published"), "success");
       navigate("/");
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Publish failed.", "error");
+      toast(err instanceof Error ? err.message : pt("post.publishFailed"), "error");
     }
   }, [submissionId, articleMarkdown, toast, navigate, pt]);
 
@@ -822,7 +798,7 @@ export default function PostPage() {
                 cursor: "pointer",
               }}
             >
-              Demo (skip pipeline)
+              {pt("post.demo")}
             </button>
           </>
         )}
@@ -838,7 +814,7 @@ export default function PostPage() {
             articleMarkdown={articleMarkdown}
             review={reviewData}
             metadata={metadata}
-            userName={user?.profile_name || "Anonymous"}
+            userName={user?.profile_name || pt("post.anonymous")}
             currentRound={currentRound}
             isRefining={isRefining}
             onRefineGeneral={handleRefineGeneral}

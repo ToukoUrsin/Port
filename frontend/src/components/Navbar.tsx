@@ -118,7 +118,7 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
           </Link>
         </div>
 
-        <Link to="/" className="home-nav__brand">Local News</Link>
+        <Link to="/" className="home-nav__brand">{t("navbar.brandName")}</Link>
 
         <form className="home-nav__search" onSubmit={handleSubmit}>
           <Search size={16} className="home-nav__search-icon" />
@@ -160,7 +160,7 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
                             <div className="search-dropdown__item-title">{article.title}</div>
                             <div className="search-dropdown__item-meta">
                               <span className={`badge ${BADGE_CLASS[article.category] || ""}`}>
-                                {article.category}
+                                {t("tag." + article.category)}
                               </span>
                               <span>{article.author}</span>
                               <span>&middot;</span>
@@ -201,9 +201,9 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
               </NavLink>
             </>
           ) : (
-            <NavLink to="/login" className="home-nav__login-btn" title="Log in">
+            <NavLink to="/login" className="home-nav__login-btn" title={t("navbar.login")}>
               <LogIn size={16} />
-              <span>Log in</span>
+              <span>{t("navbar.login")}</span>
             </NavLink>
           )}
         </div>
@@ -214,14 +214,14 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
         <Link to="/explore" className="home-nav-topbar__icon" title={t("navbar.selectCities")}>
           <MapPin size={18} />
         </Link>
-        <Link to="/" className="home-nav-topbar__brand">Local News</Link>
+        <Link to="/" className="home-nav-topbar__brand">{t("navbar.brandName")}</Link>
         {isAuthenticated ? (
           <NavLink to="/profile" className="home-nav-topbar__icon home-nav__profile-btn" title={t("navbar.profile")}>
             <User size={18} />
             {unreadCount > 0 && <span className="notif-dot" />}
           </NavLink>
         ) : (
-          <NavLink to="/login" className="home-nav-topbar__icon" title="Log in">
+          <NavLink to="/login" className="home-nav-topbar__icon" title={t("navbar.login")}>
             <LogIn size={18} />
           </NavLink>
         )}

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import { Loader2, CheckCircle, XCircle, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/components/Toast";
 import {
   updateProfile,
@@ -17,12 +18,11 @@ const CONSECUTIVE_HYPHENS = /--/;
 
 type NameStatus = "idle" | "checking" | "available" | "taken" | "invalid" | "current";
 
-function validateName(name: string): string | null {
-  if (name.length < 3) return "Must be at least 3 characters";
-  if (name.length > 30) return "Must be 30 characters or fewer";
-  if (CONSECUTIVE_HYPHENS.test(name)) return "No consecutive hyphens";
-  if (!NAME_REGEX.test(name))
-    return "Only lowercase letters, numbers, and hyphens. Must start and end with a letter or number.";
+function validateName(name: string, t: (key: string) => string): string | null {
+  if (name.length < 3) return t("settings.validMinChars");
+  if (name.length > 30) return t("settings.validMaxChars");
+  if (CONSECUTIVE_HYPHENS.test(name)) return t("settings.validNoHyphens");
+  if (!NAME_REGEX.test(name)) return t("settings.validFormat");
   return null;
 }
 
@@ -75,6 +75,7 @@ function ProfileSettings({
   refreshUser: () => Promise<void>;
   toast: (msg: string, type?: "success" | "error" | "info") => void;
 }) {
+  const { t } = useLanguage();
   const [profileName, setProfileName] = useState(user.profile_name);
   const [nameStatus, setNameStatus] = useState<NameStatus>("current");
   const [nameError, setNameError] = useState<string | null>(null);
@@ -100,7 +101,7 @@ function ProfileSettings({
         return;
       }
 
-      const error = validateName(value);
+      const error = validateName(value, t);
       if (error) {
         setNameStatus("invalid");
         setNameError(error);
@@ -163,13 +164,13 @@ function ProfileSettings({
 
       await updateProfile(user.id, updates as Partial<ApiProfile>);
       await refreshUser();
-      toast("Profile updated", "success");
+      toast(t("settings.profileUpdated"), "success");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setNameStatus("taken");
-        toast("Username already taken", "error");
+        toast(t("settings.usernameTaken"), "error");
       } else {
-        toast("Failed to update profile", "error");
+        toast(t("settings.updateFailed"), "error");
       }
     } finally {
       setSaving(false);
@@ -180,11 +181,11 @@ function ProfileSettings({
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section__title">Profile Settings</h2>
+      <h2 className="settings-section__title">{t("settings.profileTitle")}</h2>
       <form className="settings-form" onSubmit={handleSave}>
         <div className="settings-field">
           <label className="settings-field__label" htmlFor="settings-name">
-            Display name
+            {t("settings.displayName")}
           </label>
           <div className="settings-name-wrapper">
             <input
@@ -202,17 +203,17 @@ function ProfileSettings({
             <span className="settings-error">{nameError}</span>
           )}
           {nameStatus === "taken" && !nameError && (
-            <span className="settings-error">Already taken</span>
+            <span className="settings-error">{t("settings.alreadyTaken")}</span>
           )}
           {nameStatus === "available" && (
-            <span className="settings-success">Available</span>
+            <span className="settings-success">{t("settings.available")}</span>
           )}
         </div>
 
         <div className="settings-field__row">
           <div className="settings-field">
             <label className="settings-field__label" htmlFor="settings-first">
-              First name
+              {t("settings.firstName")}
             </label>
             <input
               id="settings-first"
@@ -220,12 +221,12 @@ function ProfileSettings({
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              placeholder="First name"
+              placeholder={t("settings.firstName")}
             />
           </div>
           <div className="settings-field">
             <label className="settings-field__label" htmlFor="settings-last">
-              Last name
+              {t("settings.lastName")}
             </label>
             <input
               id="settings-last"
@@ -233,28 +234,28 @@ function ProfileSettings({
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              placeholder="Last name"
+              placeholder={t("settings.lastName")}
             />
           </div>
         </div>
 
         <div className="settings-field">
           <label className="settings-field__label" htmlFor="settings-bio">
-            Bio
+            {t("settings.bio")}
           </label>
           <textarea
             id="settings-bio"
             className="input"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            placeholder="Tell us about yourself"
+            placeholder={t("settings.bioPlaceholder")}
             rows={3}
           />
         </div>
 
         <div className="settings-field">
           <label className="settings-field__label" htmlFor="settings-website">
-            Website
+            {t("settings.website")}
           </label>
           <input
             id="settings-website"
@@ -268,8 +269,8 @@ function ProfileSettings({
 
         <div className="settings-toggle">
           <div className="settings-toggle__info">
-            <span className="settings-toggle__label">Public profile</span>
-            <span className="settings-toggle__desc">Allow others to see your profile</span>
+            <span className="settings-toggle__label">{t("settings.publicProfile")}</span>
+            <span className="settings-toggle__desc">{t("settings.publicProfileDesc")}</span>
           </div>
           <Toggle active={isPublic} onToggle={() => setIsPublic(!isPublic)} />
         </div>
@@ -280,7 +281,7 @@ function ProfileSettings({
             className="btn btn-primary"
             disabled={saving || !canSave}
           >
-            {saving ? "Saving..." : "Save changes"}
+            {saving ? t("settings.saving") : t("settings.saveChanges")}
           </button>
         </div>
       </form>
@@ -295,6 +296,7 @@ function PasswordSettings({
 }: {
   toast: (msg: string, type?: "success" | "error" | "info") => void;
 }) {
+  const { t } = useLanguage();
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -306,11 +308,11 @@ function PasswordSettings({
     setError(null);
 
     if (newPw.length < 8) {
-      setError("New password must be at least 8 characters");
+      setError(t("settings.passwordTooShort"));
       return;
     }
     if (newPw !== confirmPw) {
-      setError("Passwords do not match");
+      setError(t("settings.passwordsDontMatch"));
       return;
     }
 
@@ -321,18 +323,18 @@ function PasswordSettings({
       setCurrentPw("");
       setNewPw("");
       setConfirmPw("");
-      toast("Password changed successfully", "success");
+      toast(t("settings.passwordChanged"), "success");
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 401) {
-          setError("Current password is incorrect");
+          setError(t("settings.currentPwIncorrect"));
         } else if (err.status === 429) {
-          setError("Too many attempts. Please try again later.");
+          setError(t("settings.tooManyAttempts"));
         } else {
           setError(err.message);
         }
       } else {
-        setError("Something went wrong");
+        setError(t("settings.somethingWrong"));
       }
     } finally {
       setSaving(false);
@@ -341,11 +343,11 @@ function PasswordSettings({
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section__title">Change Password</h2>
+      <h2 className="settings-section__title">{t("settings.changePassword")}</h2>
       <form className="settings-form" onSubmit={handleSubmit}>
         <div className="settings-field">
           <label className="settings-field__label" htmlFor="settings-current-pw">
-            Current password
+            {t("settings.currentPassword")}
           </label>
           <input
             id="settings-current-pw"
@@ -360,7 +362,7 @@ function PasswordSettings({
 
         <div className="settings-field">
           <label className="settings-field__label" htmlFor="settings-new-pw">
-            New password
+            {t("settings.newPassword")}
           </label>
           <input
             id="settings-new-pw"
@@ -372,12 +374,12 @@ function PasswordSettings({
             minLength={8}
             required
           />
-          <span className="settings-field__hint">Minimum 8 characters</span>
+          <span className="settings-field__hint">{t("settings.minChars")}</span>
         </div>
 
         <div className="settings-field">
           <label className="settings-field__label" htmlFor="settings-confirm-pw">
-            Confirm new password
+            {t("settings.confirmNewPassword")}
           </label>
           <input
             id="settings-confirm-pw"
@@ -398,7 +400,7 @@ function PasswordSettings({
             className="btn btn-primary"
             disabled={saving || !currentPw || !newPw || !confirmPw}
           >
-            {saving ? "Changing..." : "Change password"}
+            {saving ? t("settings.changingPassword") : t("settings.changePasswordBtn")}
           </button>
         </div>
       </form>
@@ -417,6 +419,7 @@ function NotificationSettings({
   updateUser: (u: Partial<ApiProfile>) => void;
   toast: (msg: string, type?: "success" | "error" | "info") => void;
 }) {
+  const { t } = useLanguage();
   const [emailNotify, setEmailNotify] = useState(user.meta?.notify_email ?? false);
   const [pushNotify, setPushNotify] = useState(user.meta?.notify_push ?? false);
 
@@ -434,18 +437,18 @@ function NotificationSettings({
       updateUser({ meta: { ...user.meta, [field]: value } });
     } catch {
       setter(!value);
-      toast("Failed to update notification settings", "error");
+      toast(t("settings.notificationsFailed"), "error");
     }
   }
 
   return (
     <section className="settings-section">
-      <h2 className="settings-section__title">Notifications</h2>
+      <h2 className="settings-section__title">{t("settings.notifications")}</h2>
       <div className="settings-form">
         <div className="settings-toggle">
           <div className="settings-toggle__info">
-            <span className="settings-toggle__label">Email notifications</span>
-            <span className="settings-toggle__desc">Receive updates via email</span>
+            <span className="settings-toggle__label">{t("settings.emailNotifications")}</span>
+            <span className="settings-toggle__desc">{t("settings.emailNotificationsDesc")}</span>
           </div>
           <Toggle
             active={emailNotify}
@@ -454,8 +457,8 @@ function NotificationSettings({
         </div>
         <div className="settings-toggle">
           <div className="settings-toggle__info">
-            <span className="settings-toggle__label">Push notifications</span>
-            <span className="settings-toggle__desc">Receive browser push notifications</span>
+            <span className="settings-toggle__label">{t("settings.pushNotifications")}</span>
+            <span className="settings-toggle__desc">{t("settings.pushNotificationsDesc")}</span>
           </div>
           <Toggle
             active={pushNotify}
@@ -470,9 +473,10 @@ function NotificationSettings({
 // --- Account Actions ---
 
 function AccountActions({ logout }: { logout: () => Promise<void> }) {
+  const { t } = useLanguage();
   return (
     <section className="settings-section settings-section--danger">
-      <h2 className="settings-section__title">Account</h2>
+      <h2 className="settings-section__title">{t("settings.account")}</h2>
       <div className="settings-actions">
         <button
           type="button"
@@ -480,15 +484,15 @@ function AccountActions({ logout }: { logout: () => Promise<void> }) {
           onClick={logout}
         >
           <LogOut size={16} />
-          Log out
+          {t("settings.logOut")}
         </button>
         <button
           type="button"
           className="btn btn-danger"
           disabled
-          title="Coming soon"
+          title={t("settings.comingSoon")}
         >
-          Delete account
+          {t("settings.deleteAccount")}
         </button>
       </div>
     </section>

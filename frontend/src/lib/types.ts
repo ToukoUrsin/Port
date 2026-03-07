@@ -382,7 +382,7 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     excerpt: stripMarkdown(s.meta.article_markdown || s.description || s.meta.summary || "").slice(0, 200),
     body,
     category: s.meta.category || tagsToCategory(s.tags),
-    author: s.meta.anonymous ? "Anonymous contributor" : (s.owner_name || s.owner_id?.slice(0, 8) || "Anonymous"),
+    author: s.meta.anonymous ? (t ? t("post.anonymous") : "Anonymous") : (s.owner_name || s.owner_id?.slice(0, 8) || (t ? t("post.anonymous") : "Anonymous")),
     authorId: s.owner_id,
     authorSlug: s.meta.anonymous ? undefined : s.owner_name,
     timeAgo: timeAgo(s.created_at, t),
