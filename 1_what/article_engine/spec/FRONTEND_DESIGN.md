@@ -239,7 +239,7 @@ This IS the published article. Same fonts, same layout.
 - **Body:** `--font-serif`, `--text-lg`, `--leading-relaxed`. Comfortable reading width (`--size-content`, ~65ch).
 - **Quotes:** Block quote styling — left border or indentation, attributed. Visually distinct from body text.
 - **Photos:** Inline where the AI placed them, with captions generated from the photo descriptions.
-- **No edit controls.** No cursor, no contentEditable, no block handles, no slash commands, no grip icons. The article is a preview — read-only. This is the core design decision from THE_CONTRIBUTOR_CYCLE.md: the contributor directs, they don't type.
+- **No edit controls, but selectable.** No cursor, no contentEditable, no block handles, no slash commands, no grip icons. The article is a preview — read-only. But the contributor CAN select text (desktop) or tap a paragraph (mobile) to give a targeted instruction to the AI. See `INTERACTION_MODEL.md` for the full specification of the four interaction modes: Select + Instruct, Quick Action Chips, Coaching-Anchored Suggestions, and General Voice/Text.
 
 Render the article markdown with `react-markdown`. The same component renders on the reader page — what the contributor sees here IS what gets published.
 
@@ -247,12 +247,13 @@ Render the article markdown with `react-markdown`. The same component renders on
 
 Three sections stacked vertically:
 
-**Section A: Celebration + Questions**
+**Section A: Celebration + Questions (coaching-anchored)**
 
 The coaching text from the review. Always starts with what's good, then asks 1-2 questions. The tone is warm — a conversation, not a report card.
 
 - Celebration text in `--font-sans`, `--text-base`, slightly muted (`--color-text-secondary`). A warm, personal register.
 - Questions as a numbered list, each phrased as curiosity. `--font-sans`, `--text-base`, `--color-text`.
+- **Each question is tappable.** Tapping a coaching suggestion scrolls the article to the relevant paragraph, highlights it, and opens the instruction bar. The contributor can respond (voice or text) right there. See `INTERACTION_MODEL.md` Mode 3.
 
 For RED gate: this section is larger and more prominent. Shows the mirror: "What's here" and "What's not here." Then specific paths forward. Framed as journalism quality, not moral judgment. See USER_STORIES.md Story 6 for exact language.
 
@@ -552,3 +553,4 @@ The easiest to get right — it's mostly CSS and data binding.
 - **Notion** — block paradigm assumes you're building a document, we're showing a finished article
 - **Medium editor** — assumes you're writing, our contributor is reviewing
 - **Any traditional CMS** — the contributor never sees "the CMS"
+- **Any markdown editor** (Typora, Vditor, Milkdown, StackEdit) — even the most elegant inline rendering fails the Liisa test. See `INTERACTION_MODEL.md` for the full landscape analysis and why we chose "select + instruct" over any form of editing.

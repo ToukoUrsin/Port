@@ -20,5 +20,8 @@ backend/tmp/
 scripts/.fb_session/
 scripts/fb_output/
 
+# Inspiration images (large binary files)
+1_what/article_engine/spec/inspiration/
+
 # Node
 node_modules/
