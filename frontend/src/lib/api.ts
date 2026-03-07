@@ -282,10 +282,20 @@ export async function appealSubmission(
 export function getLocations(params?: {
   country?: string;
   level?: number;
+  south?: number;
+  west?: number;
+  north?: number;
+  east?: number;
+  limit?: number;
 }): Promise<{ locations: ApiLocation[] }> {
   const qs = new URLSearchParams();
   if (params?.country) qs.set("country", params.country);
   if (params?.level != null) qs.set("level", String(params.level));
+  if (params?.south != null) qs.set("south", String(params.south));
+  if (params?.west != null) qs.set("west", String(params.west));
+  if (params?.north != null) qs.set("north", String(params.north));
+  if (params?.east != null) qs.set("east", String(params.east));
+  if (params?.limit != null) qs.set("limit", String(params.limit));
   const query = qs.toString();
   return apiFetch<{ locations: ApiLocation[] }>(
     `/api/locations${query ? `?${query}` : ""}`,
