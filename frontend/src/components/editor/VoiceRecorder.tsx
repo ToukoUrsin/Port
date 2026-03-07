@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Mic, Square, X, Play, Pause } from "lucide-react";
 
-function AudioPlayer({ src, onRemove }: { src: string; onRemove: () => void }) {
+export function AudioPlayer({ src, onRemove }: { src: string; onRemove: () => void }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -67,9 +67,14 @@ function AudioPlayer({ src, onRemove }: { src: string; onRemove: () => void }) {
 export function VoiceRecorder({
   onRecording,
   compact,
+  externalAudioURL,
+  onClear,
 }: {
   onRecording: (blob: Blob) => void;
   compact?: boolean;
+  /** When set, the player is rendered externally — VoiceRecorder only shows mic/recording UI */
+  externalAudioURL?: string | null;
+  onClear?: () => void;
 }) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -78,6 +83,9 @@ export function VoiceRecorder({
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<number>(0);
 
+  const hasExternal = externalAudioURL !== undefined;
+  const showInlinePlayer = !hasExternal && audioURL;
+
   async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
@@ -85,7 +93,8 @@ export function VoiceRecorder({
     recorder.ondataavailable = (e) => chunks.current.push(e.data);
     recorder.onstop = () => {
       const blob = new Blob(chunks.current, { type: "audio/webm" });
-      setAudioURL(URL.createObjectURL(blob));
+      const url = URL.createObjectURL(blob);
+      setAudioURL(url);
       onRecording(blob);
       stream.getTracks().forEach((t) => t.stop());
     };
@@ -102,11 +111,17 @@ export function VoiceRecorder({
     clearInterval(timer.current);
   }
 
+  function handleRemove() {
+    setAudioURL(null);
+    onClear?.();
+  }
+
   function formatTime(s: number) {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
   const btnClass = compact ? "record-btn record-btn--compact" : "record-btn";
+  const hasAudio = hasExternal ? !!externalAudioURL : !!audioURL;
 
   return (
     <div className="voice-recorder">
@@ -120,16 +135,16 @@ export function VoiceRecorder({
           <span className="record-timer">{formatTime(elapsed)}</span>
           <Square size={14} />
         </button>
-      ) : audioURL ? (
+      ) : showInlinePlayer ? (
         <AudioPlayer
           src={audioURL}
-          onRemove={() => setAudioURL(null)}
+          onRemove={handleRemove}
         />
-      ) : (
+      ) : !hasAudio ? (
         <button type="button" className={btnClass} onClick={startRecording}>
           <Mic size={compact ? 18 : 24} />
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

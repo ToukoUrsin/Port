@@ -27,7 +27,7 @@ import type {
   WebSource,
 } from "@/lib/types.ts";
 import { EditorialScreen } from "@/components/editor";
-import { VoiceRecorder } from "@/components/editor/VoiceRecorder";
+import { VoiceRecorder, AudioPlayer } from "@/components/editor/VoiceRecorder";
 import type { GeneralRefinement } from "@/components/editor/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import PublicProfileModal from "@/components/PublicProfileModal";
@@ -39,6 +39,7 @@ import "./PostPage.css";
 function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [text, setText] = useState("");
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioURL, setAudioURL] = useState<string | null>(null);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -124,31 +125,41 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       {error && <p className="auth-error">{error}</p>}
 
       <form className="compose-form" onSubmit={handleSubmit}>
-        {files.length > 0 && (
-          <div className="compose-files">
-            {files.map((f, i) => (
-              <div key={i} className="compose-file">
-                {f.preview ? (
-                  <img
-                    src={f.preview}
-                    alt={f.file.name}
-                    className="compose-file-thumb"
-                  />
-                ) : (
-                  <div className="compose-file-badge">
-                    {f.file.type.startsWith("audio/") ? "AUD" : "FILE"}
+        {(files.length > 0 || audioURL) && (
+          <div className="compose-attachments">
+            {audioURL && (
+              <AudioPlayer
+                src={audioURL}
+                onRemove={() => { setAudioBlob(null); setAudioURL(null); }}
+              />
+            )}
+            {files.length > 0 && (
+              <div className="compose-files">
+                {files.map((f, i) => (
+                  <div key={i} className="compose-file">
+                    {f.preview ? (
+                      <img
+                        src={f.preview}
+                        alt={f.file.name}
+                        className="compose-file-thumb"
+                      />
+                    ) : (
+                      <div className="compose-file-badge">
+                        {f.file.type.startsWith("audio/") ? "AUD" : "FILE"}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="compose-file-remove"
+                      onClick={() => removeFile(i)}
+                      disabled={isSubmitting}
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
-                )}
-                <button
-                  type="button"
-                  className="compose-file-remove"
-                  onClick={() => removeFile(i)}
-                  disabled={isSubmitting}
-                >
-                  <X size={12} />
-                </button>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -171,8 +182,13 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
               <Camera size={20} />
             </button>
             <VoiceRecorder
-              onRecording={(blob) => setAudioBlob(blob)}
+              onRecording={(blob) => {
+                setAudioBlob(blob);
+                setAudioURL(URL.createObjectURL(blob));
+              }}
               compact
+              externalAudioURL={audioURL}
+              onClear={() => { setAudioBlob(null); setAudioURL(null); }}
             />
           </div>
           <input

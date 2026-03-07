@@ -108,7 +108,7 @@
   background: var(--color-gray-200);
   border-radius: 2px;
   cursor: pointer;
-  min-width: 60px;
+  min-width: 32px;
   overflow: hidden;
 }
 .audio-player-fill {
