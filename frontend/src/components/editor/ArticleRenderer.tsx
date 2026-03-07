@@ -11,6 +11,7 @@ import Highlight from "@tiptap/extension-highlight";
 import { Markdown } from "tiptap-markdown";
 import { AnnotationHighlight, annotationPluginKey } from "./extensions/AnnotationHighlight";
 import { DragHandle } from "./extensions/DragHandle";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { RedTrigger, VerificationEntry } from "@/lib/types";
 import type { ActiveAnnotation } from "./types";
 import {
@@ -128,6 +129,7 @@ export function ArticleEditor({
   onContentChange,
   onAiAction,
 }: ArticleEditorProps) {
+  const { t } = useLanguage();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { headline: initHeadline, body: initBody } = splitHeadline(markdown);
   const headlineRef = useRef(initHeadline);
@@ -156,7 +158,7 @@ export function ArticleEditor({
           minHeight: 60,
         },
       }),
-      Placeholder.configure({ placeholder: "Start writing..." }),
+      Placeholder.configure({ placeholder: t("editor.startWriting") }),
       Markdown,
       AnnotationHighlight,
       DragHandle,
@@ -331,7 +333,7 @@ export function ArticleEditor({
         className="article-headline-input"
         defaultValue={initHeadline}
         onChange={handleHeadlineChange}
-        placeholder="Article headline"
+        placeholder={t("editor.headline")}
       />
       <div className="article-byline">
         By {userName} &middot; {new Date().toLocaleDateString()}
@@ -539,36 +541,36 @@ export function ArticleEditor({
                   <button
                     type="button"
                     className="bubble-menu-ai__chip"
-                    onClick={() => handleAiChip("Rephrase this")}
+                    onClick={() => handleAiChip(t("editor.aiRephraseInstruction"))}
                   >
-                    Rephrase
+                    {t("editor.aiRephrase")}
                   </button>
                   <button
                     type="button"
                     className="bubble-menu-ai__chip"
-                    onClick={() => handleAiChip("Simplify this")}
+                    onClick={() => handleAiChip(t("editor.aiSimplifyInstruction"))}
                   >
-                    Simplify
+                    {t("editor.aiSimplify")}
                   </button>
                   <button
                     type="button"
                     className="bubble-menu-ai__chip"
-                    onClick={() => handleAiChip("Expand on this")}
+                    onClick={() => handleAiChip(t("editor.aiExpandInstruction"))}
                   >
-                    Expand
+                    {t("editor.aiExpand")}
                   </button>
                   <button
                     type="button"
                     className="bubble-menu-ai__chip"
-                    onClick={() => handleAiChip("Fix accuracy")}
+                    onClick={() => handleAiChip(t("editor.aiFixInstruction"))}
                   >
-                    Fix
+                    {t("editor.aiFix")}
                   </button>
                 </div>
                 <div className="bubble-menu-ai__input">
                   <input
                     type="text"
-                    placeholder="Tell AI what to change..."
+                    placeholder={t("editor.aiPlaceholder")}
                     value={aiInstruction}
                     onChange={(e) => setAiInstruction(e.target.value)}
                     onKeyDown={(e) => {
@@ -602,7 +604,7 @@ export function ArticleEditor({
                   }}
                 />
                 <button onClick={handleLinkSubmit} type="button">
-                  Apply
+                  {t("editor.apply")}
                 </button>
               </div>
             )}
@@ -613,8 +615,8 @@ export function ArticleEditor({
       {/* Word count */}
       {editor && (
         <div className="word-count">
-          {editor.storage.characterCount.words()} words &middot;{" "}
-          {editor.storage.characterCount.characters()} characters
+          {editor.storage.characterCount.words()} {t("editor.words")} &middot;{" "}
+          {editor.storage.characterCount.characters()} {t("editor.characters")}
         </div>
       )}
 

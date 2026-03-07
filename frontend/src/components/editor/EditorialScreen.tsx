@@ -127,9 +127,9 @@ export function EditorialScreen({
 
   const statusLabel =
     saveStatus === "saving"
-      ? "Saving..."
+      ? t("editor.saving")
       : saveStatus === "saved"
-        ? "Saved"
+        ? t("editor.saved")
         : null;
 
   return (

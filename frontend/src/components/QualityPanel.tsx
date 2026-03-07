@@ -1,13 +1,14 @@
 import type { ReviewResult, QualityScores } from "@/lib/types";
 import { computeOverallScore } from "@/lib/types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
-const DIMENSION_LABELS: Record<keyof QualityScores, string> = {
-  evidence: "Evidence & Sources",
-  perspectives: "Perspectives",
-  representation: "Representation",
-  ethical_framing: "Ethical Framing",
-  cultural_context: "Cultural Context",
-  manipulation: "Manipulation Check",
+const DIMENSION_LABEL_KEYS: Record<keyof QualityScores, string> = {
+  evidence: "quality.evidenceSources",
+  perspectives: "quality.perspectives",
+  representation: "quality.representation",
+  ethical_framing: "quality.ethicalFraming",
+  cultural_context: "quality.culturalContext",
+  manipulation: "quality.manipulationCheck",
 };
 
 function barColor(score: number): string {
@@ -17,8 +18,9 @@ function barColor(score: number): string {
 }
 
 export function QualityPanel({ review }: { review: ReviewResult }) {
+  const { t } = useLanguage();
   const overall = computeOverallScore(review.scores);
-  const dims = Object.entries(DIMENSION_LABELS) as [keyof QualityScores, string][];
+  const dims = Object.entries(DIMENSION_LABEL_KEYS) as [keyof QualityScores, string][];
 
   const verificationCounts = review.verification.reduce(
     (acc, v) => {
@@ -37,11 +39,11 @@ export function QualityPanel({ review }: { review: ReviewResult }) {
       </div>
 
       <div className="quality-panel__bars">
-        {dims.map(([key, label]) => {
+        {dims.map(([key, labelKey]) => {
           const score = review.scores[key];
           return (
             <div key={key} className="quality-bar">
-              <span className="quality-bar__label">{label}</span>
+              <span className="quality-bar__label">{t(labelKey)}</span>
               <div className="quality-bar__track">
                 <div
                   className="quality-bar__fill"
@@ -57,9 +59,9 @@ export function QualityPanel({ review }: { review: ReviewResult }) {
       {review.verification.length > 0 && (
         <div className="quality-panel__section">
           <p className="quality-panel__verification">
-            {verificationCounts.supported} claim{verificationCounts.supported !== 1 ? "s" : ""} verified
+            {verificationCounts.supported} {verificationCounts.supported !== 1 ? t("quality.claimsVerified") : t("quality.claimVerified")}
             {verificationCounts.flagged > 0 && (
-              <>, {verificationCounts.flagged} flagged for review</>
+              <>, {verificationCounts.flagged} {t("quality.flaggedForReview")}</>
             )}
           </p>
         </div>
@@ -75,7 +77,7 @@ export function QualityPanel({ review }: { review: ReviewResult }) {
 
       {review.web_sources && review.web_sources.length > 0 && (
         <div className="quality-panel__section">
-          <p className="quality-panel__section-label">Verified against</p>
+          <p className="quality-panel__section-label">{t("quality.verifiedAgainst")}</p>
           <ul className="quality-panel__sources">
             {review.web_sources.map((s, i) => (
               <li key={i}>

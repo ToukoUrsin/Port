@@ -104,19 +104,30 @@ export default function ExplorePage() {
     (bounds: L.LatLngBounds, zoom: number) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        const level = zoom <= 4 ? 0 : 3;
+        // Gradual zoom hierarchy:
+        // 1-2: continents | 3: continents+countries | 4-5: countries
+        // 6: countries+regions | 7-8: regions | 9: regions+cities | 10+: cities
+        let levels: number[];
+        if (zoom <= 2) levels = [0];
+        else if (zoom === 3) levels = [0, 1];
+        else if (zoom <= 5) levels = [1];
+        else if (zoom === 6) levels = [1, 2];
+        else if (zoom <= 8) levels = [2];
+        else if (zoom === 9) levels = [2, 3];
+        else levels = [3];
 
-        const params =
-          level === 0
-            ? { level: 0, limit: 300 }
-            : {
-                level: 3,
-                south: bounds.getSouth(),
-                west: bounds.getWest(),
-                north: bounds.getNorth(),
-                east: bounds.getEast(),
-                limit: 300,
-              };
+        const useBbox = zoom > 2;
+        const params = useBbox
+          ? {
+              level: levels,
+              south: bounds.getSouth(),
+              west: bounds.getWest(),
+              north: bounds.getNorth(),
+              east: bounds.getEast(),
+              limit: 300,
+              min_articles: 1,
+            }
+          : { level: levels, limit: 300, min_articles: 1 };
 
         getLocations(params).then((res) => {
           setAreas(toAreas(res.locations));
