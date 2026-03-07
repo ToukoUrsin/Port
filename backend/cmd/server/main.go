@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// Services
-	authSvc := services.NewAuthService(db, c, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	authSvc := services.NewAuthService(db, c, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.SecureCookies)
 	accessSvc := services.NewAccessService(db)
 	mediaSvc := services.NewMediaService(cfg.MediaStoragePath)
 
@@ -133,6 +133,7 @@ func main() {
 
 	// Router
 	r := gin.Default()
+	r.SetTrustedProxies(cfg.TrustedProxies)
 	middleware.SetupCORS(r, cfg.AllowedOrigins)
 
 	// Rate limiting
@@ -166,6 +167,7 @@ func main() {
 		public.GET("/locations/:slug", h.GetLocation)
 		public.GET("/locations/:slug/articles", h.LocationArticles)
 		public.GET("/articles/:id/replies", h.ListReplies)
+		public.GET("/articles/:id/similar", h.SimilarArticles)
 	}
 
 	// --- Optional auth routes (public but enhanced with auth context) ---

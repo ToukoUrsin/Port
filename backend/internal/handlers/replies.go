@@ -149,10 +149,15 @@ func (h *Handler) ModerateReply(c *gin.Context) {
 	}
 
 	var req struct {
-		Status int16 `json:"status" binding:"required"`
+		Status int16 `json:"status"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if req.Status != models.ReplyVisible && req.Status != models.ReplyHidden {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "status must be 0 (visible) or 1 (hidden)"})
 		return
 	}
 

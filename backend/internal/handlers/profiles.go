@@ -140,10 +140,15 @@ func (h *Handler) ChangeUserRole(c *gin.Context) {
 	}
 
 	var req struct {
-		Role int `json:"role" binding:"required"`
+		Role int `json:"role"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	if req.Role < int(models.RoleContributor) || req.Role > int(models.RoleAdmin) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role must be between 0 and 2"})
 		return
 	}
 

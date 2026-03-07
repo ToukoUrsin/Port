@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -30,6 +31,10 @@ type Config struct {
 	RerankerModelPath string
 	RerankerVocabPath string
 	ONNXLibPath       string
+
+	// Security
+	SecureCookies  bool
+	TrustedProxies []string
 
 	// Rate limiting
 	RateLimitEnabled      bool
@@ -71,6 +76,16 @@ func Load() *Config {
 
 	cfg.JWTAccessTTL = parseDuration(env("JWT_ACCESS_TTL", "15m"), 15*time.Minute)
 	cfg.JWTRefreshTTL = parseDuration(env("JWT_REFRESH_TTL", "720h"), 720*time.Hour)
+
+	// Security: default Secure cookies to true unless origins are all localhost
+	cfg.SecureCookies = envBool("SECURE_COOKIES", !allLocalhost(cfg.AllowedOrigins))
+	if tp := env("TRUSTED_PROXIES", ""); tp != "" {
+		for _, p := range strings.Split(tp, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				cfg.TrustedProxies = append(cfg.TrustedProxies, p)
+			}
+		}
+	}
 
 	// Rate limiting
 	cfg.RateLimitEnabled = envBool("RATE_LIMIT_ENABLED", true)
@@ -127,4 +142,14 @@ func parseDuration(s string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return d
+}
+
+func allLocalhost(origins string) bool {
+	for _, o := range strings.Split(origins, ",") {
+		o = strings.TrimSpace(o)
+		if !strings.Contains(o, "localhost") && !strings.Contains(o, "127.0.0.1") {
+			return false
+		}
+	}
+	return true
 }

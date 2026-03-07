@@ -164,6 +164,10 @@ export function getArticle(id: string): Promise<ApiSubmission> {
   return apiFetch<ApiSubmission>(`/api/articles/${id}`);
 }
 
+export function getSimilarArticles(id: string): Promise<{ articles: ApiSubmission[] }> {
+  return apiFetch<{ articles: ApiSubmission[] }>(`/api/articles/${id}/similar`);
+}
+
 // --- Submission endpoints ---
 
 export function createSubmission(

@@ -69,6 +69,43 @@ func (h *Handler) GetArticle(c *gin.Context) {
 	c.JSON(http.StatusOK, article)
 }
 
+func (h *Handler) SimilarArticles(c *gin.Context) {
+	idStr := c.Param("id")
+	key := "similar:" + idStr
+
+	// Cache hit
+	var cached []models.Submission
+	if h.cache.Get(c.Request.Context(), key, &cached) {
+		c.JSON(http.StatusOK, gin.H{"articles": cached})
+		return
+	}
+
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	// Verify article exists and is published
+	var article models.Submission
+	if err := h.db.First(&article, "id = ? AND status = ?", id, models.StatusPublished).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	similar, err := h.search.SimilarArticles(c.Request.Context(), id, 5)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
+		return
+	}
+	if similar == nil {
+		similar = []models.Submission{}
+	}
+
+	h.cache.Set(c.Request.Context(), key, similar)
+	c.JSON(http.StatusOK, gin.H{"articles": similar})
+}
+
 func (h *Handler) UpdateArticle(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

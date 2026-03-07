@@ -94,7 +94,7 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
           {!isSearchOpen && left}
         </div>
 
-        {isSearchOpen ? (
+        {isSearchOpen && (
           <form onSubmit={handleSubmit} style={{ flex: 1, display: "flex", justifyContent: "center" }}>
             <input
               ref={inputRef}
@@ -105,10 +105,6 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
               placeholder="Search articles..."
             />
           </form>
-        ) : (
-          <NavLink to="/" className="home-nav__brand" end>
-            Local News
-          </NavLink>
         )}
 
         <div className="home-nav__right">

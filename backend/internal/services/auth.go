@@ -23,20 +23,22 @@ import (
 )
 
 type AuthService struct {
-	db         *gorm.DB
-	cache      *cache.Cache
-	jwtSecret  []byte
-	accessTTL  time.Duration
-	refreshTTL time.Duration
+	db            *gorm.DB
+	cache         *cache.Cache
+	jwtSecret     []byte
+	accessTTL     time.Duration
+	refreshTTL    time.Duration
+	secureCookies bool
 }
 
-func NewAuthService(db *gorm.DB, cache *cache.Cache, jwtSecret string, accessTTL, refreshTTL time.Duration) *AuthService {
+func NewAuthService(db *gorm.DB, cache *cache.Cache, jwtSecret string, accessTTL, refreshTTL time.Duration, secureCookies bool) *AuthService {
 	return &AuthService{
-		db:         db,
-		cache:      cache,
-		jwtSecret:  []byte(jwtSecret),
-		accessTTL:  accessTTL,
-		refreshTTL: refreshTTL,
+		db:            db,
+		cache:         cache,
+		jwtSecret:     []byte(jwtSecret),
+		accessTTL:     accessTTL,
+		refreshTTL:    refreshTTL,
+		secureCookies: secureCookies,
 	}
 }
 
@@ -193,11 +195,11 @@ func (s *AuthService) RevokeAllForProfile(profileID uuid.UUID) {
 }
 
 func (s *AuthService) SetRefreshCookie(c *gin.Context, tokenStr string) {
-	c.SetCookie("refresh", tokenStr, int(s.refreshTTL.Seconds()), "/api/auth", "", false, true)
+	c.SetCookie("refresh", tokenStr, int(s.refreshTTL.Seconds()), "/api/auth", "", s.secureCookies, true)
 }
 
 func (s *AuthService) ClearRefreshCookie(c *gin.Context) {
-	c.SetCookie("refresh", "", -1, "/api/auth", "", false, true)
+	c.SetCookie("refresh", "", -1, "/api/auth", "", s.secureCookies, true)
 }
 
 func (s *AuthService) GetRefreshCookie(r *http.Request) (string, error) {

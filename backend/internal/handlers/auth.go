@@ -202,7 +202,7 @@ func (h *Handler) GoogleRedirect(c *gin.Context) {
 	}
 	state := base64.URLEncoding.EncodeToString(stateBytes)
 
-	c.SetCookie("oauth_state", state, 600, "/api/auth", "", false, true)
+	c.SetCookie("oauth_state", state, 600, "/api/auth", "", h.cfg.SecureCookies, true)
 
 	url := h.googleOAuthConfig().AuthCodeURL(state)
 	c.Redirect(http.StatusFound, url)
@@ -227,7 +227,7 @@ func (h *Handler) GoogleCallback(c *gin.Context) {
 		return
 	}
 	// Clear state cookie
-	c.SetCookie("oauth_state", "", -1, "/api/auth", "", false, true)
+	c.SetCookie("oauth_state", "", -1, "/api/auth", "", h.cfg.SecureCookies, true)
 
 	// Check for error from Google
 	if errParam := c.Query("error"); errParam != "" {

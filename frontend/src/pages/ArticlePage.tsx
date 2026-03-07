@@ -1,12 +1,13 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
+import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
-import { getArticle, getArticles, getReplies, createReply } from "@/lib/api";
+import { getArticle, getSimilarArticles, getReplies, createReply } from "@/lib/api";
 import { apiToArticle, timeAgo } from "@/lib/types";
-import type { ApiReply } from "@/lib/types";
+import type { ApiSubmission, ApiReply } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import "./ArticlePage.css";
@@ -115,6 +116,82 @@ function Comments({ articleId }: { articleId: string }) {
   );
 }
 
+function ArticleModal({
+  article,
+  apiSubmission,
+  onClose,
+}: {
+  article: Article;
+  apiSubmission: ApiSubmission;
+  onClose: () => void;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setVisible(false);
+    setTimeout(onClose, 200);
+  }, [onClose]);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [handleClose]);
+
+  const markdown = apiSubmission.meta?.article_markdown || article.body || "";
+  const previewParagraphs = markdown.split("\n\n").slice(0, 3).join("\n\n");
+
+  return (
+    <div className={`article-overlay ${visible ? "article-overlay--visible" : ""}`} onClick={handleClose}>
+      <div className={`article-modal ${visible ? "article-modal--visible" : ""}`} onClick={(e) => e.stopPropagation()}>
+        <button className="article-modal__close" onClick={handleClose}>
+          <X size={18} />
+        </button>
+
+        {article.image && (
+          <div className="article-modal__image">
+            <img src={article.image} alt={article.title} />
+          </div>
+        )}
+
+        <div className="article-modal__content">
+          <span className={`badge ${BADGE_CLASS[article.category] || "badge-community"}`}>
+            {article.category}
+          </span>
+
+          <h2 className="article-modal__title">{article.title}</h2>
+
+          <p className="article-modal__author">
+            By{" "}
+            <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link" onClick={handleClose}>
+              {article.author}
+            </Link>
+            <span className="article-modal__time">{article.timeAgo}</span>
+          </p>
+
+          <div className="article-modal__body">
+            <ReactMarkdown>{previewParagraphs}</ReactMarkdown>
+          </div>
+
+          <Link to={`/article/${article.id}`} className="btn btn-secondary article-modal__cta" onClick={handleClose}>
+            Read full article
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -122,14 +199,14 @@ export default function ArticlePage() {
   const fetchArticle = useCallback(() => getArticle(id!), [id]);
   const { data: apiData, isLoading, error } = useApi(fetchArticle, [id]);
 
-  const fetchRelated = useCallback(() => getArticles({ limit: 4 }), []);
-  const { data: relatedData } = useApi(fetchRelated, []);
+  const fetchSimilar = useCallback(() => getSimilarArticles(id!), [id]);
+  const { data: similarData } = useApi(fetchSimilar, [id]);
+
+  const [modalArticle, setModalArticle] = useState<{ article: Article; submission: ApiSubmission } | null>(null);
 
   const article = apiData ? apiToArticle(apiData) : null;
-  const related = (relatedData?.articles ?? [])
-    .filter((a) => a.id !== id)
-    .slice(0, 3)
-    .map(apiToArticle);
+  const similarSubmissions = similarData?.articles ?? [];
+  const similar = similarSubmissions.slice(0, 5);
 
   if (isLoading) {
     return (
@@ -240,43 +317,54 @@ export default function ArticlePage() {
 
         <Comments articleId={id!} />
 
-        {related.length > 0 && (
-          <div className="more-stories">
-            <h2 className="more-stories__title">More stories</h2>
-            <div className="more-stories__grid">
-              {related.map((r) => (
-                <Link
-                  key={r.id}
-                  to={`/article/${r.id}`}
-                  className="card more-card"
-                >
-                  <div className="more-card__img">
-                    {r.image ? (
-                      <img src={r.image} alt={r.title} />
-                    ) : (
-                      <div className="more-card__img-placeholder">
-                        <ImageIcon size={24} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="more-card__body">
-                    <span className={`badge ${BADGE_CLASS[r.category] || "badge-community"}`}>
-                      {r.category}
-                    </span>
-                    <h3 className="more-card__title">{r.title}</h3>
-                    <div className="more-card__meta">
-                      <span>{r.author}</span>
-                      <span>&middot;</span>
-                      <Clock size={10} />
-                      <span>{r.timeAgo}</span>
+        {similar.length > 0 && (
+          <div className="similar-stories">
+            <h2 className="similar-stories__title">Similar stories</h2>
+            <div className="similar-stories__grid">
+              {similar.map((s) => {
+                const a = apiToArticle(s);
+                return (
+                  <button
+                    key={a.id}
+                    className="card similar-card"
+                    onClick={() => setModalArticle({ article: a, submission: s })}
+                  >
+                    <div className="similar-card__img">
+                      {a.image ? (
+                        <img src={a.image} alt={a.title} />
+                      ) : (
+                        <div className="similar-card__img-placeholder">
+                          <ImageIcon size={20} />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </Link>
-              ))}
+                    <div className="similar-card__body">
+                      <span className={`badge ${BADGE_CLASS[a.category] || "badge-community"}`}>
+                        {a.category}
+                      </span>
+                      <h3 className="similar-card__title">{a.title}</h3>
+                      <div className="similar-card__meta">
+                        <span>{a.author}</span>
+                        <span>&middot;</span>
+                        <Clock size={10} />
+                        <span>{a.timeAgo}</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
+
+      {modalArticle && (
+        <ArticleModal
+          article={modalArticle.article}
+          apiSubmission={modalArticle.submission}
+          onClose={() => setModalArticle(null)}
+        />
+      )}
     </>
   );
 }

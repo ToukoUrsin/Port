@@ -80,6 +80,7 @@ func NewRateLimiter(client *redis.Client, cfg *config.Config) *RateLimiter {
 		"POST /api/auth/refresh":         authTier,
 		"GET /api/auth/google":           authTier,
 		"GET /api/auth/google/callback":  authTier,
+		"GET /api/articles/:id/similar":  searchTier,
 		"GET /api/search":                searchTier,
 		"GET /api/search/sessions/:id":   searchTier,
 		"POST /api/submissions":          writeTier,
