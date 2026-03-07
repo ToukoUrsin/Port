@@ -22,15 +22,33 @@ interface Area {
   slug: string;
 }
 
+function coverageTier(count: number): string {
+  if (count === 0) return "explore-area-marker--no-coverage";
+  if (count <= 2) return "explore-area-marker--low-coverage";
+  return "";
+}
+
 function createAreaIcon(area: Area, active: boolean) {
+  const tier = coverageTier(area.articleCount);
   return L.divIcon({
     className: "",
-    html: `<div class="explore-area-marker ${active ? "explore-area-marker--active" : ""}">
+    html: `<div class="explore-area-marker ${active ? "explore-area-marker--active" : ""} ${tier}">
       ${area.name}
+      <span class="explore-area-marker__count">${area.articleCount}</span>
     </div>`,
     iconSize: [0, 0],
     iconAnchor: [0, 14],
   });
+}
+
+function CoverageLegend() {
+  return (
+    <div className="explore-legend">
+      <span className="explore-legend__item"><span className="explore-legend__dot explore-legend__dot--covered" /> 3+ stories</span>
+      <span className="explore-legend__item"><span className="explore-legend__dot explore-legend__dot--low" /> 1-2 stories</span>
+      <span className="explore-legend__item"><span className="explore-legend__dot explore-legend__dot--none" /> No coverage</span>
+    </div>
+  );
 }
 
 function FlyToArea({ area }: { area: Area | null }) {
@@ -105,9 +123,12 @@ export default function ExplorePage() {
               {displayArticles.length} {displayArticles.length === 1 ? "story" : "stories"} in {selectedArea.name}
             </p>
           ) : (
-            <p className="explore__count">
-              {areas.reduce((sum, a) => sum + a.articleCount, 0)} stories in your area
-            </p>
+            <>
+              <p className="explore__count">
+                {areas.reduce((sum, a) => sum + a.articleCount, 0)} stories in your area
+              </p>
+              <CoverageLegend />
+            </>
           )}
         </div>
 
@@ -122,7 +143,7 @@ export default function ExplorePage() {
             {areas.map((area) => (
               <button
                 key={area.id}
-                className="explore-area-card"
+                className={`explore-area-card ${area.articleCount === 0 ? "explore-area-card--empty" : ""}`}
                 onClick={() => setSelectedArea(area)}
               >
                 <span className="explore-area-card__name">{area.name}</span>

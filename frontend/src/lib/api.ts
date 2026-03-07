@@ -367,6 +367,15 @@ export function createReply(
   });
 }
 
+// --- Flagging ---
+
+export function flagArticle(id: string, reason: string): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/articles/${id}/flag`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
 // --- Submissions (for profile drafts) ---
 
 export async function getSubmissions(): Promise<ApiSubmission[]> {
