@@ -1,0 +1,143 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/localnews/backend/internal/models"
+	"github.com/localnews/backend/internal/services"
+)
+
+func (h *Handler) CreateReply(c *gin.Context) {
+	subID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ?", subID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "submission not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanCreateReply(actor, &sub) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "replies not allowed"})
+		return
+	}
+
+	var req struct {
+		Body     string     `json:"body" binding:"required"`
+		ParentID *uuid.UUID `json:"parent_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	reply := models.Reply{
+		SubmissionID: subID,
+		ProfileID:    actor.ProfileID,
+		ParentID:     req.ParentID,
+		Body:         req.Body,
+		Status:       models.ReplyVisible,
+	}
+
+	if err := h.db.Create(&reply).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create reply"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, reply)
+}
+
+func (h *Handler) UpdateReply(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var reply models.Reply
+	if err := h.db.First(&reply, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanEditReply(actor, &reply) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	var req struct {
+		Body string `json:"body" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	h.db.Model(&reply).Update("body", req.Body)
+
+	h.db.First(&reply, "id = ?", id)
+	c.JSON(http.StatusOK, reply)
+}
+
+func (h *Handler) DeleteReply(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var reply models.Reply
+	if err := h.db.First(&reply, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanDeleteReply(actor, &reply) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	h.db.Delete(&reply)
+	c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) ModerateReply(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var reply models.Reply
+	if err := h.db.First(&reply, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanModerateReply(actor) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	var req struct {
+		Status int16 `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	h.db.Model(&reply).Update("status", req.Status)
+
+	h.db.First(&reply, "id = ?", id)
+	c.JSON(http.StatusOK, reply)
+}

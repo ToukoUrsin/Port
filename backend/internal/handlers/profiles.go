@@ -1,0 +1,128 @@
+package handlers
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/localnews/backend/internal/models"
+	"github.com/localnews/backend/internal/services"
+)
+
+func (h *Handler) GetMyProfile(c *gin.Context) {
+	profileID, _ := c.Get("profile_id")
+	id, _ := uuid.Parse(profileID.(string))
+
+	var profile models.Profile
+	if err := h.db.First(&profile, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, profile)
+}
+
+func (h *Handler) GetProfile(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var profile models.Profile
+	if err := h.db.First(&profile, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanViewProfile(actor, &profile) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, profile)
+}
+
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var profile models.Profile
+	if err := h.db.First(&profile, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanEditProfile(actor, &profile) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	var req struct {
+		ProfileName *string             `json:"profile_name"`
+		Public      *bool               `json:"public"`
+		Meta        *models.ProfileMeta `json:"meta"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	updates := map[string]any{}
+	if req.ProfileName != nil {
+		updates["profile_name"] = *req.ProfileName
+	}
+	if req.Public != nil {
+		updates["public"] = *req.Public
+	}
+	if req.Meta != nil {
+		updates["meta"] = models.JSONB[models.ProfileMeta]{V: *req.Meta}
+	}
+
+	if len(updates) > 0 {
+		h.db.Model(&profile).Updates(updates)
+	}
+
+	h.cache.DelProfile(c.Request.Context(), id.String())
+
+	h.db.First(&profile, "id = ?", id)
+	c.JSON(http.StatusOK, profile)
+}
+
+func (h *Handler) ChangeUserRole(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req struct {
+		Role int `json:"role" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	var target models.Profile
+	if err := h.db.First(&target, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanChangeRole(actor, &target, req.Role) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
+	h.db.Model(&target).Update("role", req.Role)
+	h.cache.DelProfile(c.Request.Context(), target.ID.String())
+
+	c.JSON(http.StatusOK, gin.H{"role": req.Role})
+}

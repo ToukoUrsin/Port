@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
+import { useAuth } from "@/contexts/AuthContext.tsx";
 import { ARTICLES, BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
 import "./HomePage.css";
 
@@ -236,7 +237,7 @@ function ArticleCard({ article, featured }: { article: Article; featured?: boole
       </div>
       <div className="article-card__body">
         <div className="article-card__meta">
-          <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          <span className={`badge ${BADGE_CLASS[article.category] || ""}`}>
             {article.category}
           </span>
         </div>
@@ -522,6 +523,7 @@ export default function HomePage() {
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState(25);
   const [modalOpen, setModalOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   return (
     <>

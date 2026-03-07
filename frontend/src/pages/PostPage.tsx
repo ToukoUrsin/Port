@@ -1,94 +1,49 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, ArrowUp, Send, X, Loader2, Image,
   CheckCircle, GripVertical, Move, Type, Heading2, Plus, MapPin, Sparkles,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext.tsx";
+import { useToast } from "@/components/Toast.tsx";
+import { createSubmission, publishArticle, getLocations } from "@/lib/api.ts";
+import { getToken } from "@/lib/api.ts";
+import { streamPipeline } from "@/lib/sse.ts";
+import type { ApiLocation, ApiSubmission, ReviewResult, SSEStatusEvent } from "@/lib/types.ts";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
 
-const AI_ARTICLE = {
-  headline: "City Council Approves New Community Park on Elm Street",
-  body: `The Riverside City Council voted unanimously Tuesday evening to approve construction of a new community park on the vacant lot at 412 Elm Street.
-
-The 2.5-acre park will include a children's playground, walking trails, a small amphitheater for community events, and a rain garden designed to manage stormwater runoff in the neighborhood.
-
-"This has been a long time coming," said Council Member Maria Torres, who sponsored the proposal. "Families in this part of town have been asking for green space for over a decade."
-
-Construction is expected to begin in early summer, with the park opening to the public by fall. The project is funded through a combination of city bonds and a state recreation grant totaling $1.8 million.
-
-Residents interested in volunteering for the park planning committee can sign up at the city's website or attend the next town hall meeting on March 20.`,
-  category: "Council",
-  location: "City Hall, Main Street",
-};
-
-const PROCESSING_STEPS = [
-  "Analyzing your input...",
-  "Transcribing audio...",
-  "Researching context...",
-  "Writing article...",
-  "Running quality checks...",
-];
-
-const LOCATION_SUGGESTIONS = [
-  "City Hall, Main Street",
-  "Central Park",
-  "Downtown District",
-  "Riverside Community Center",
-  "Elm Street Elementary School",
-  "Lincoln High School",
-  "Public Library, Oak Avenue",
-  "Farmers Market, Town Square",
-  "Fire Station #3, Cedar Road",
-  "Memorial Hospital",
-  "Lakewood Shopping Center",
-  "Maple Street Playground",
-  "Westside Sports Complex",
-  "Heritage Museum, Bridge Street",
-  "Police Station, 5th Avenue",
-];
-
-function LocationInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [isFocused, setIsFocused] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const filtered = value.trim()
-    ? LOCATION_SUGGESTIONS.filter((s) => s.toLowerCase().includes(value.toLowerCase())).slice(0, 5)
-    : LOCATION_SUGGESTIONS.slice(0, 5);
-  const show = isFocused && filtered.length > 0;
+function LocationSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [locations, setLocations] = useState<ApiLocation[]>([]);
 
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setIsFocused(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    getLocations().then((res) => setLocations(res.locations ?? [])).catch(() => {});
   }, []);
 
   return (
-    <div className="post-location-wrapper" ref={ref}>
-      <input id="location" className="input" placeholder="Where did this happen?" value={value}
-        onChange={(e) => onChange(e.target.value)} onFocus={() => setIsFocused(true)} autoComplete="off" />
-      {show && (
-        <ul className="post-location-dropdown">
-          {filtered.map((s) => (
-            <li key={s}><button type="button" className="post-location-option"
-              onMouseDown={() => { onChange(s); setIsFocused(false); }}>{s}</button></li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <select id="location" className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Select a location...</option>
+      {locations.map((loc) => (
+        <option key={loc.id} value={loc.id}>
+          {"--".repeat(loc.level)} {loc.name}
+        </option>
+      ))}
+    </select>
   );
 }
 
-// ─── Step 1: Conversational input ───────────────────────────
-function InputStep({ onSubmit }: { onSubmit: () => void }) {
+// --- Step 1: Conversational input ---
+function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [text, setText] = useState("");
   const [location, setLocation] = useState("");
   const [showLocation, setShowLocation] = useState(false);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => { textRef.current?.focus(); }, []);
 
@@ -116,13 +71,42 @@ function InputStep({ onSubmit }: { onSubmit: () => void }) {
 
   const canSubmit = text.trim().length > 0 || files.length > 0;
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      for (const f of files) {
+        if (f.file.type.startsWith("audio/")) {
+          formData.append("audio", f.file);
+        } else {
+          formData.append("photos[]", f.file);
+        }
+      }
+      if (text.trim()) formData.append("notes", text);
+      if (location.trim()) formData.append("location_id", location);
+
+      const res = await createSubmission(formData);
+      onSubmit(res.submission_id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Submission failed";
+      setError(msg);
+      toast(msg, "error");
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <>
       <div className="compose">
         <h1 className="compose-prompt">What happened?</h1>
         <p className="compose-hint">Tell us in your own words. Add photos, audio, or video if you have them.</p>
 
-        <form className="compose-form" onSubmit={(e) => { e.preventDefault(); if (canSubmit) onSubmit(); }}>
+        {error && <p className="auth-error">{error}</p>}
+
+        <form className="compose-form" onSubmit={handleSubmit}>
           {/* File thumbnails */}
           {files.length > 0 && (
             <div className="compose-files">
@@ -135,7 +119,7 @@ function InputStep({ onSubmit }: { onSubmit: () => void }) {
                       {typeLabel(f.file.type)}
                     </div>
                   )}
-                  <button type="button" className="compose-file-remove" onClick={() => removeFile(i)}>
+                  <button type="button" className="compose-file-remove" onClick={() => removeFile(i)} disabled={isSubmitting}>
                     <X size={12} />
                   </button>
                 </div>
@@ -150,13 +134,14 @@ function InputStep({ onSubmit }: { onSubmit: () => void }) {
             placeholder="A pipe burst on Elm Street and the road is flooded..."
             value={text}
             onChange={(e) => setText(e.target.value)}
+            disabled={isSubmitting}
           />
 
           {/* Location chip (optional) */}
           {showLocation ? (
             <div className="compose-location">
               <MapPin size={14} />
-              <LocationInput value={location} onChange={setLocation} />
+              <LocationSelect value={location} onChange={setLocation} />
               <button type="button" className="compose-location-close" onClick={() => { setShowLocation(false); setLocation(""); }}>
                 <X size={14} />
               </button>
@@ -166,20 +151,21 @@ function InputStep({ onSubmit }: { onSubmit: () => void }) {
           {/* Bottom toolbar */}
           <div className="compose-toolbar">
             <div className="compose-actions">
-              <button type="button" className="compose-action" onClick={() => fileRef.current?.click()}>
+              <button type="button" className="compose-action" onClick={() => fileRef.current?.click()} disabled={isSubmitting}>
                 <Image size={20} />
               </button>
               <button
                 type="button"
                 className={`compose-action ${showLocation ? "compose-action--active" : ""}`}
                 onClick={() => setShowLocation(!showLocation)}
+                disabled={isSubmitting}
               >
                 <MapPin size={20} />
               </button>
             </div>
             <input ref={fileRef} type="file" accept="image/*,audio/*,video/*" multiple style={{ display: "none" }} onChange={onFiles} />
-            <button type="submit" className="compose-submit" disabled={!canSubmit}>
-              <ArrowUp size={20} />
+            <button type="submit" className="compose-submit" disabled={!canSubmit || isSubmitting}>
+              {isSubmitting ? <Loader2 size={20} className="spin" /> : <ArrowUp size={20} />}
             </button>
           </div>
         </form>
@@ -188,40 +174,77 @@ function InputStep({ onSubmit }: { onSubmit: () => void }) {
   );
 }
 
-// ─── Step 2: Processing animation ──────────────────────────
-function ProcessingStep({ onDone }: { onDone: () => void }) {
-  const [step, setStep] = useState(0);
+// --- Step 2: Processing with real SSE ---
+const STEP_LABELS: Record<string, string> = {
+  transcribing: "Transcribing audio...",
+  generating: "Writing article...",
+  reviewing: "Running quality checks...",
+};
+
+function ProcessingStep({
+  submissionId,
+  onDone,
+  onError,
+}: {
+  submissionId: string;
+  onDone: (article: ApiSubmission, review: ReviewResult) => void;
+  onError: (message: string) => void;
+}) {
+  const [steps, setSteps] = useState<SSEStatusEvent[]>([]);
+  const [currentStep, setCurrentStep] = useState<string>("");
 
   useEffect(() => {
-    if (step < PROCESSING_STEPS.length) {
-      const t = setTimeout(() => setStep((s) => s + 1), 800);
-      return () => clearTimeout(t);
-    } else {
-      const t = setTimeout(onDone, 500);
-      return () => clearTimeout(t);
+    const token = getToken();
+    if (!token) {
+      onError("Not authenticated");
+      return;
     }
-  }, [step, onDone]);
+
+    const controller = streamPipeline(submissionId, token, {
+      onStatus(event) {
+        setCurrentStep(event.step);
+        setSteps((prev) => {
+          if (prev.some((s) => s.step === event.step)) return prev;
+          return [...prev, event];
+        });
+      },
+      onComplete(event) {
+        onDone(event.article, event.review);
+      },
+      onError(event) {
+        onError(event.message);
+      },
+    });
+
+    return () => controller.abort();
+  }, [submissionId, onDone, onError]);
+
+  const allStepKeys = ["transcribing", "generating", "reviewing"];
 
   return (
     <div className="processing">
       <div className="processing-spinner"><Loader2 size={32} /></div>
       <h2 className="processing-title">Creating your article</h2>
       <div className="processing-steps">
-        {PROCESSING_STEPS.map((label, i) => (
-          <div key={i} className={`processing-step ${i < step ? "done" : i === step ? "active" : "pending"}`}>
-            {i < step ? <CheckCircle size={16} /> : i === step ? <Loader2 size={16} className="spin" /> : <span className="processing-dot" />}
-            <span>{label}</span>
-          </div>
-        ))}
+        {allStepKeys.map((key) => {
+          const isDone = steps.some((s) => s.step === key) && currentStep !== key;
+          const isActive = currentStep === key;
+          const isPending = !isDone && !isActive;
+          return (
+            <div key={key} className={`processing-step ${isDone ? "done" : isActive ? "active" : "pending"}`}>
+              {isDone ? <CheckCircle size={16} /> : isActive ? <Loader2 size={16} className="spin" /> : <span className="processing-dot" />}
+              <span>{STEP_LABELS[key] || key}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// ─── Cover image with drag-to-reposition ───────────────────
-const COVER_IMAGE = "https://images.unsplash.com/photo-1577495508048-b635879837f1?w=1200&q=80";
-
-function CoverImage() {
+// --- Cover image with drag-to-reposition ---
+function CoverImage({ src }: { src?: string }) {
+  const COVER_IMAGE = src || "https://images.unsplash.com/photo-1577495508048-b635879837f1?w=1200&q=80";
   const [posY, setPosY] = useState(50);
   const [dragging, setDragging] = useState(false);
   const [showReposition, setShowReposition] = useState(false);
@@ -276,20 +299,31 @@ function CoverImage() {
   );
 }
 
-// ─── Block types ───────────────────────────────────────────
+// --- Block types ---
 type BlockType = "paragraph" | "subheading";
-type Block = { id: string; type: BlockType; text: string };
+type EditorBlock = { id: string; type: BlockType; text: string };
 
 let blockIdCounter = 0;
-function makeBlock(type: BlockType, text: string): Block {
+function makeBlock(type: BlockType, text: string): EditorBlock {
   return { id: `b${++blockIdCounter}`, type, text };
 }
 
-function initBlocks(body: string): Block[] {
+function initBlocks(body: string): EditorBlock[] {
   return body.split("\n\n").map((text) => makeBlock("paragraph", text));
 }
 
-// ─── Block type menu ───────────────────────────────────────
+function initBlocksFromApi(article: ApiSubmission): EditorBlock[] {
+  const blocks = article.meta.blocks;
+  if (blocks && blocks.length > 0) {
+    return blocks.map((b) => {
+      const type: BlockType = b.type === "heading" ? "subheading" : "paragraph";
+      return makeBlock(type, b.content || "");
+    });
+  }
+  return initBlocks(article.description);
+}
+
+// --- Block type menu ---
 function BlockTypeMenu({
   currentType,
   onChangeType,
@@ -341,7 +375,7 @@ function BlockTypeMenu({
   );
 }
 
-// ─── Slash command menu ────────────────────────────────────
+// --- Slash command menu ---
 const SLASH_COMMANDS: { type: BlockType; label: string; desc: string; icon: typeof Type }[] = [
   { type: "paragraph", label: "Text", desc: "Plain text block", icon: Type },
   { type: "subheading", label: "Subheading", desc: "Medium section heading", icon: Heading2 },
@@ -404,7 +438,7 @@ function SlashMenu({
   );
 }
 
-// ─── AI edit responses (hardcoded for demo) ─────────────────
+// --- AI edit responses (hardcoded for demo) ---
 const AI_EDITS: Record<string, { headline: string; body: string }> = {
   shorter: {
     headline: "New Community Park Approved for Elm Street",
@@ -415,8 +449,8 @@ const AI_EDITS: Record<string, { headline: string; body: string }> = {
     body: `In a unanimous decision during Tuesday evening's regular session, the Riverside City Council approved Resolution 2026-47 authorizing the construction of a municipal community park on the currently vacant parcel at 412 Elm Street.\n\nThe approved plan encompasses 2.5 acres and includes a children's recreational area, paved walking trails, a 200-seat amphitheater for municipal and community programming, and an engineered rain garden for neighborhood stormwater management.\n\n"This has been a long time coming," stated Council Member Maria Torres, the resolution's primary sponsor. "Families in this part of town have been requesting dedicated green space for over a decade."\n\nThe project timeline anticipates groundbreaking in early summer 2026, with public access targeted for autumn. Funding is secured through a combination of municipal bonds and a State Department of Recreation grant, totaling $1.8 million.\n\nResidents interested in participating in the park planning committee may register through the city's official website or attend the upcoming town hall meeting scheduled for March 20.`,
   },
   default: {
-    headline: "Elm Street Gets a New Park — Here's What to Know",
-    body: `Great news for Riverside residents: the city council just greenlit a brand-new community park on Elm Street.\n\nThe 2.5-acre space at 412 Elm Street will feature a kids' playground, walking trails, a small amphitheater, and a rain garden to help with stormwater in the area.\n\nCouncil Member Maria Torres, who championed the project, called it "a long time coming" — noting that local families have wanted green space in the neighborhood for over ten years.\n\nThe park is expected to break ground this summer and open by fall, with $1.8 million in funding from city bonds and a state recreation grant.\n\nWant to get involved? Sign up for the park planning committee on the city website or show up to the March 20 town hall.`,
+    headline: "Elm Street Gets a New Park -- Here's What to Know",
+    body: `Great news for Riverside residents: the city council just greenlit a brand-new community park on Elm Street.\n\nThe 2.5-acre space at 412 Elm Street will feature a kids' playground, walking trails, a small amphitheater, and a rain garden to help with stormwater in the area.\n\nCouncil Member Maria Torres, who championed the project, called it "a long time coming" -- noting that local families have wanted green space in the neighborhood for over ten years.\n\nThe park is expected to break ground this summer and open by fall, with $1.8 million in funding from city bonds and a state recreation grant.\n\nWant to get involved? Sign up for the park planning committee on the city website or show up to the March 20 town hall.`,
   },
 };
 
@@ -427,11 +461,22 @@ function matchAiEdit(prompt: string): { headline: string; body: string } {
   return AI_EDITS.default;
 }
 
-// ─── Step 3: Preview & edit (Notion-style) ─────────────────
-function PreviewStep() {
+// --- Step 3: Preview & edit (Notion-style) ---
+function PreviewStep({
+  article,
+  review,
+  submissionId,
+}: {
+  article: ApiSubmission;
+  review: ReviewResult;
+  submissionId: string;
+}) {
   const navigate = useNavigate();
-  const [headline, setHeadline] = useState(AI_ARTICLE.headline);
-  const [blocks, setBlocks] = useState<Block[]>(() => initBlocks(AI_ARTICLE.body));
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const canPublish = (user?.role ?? 0) >= 1;
+  const [headline, setHeadline] = useState(article.title);
+  const [blocks, setBlocks] = useState<EditorBlock[]>(() => initBlocksFromApi(article));
   const [publishing, setPublishing] = useState(false);
   const [slashMenu, setSlashMenu] = useState<{ blockId: string; query: string; top: number; left: number } | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -462,9 +507,8 @@ function PreviewStep() {
     const el = e.currentTarget;
     const text = el.textContent || "";
 
-    // Check if text starts with /
     if (text.startsWith("/")) {
-      const query = text.slice(1); // everything after /
+      const query = text.slice(1);
       const rect = el.getBoundingClientRect();
       const containerRect = el.closest(".editor")?.getBoundingClientRect();
       if (containerRect) {
@@ -486,9 +530,17 @@ function PreviewStep() {
     setSlashMenu(null);
   }
 
-  function publish() {
+  async function publish() {
     setPublishing(true);
-    setTimeout(() => navigate("/"), 1500);
+    try {
+      await publishArticle(submissionId);
+      toast("Article published!", "success");
+      navigate("/");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Publish failed";
+      toast(msg, "error");
+      setPublishing(false);
+    }
   }
 
   function updateBlock(id: string, text: string) {
@@ -507,19 +559,21 @@ function PreviewStep() {
     });
   }
 
+  const category = article.meta.category || "community";
+  const locationName = article.meta.place_name || "";
+
   return (
     <div className="editor" style={{ animation: "fadeIn 0.4s ease", position: "relative" }}>
-      {/* Cover image */}
-      <CoverImage />
+      <CoverImage src={article.meta.featured_img} />
 
-      {/* AI edit bar — sticky below cover */}
+      {/* AI edit bar -- sticky below cover */}
       <div className="ai-bar">
         <div className={`ai-bar-input-wrap ${aiLoading ? "ai-bar--loading" : ""}`}>
           <Sparkles size={16} className="ai-bar-icon" />
           <input
             ref={aiInputRef}
             className="ai-bar-input"
-            placeholder="Ask AI to edit — shorter, more formal..."
+            placeholder="Ask AI to edit -- shorter, more formal..."
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleAiEdit(); }}
@@ -532,7 +586,7 @@ function PreviewStep() {
               type="button"
               className="ai-bar-send"
               disabled={!aiPrompt.trim()}
-              onClick={handleAiEdit}
+              onClick={() => handleAiEdit()}
             >
               <ArrowUp size={16} />
             </button>
@@ -556,13 +610,11 @@ function PreviewStep() {
 
       {/* Content area */}
       <div className="editor-content">
-        {/* Meta */}
         <div className="editor-meta">
-          <span className="badge badge-council">{AI_ARTICLE.category}</span>
-          <span className="editor-location">{AI_ARTICLE.location}</span>
+          <span className={`badge badge-${category}`}>{category}</span>
+          <span className="editor-location">{locationName}</span>
         </div>
 
-        {/* Headline — inline editable */}
         <textarea
           className="editor-headline"
           value={headline}
@@ -571,7 +623,6 @@ function PreviewStep() {
           rows={1}
         />
 
-        {/* Body — block editing */}
         <div className="editor-body">
           {blocks.map((block, i) => (
             <div key={block.id} className="editor-block">
@@ -599,7 +650,6 @@ function PreviewStep() {
         </div>
       </div>
 
-      {/* Slash command menu */}
       {slashMenu && (
         <SlashMenu
           position={{ top: slashMenu.top, left: slashMenu.left }}
@@ -610,35 +660,104 @@ function PreviewStep() {
         />
       )}
 
-      {/* Publish */}
+      {review && review.flags.length > 0 && (
+        <div className="editor-review">
+          <h3 style={{ fontSize: "var(--text-sm)", fontWeight: "var(--font-semibold)", marginBottom: "var(--space-3)" }}>
+            Editorial Review (Score: {review.score}/100)
+          </h3>
+          {review.flags.map((flag, i) => (
+            <div key={i} className={`flag flag-${flag.type === "factual" ? "error" : "warning"}`}>
+              <div>
+                <strong>{flag.type}:</strong> {flag.text}
+                {flag.suggestion && (
+                  <p style={{ fontSize: "var(--text-xs)", color: "var(--color-text-secondary)", marginTop: "var(--space-1)" }}>
+                    Suggestion: {flag.suggestion}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="editor-publish">
-        <button
-          type="button"
-          className="btn btn-primary btn-lg"
-          disabled={publishing}
-          onClick={publish}
-        >
-          {publishing ? <Loader2 size={18} className="spin" /> : <Send size={18} />}
-          {publishing ? "Publishing..." : "Publish Article"}
-        </button>
+        {canPublish ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            disabled={publishing}
+            onClick={publish}
+          >
+            {publishing ? <Loader2 size={18} className="spin" /> : <Send size={18} />}
+            {publishing ? "Publishing..." : "Publish Article"}
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary btn-lg" disabled>
+            <CheckCircle size={18} />
+            Submitted for Review
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── Main ──────────────────────────────────────────────────
+// --- Main ---
 type FlowStep = "input" | "processing" | "preview";
 
 export default function PostPage() {
   const [step, setStep] = useState<FlowStep>("input");
+  const [submissionId, setSubmissionId] = useState<string>("");
+  const [articleData, setArticleData] = useState<ApiSubmission | null>(null);
+  const [reviewData, setReviewData] = useState<ReviewResult | null>(null);
+  const [processingError, setProcessingError] = useState<string>("");
+  const { toast } = useToast();
+
+  const handleSubmissionCreated = useCallback((id: string) => {
+    setSubmissionId(id);
+    setStep("processing");
+  }, []);
+
+  const handleProcessingDone = useCallback((article: ApiSubmission, review: ReviewResult) => {
+    setArticleData(article);
+    setReviewData(review);
+    setStep("preview");
+  }, []);
+
+  const handleProcessingError = useCallback((message: string) => {
+    setProcessingError(message);
+    toast(message, "error");
+    setStep("input");
+  }, [toast]);
 
   return (
     <>
       <Navbar />
       <div className={`post-page ${step === "processing" ? "post-page--centered" : ""}`}>
-        {step === "input" && <InputStep onSubmit={() => setStep("processing")} />}
-        {step === "processing" && <ProcessingStep onDone={() => setStep("preview")} />}
-        {step === "preview" && <PreviewStep />}
+        {step === "input" && (
+          <>
+            {processingError && (
+              <div style={{ padding: "var(--space-4)", maxWidth: "var(--size-container-sm)", margin: "0 auto" }}>
+                <p className="auth-error">{processingError}</p>
+              </div>
+            )}
+            <InputStep onSubmit={handleSubmissionCreated} />
+          </>
+        )}
+        {step === "processing" && (
+          <ProcessingStep
+            submissionId={submissionId}
+            onDone={handleProcessingDone}
+            onError={handleProcessingError}
+          />
+        )}
+        {step === "preview" && articleData && reviewData && (
+          <PreviewStep
+            article={articleData}
+            review={reviewData}
+            submissionId={submissionId}
+          />
+        )}
       </div>
       <BottomBar />
     </>
