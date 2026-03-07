@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2 } from "lucide-react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import { BADGE_CLASS, type Article } from "@/data/articles";
@@ -11,7 +11,22 @@ import { apiToArticle, timeAgo, SubmissionStatus } from "@/lib/types";
 import type { ApiProfile, ApiSubmission } from "@/lib/types";
 import "./ProfilePage.css";
 
-function PostItem({ post, isDraft }: { post: Article; isDraft?: boolean }) {
+const STATUS_LABEL: Record<number, string> = {
+  [SubmissionStatus.Draft]: "Draft",
+  [SubmissionStatus.Transcribing]: "Processing",
+  [SubmissionStatus.Generating]: "Processing",
+  [SubmissionStatus.Reviewing]: "Processing",
+  [SubmissionStatus.Ready]: "Ready",
+  [SubmissionStatus.Refining]: "Refining",
+  [SubmissionStatus.Appealed]: "In review",
+  [SubmissionStatus.Archived]: "Archived",
+};
+
+function PostItem({ post, status }: { post: Article; status?: number }) {
+  const isDraft = status !== undefined;
+  const label = status !== undefined ? STATUS_LABEL[status] ?? "Draft" : null;
+  const isReady = status === SubmissionStatus.Ready;
+
   const inner = (
     <>
       <div className="profile-post__img">
@@ -26,17 +41,22 @@ function PostItem({ post, isDraft }: { post: Article; isDraft?: boolean }) {
       <div className="profile-post__body">
         <div className="profile-post__meta">
           <span className={`badge ${BADGE_CLASS[post.category]}`}>{post.category}</span>
-          {isDraft && <span className="profile-draft-badge">Draft</span>}
+          {label && (
+            <span className={`profile-draft-badge ${isReady ? "profile-draft-badge--ready" : ""}`}>
+              {label}
+            </span>
+          )}
           <span>{post.timeAgo}</span>
         </div>
-        <h3 className="profile-post__title">{post.title}</h3>
+        <h3 className="profile-post__title">{post.title || "Untitled"}</h3>
         <p className="profile-post__excerpt">{post.excerpt}</p>
       </div>
     </>
   );
 
-  if (isDraft) {
-    return <div className="profile-post">{inner}</div>;
+  // Drafts link to the article view (owner can see their own); published articles too
+  if (isDraft && !post.title) {
+    return <div className="profile-post profile-post--disabled">{inner}</div>;
   }
 
   return (
@@ -50,17 +70,21 @@ function PostItem({ post, isDraft }: { post: Article; isDraft?: boolean }) {
   );
 }
 
-function submissionToArticle(s: ApiSubmission): Article {
+type DraftArticle = Article & { status: number };
+
+function submissionToDraft(s: ApiSubmission): DraftArticle {
   return {
     ...apiToArticle(s),
     timeAgo: timeAgo(s.updated_at),
+    status: s.status,
   };
 }
 
 export default function ProfilePage() {
   const { slug } = useParams<{ slug: string }>();
   const [tab, setTab] = useState<"posts" | "drafts">("posts");
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const isOwnProfile = !slug;
 
   // Fetch profile for other users
@@ -93,11 +117,14 @@ export default function ProfilePage() {
   const drafts = useMemo(
     () => (allSubmissions ?? [])
       .filter((s) => s.status !== SubmissionStatus.Published)
-      .map(submissionToArticle),
+      .map(submissionToDraft),
     [allSubmissions],
   );
 
-  const items = tab === "posts" ? publishedPosts : drafts;
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
 
   if (!isOwnProfile && profileLoading) {
     return (
@@ -150,6 +177,12 @@ export default function ProfilePage() {
             {isOwnProfile && email && <span className="profile-email">{email}</span>}
             {joined && <span className="profile-joined">Joined {joined}</span>}
           </div>
+          {isOwnProfile && (
+            <button className="profile-logout" onClick={handleLogout}>
+              <LogOut size={16} />
+              <span>Log out</span>
+            </button>
+          )}
         </div>
 
         <div className="profile-stats">
@@ -186,20 +219,31 @@ export default function ProfilePage() {
           <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
             <Loader2 size={24} className="animate-spin" />
           </div>
-        ) : items.length > 0 ? (
+        ) : tab === "posts" && publishedPosts.length > 0 ? (
           <div className="profile-posts">
-            {items.map((post) => (
-              <PostItem key={post.id} post={post} isDraft={tab === "drafts"} />
+            {publishedPosts.map((post) => (
+              <PostItem key={post.id} post={post} />
+            ))}
+          </div>
+        ) : tab === "drafts" && drafts.length > 0 ? (
+          <div className="profile-posts">
+            {drafts.map((d) => (
+              <PostItem key={d.id} post={d} status={d.status} />
             ))}
           </div>
         ) : (
           <div className="profile-empty">
             <div className="profile-empty__icon">
-              <FileText size={32} />
+              {tab === "posts" ? <FileText size={32} /> : <PenSquare size={32} />}
             </div>
             <p className="profile-empty__text">
               {tab === "posts" ? "No published posts yet" : "No drafts yet"}
             </p>
+            {isOwnProfile && (
+              <Link to="/post" className="profile-empty__cta">
+                Write your first story
+              </Link>
+            )}
           </div>
         )}
       </main>
