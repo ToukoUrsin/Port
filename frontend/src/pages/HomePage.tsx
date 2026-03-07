@@ -55,8 +55,6 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
           </span>
         </div>
         <h3 className="ranked-card__title">
-          <span className="title-prefix">{article.category}</span>
-          <span className="title-sep"> | </span>
           {article.title}
         </h3>
         <div className="ranked-card__footer">
