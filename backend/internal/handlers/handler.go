@@ -18,6 +18,7 @@ type Handler struct {
 	pipeline *services.PipelineService
 	search   *search.Service
 	batch    *services.BatchService
+	stats    *services.StatsService
 }
 
 func NewHandler(
@@ -30,6 +31,7 @@ func NewHandler(
 	pipeline *services.PipelineService,
 	search *search.Service,
 	batch *services.BatchService,
+	stats *services.StatsService,
 ) *Handler {
 	return &Handler{
 		db:       db,
@@ -41,5 +43,6 @@ func NewHandler(
 		pipeline: pipeline,
 		search:   search,
 		batch:    batch,
+		stats:    stats,
 	}
 }
