@@ -10,6 +10,7 @@ Usage:
     ADMIN_API_TOKEN=your-token python scripts/seed_to_api.py seed_data.json # single file
 """
 
+import hashlib
 import json
 import os
 import sys
@@ -126,17 +127,6 @@ def seed_articles(submissions, id_map, batch_size=50):
             skipped += 1
             continue
 
-        # Reject articles without a usable image
-        has_image = any(
-            b.get("type") == "image" and b.get("src", "").startswith("http")
-            for b in blocks
-        )
-        img = meta.get("featured_img", "")
-        has_featured = img and (img.startswith("http") or img.startswith("/api/"))
-        if not has_image and not has_featured:
-            skipped += 1
-            continue
-
         # Map location_id from seed data to actual DB id
         loc_id = sub["location_id"]
         actual_loc_id = id_map.get(loc_id, loc_id)
@@ -151,10 +141,13 @@ def seed_articles(submissions, id_map, batch_size=50):
         }
         if meta.get("summary"):
             article["summary"] = meta["summary"]
-        # Only pass featured_img if it's an actual URL (not a local file path)
+        # Use existing featured_img if it's a real URL, otherwise generate a placeholder
         img = meta.get("featured_img", "")
         if img and (img.startswith("http") or img.startswith("/api/")):
             article["featured_img"] = img
+        else:
+            slug = hashlib.md5(title.encode()).hexdigest()[:12]
+            article["featured_img"] = f"https://picsum.photos/seed/{slug}/800/500"
         articles.append(article)
 
     if skipped:
