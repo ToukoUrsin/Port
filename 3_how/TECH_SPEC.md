@@ -1,6 +1,6 @@
 # Local News Platform — Technical Specification
 
-**Stack:** Go (Gin) · PostgreSQL · Redis · Vite + React · ElevenLabs STT · Claude API
+**Stack:** Go (Gin) · PostgreSQL · Redis · Vite + React · ElevenLabs STT · Gemini API
 **Target:** Hackathon MVP (48h build)
 
 ---
@@ -26,7 +26,7 @@
              │  GET  /api/submissions/{id}/stream    │ ← SSE
              │  GET  /api/articles                  │
              │  GET  /api/articles/{id}             │
-             │  POST /api/articles/{id}/publish     │
+             │  POST /api/submissions/{id}/publish   │
              │  GET  /api/search?q=...&type=...      │
              │  GET  /api/locations/{slug}/articles  │
              └──────┬───────┬───────┬───────────────┘
@@ -34,7 +34,7 @@
           ┌─────────┘       │       └─────────┐
           v                 v                  v
    ┌────────────┐   ┌─────────────┐   ┌──────────────────┐
-   │ PostgreSQL │   │ Claude API  │   │ ElevenLabs STT   │
+   │ PostgreSQL │   │ Gemini API  │   │ ElevenLabs STT   │
    │            │   │ (generate + │   │ (transcribe)     │
    │ articles   │   │  review)    │   └──────────────────┘
    │ submissions│   └─────────────┘
@@ -95,8 +95,10 @@ backend/
 │   │   └── locations.go         # GET location newspaper data
 │   ├── services/
 │   │   ├── transcription.go     # ElevenLabs STT integration
-│   │   ├── generation.go        # Claude API — article generation
-│   │   ├── review.go            # Claude API — editorial quality review
+│   │   ├── generation.go        # Article generation interface + stub
+│   │   ├── gemini_generation.go # Gemini API — article generation
+│   │   ├── review.go            # Review interface + stub
+│   │   ├── gemini_review.go     # Gemini API — editorial quality review
 │   │   ├── media.go             # File upload handling
 │   │   ├── chunker.go           # Semantic-aware block chunking
 │   │   ├── embedding.go         # Gemini embedding + pgvector storage
@@ -122,11 +124,10 @@ require (
     github.com/gin-contrib/cors            v1.7+
     gorm.io/gorm                           v1.25+
     gorm.io/driver/postgres                v1.5+
-    github.com/anthropics/anthropic-sdk-go latest
     github.com/redis/go-redis/v9           v9.7+
     github.com/joho/godotenv               v1.5+
     github.com/google/uuid                 v1.6+
-    google.golang.org/genai                latest    // Gemini API (embeddings)
+    google.golang.org/genai                latest    // Gemini API (generation, review, embeddings)
     github.com/pgvector/pgvector-go        latest    // pgvector Go bindings
     github.com/yalue/onnxruntime_go        latest    // ONNX Runtime (cross-encoder reranker)
 )
@@ -136,7 +137,8 @@ require (
 
 ```bash
 DATABASE_URL=postgresql://user:pass@localhost:5432/localnews
-ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=...
+GENERATION_MODEL=gemini-3.1-pro
 ELEVENLABS_API_KEY=...          # Speech-to-Text
 MEDIA_STORAGE_PATH=./uploads    # local for hackathon, S3 later
 REDIS_URL=redis://localhost:6379/0
@@ -422,8 +424,8 @@ package models
 const (
     StatusDraft        int16 = 0 // just created, raw files saved
     StatusTranscribing int16 = 1 // audio being transcribed
-    StatusGenerating   int16 = 2 // Claude generating article
-    StatusReviewing    int16 = 3 // Claude reviewing article
+    StatusGenerating   int16 = 2 // Gemini generating article
+    StatusReviewing    int16 = 3 // Gemini reviewing article
     StatusReady        int16 = 4 // pipeline complete, awaiting publish decision
     StatusPublished    int16 = 5 // publicly visible
     StatusArchived     int16 = 6 // hidden by owner or editor
@@ -434,8 +436,8 @@ const (
 const (
     ErrNone          int16 = 0
     ErrTranscription int16 = 1 // ElevenLabs call failed
-    ErrGeneration    int16 = 2 // Claude generation failed
-    ErrReview        int16 = 3 // Claude review failed
+    ErrGeneration    int16 = 2 // Gemini generation failed
+    ErrReview        int16 = 3 // Gemini review failed
     ErrModeration    int16 = 4 // flagged by moderation
 )
 
@@ -587,6 +589,7 @@ type Profile struct {
     Public       bool               `gorm:"default:false" json:"public"`
     IsAdult      bool               `gorm:"default:false" json:"is_adult"`
     Meta         JSONB[ProfileMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    SearchVector string             `gorm:"type:tsvector" json:"-"`
     Timestamps
 }
 
@@ -710,6 +713,7 @@ type Submission struct {
     ShareCount   int                    `gorm:"default:0" json:"share_count"`
     Reactions    JSONB[map[string]int]  `gorm:"type:jsonb;default:'{}'" json:"reactions"`
     Meta         JSONB[SubmissionMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    SearchVector string                 `gorm:"type:tsvector" json:"-"`
     Timestamps
 }
 
@@ -1252,102 +1256,15 @@ func (s *TranscriptionService) Transcribe(audioPath string) (string, error) {
 
 ### 4. Article Generation (`services/generation.go`)
 
-Single Claude call. System prompt defines the output format. User message contains the raw inputs.
+Single Gemini call with JSON structured output. System prompt defines the output format. User message contains the raw inputs.
 
-```go
-// services/generation.go
-
-const systemPrompt = `You are a local news editor. Given raw inputs from a community
-contributor (transcript, notes, photos described), write a professional local news
-article. Output JSON:
-{
-  "headline": "...",
-  "body": "... (markdown, 300-800 words)",
-  "summary": "... (1-2 sentences)",
-  "category": "council|schools|business|events|sports|community",
-  "photo_captions": ["...", "..."]
-}
-
-Rules:
-- Only use information from the provided inputs. Never invent facts or quotes.
-- Attribute all quotes to the speaker from the transcript.
-- Write in third person, neutral tone.
-- Structure: lead paragraph, body with context, quotes, closing.`
-
-func (s *GenerationService) Generate(transcript, notes string, photoCount int) (*Article, error) {
-    message, err := s.client.Messages.New(context.Background(), anthropic.MessageNewParams{
-        Model:     anthropic.ModelClaudeSonnet4_6,
-        MaxTokens: 2000,
-        System:    []anthropic.TextBlockParam{{Text: systemPrompt}},
-        Messages: []anthropic.MessageParam{
-            anthropic.NewUserMessage(
-                anthropic.NewTextBlock(fmt.Sprintf(
-                    "Transcript:\n%s\n\nNotes:\n%s\n\nPhotos attached: %d",
-                    transcript, notes, photoCount,
-                )),
-            ),
-        },
-    })
-    if err != nil {
-        return nil, err
-    }
-
-    var article Article
-    err = json.Unmarshal([]byte(message.Content[0].Text), &article)
-    return &article, err
-}
-```
+Uses `ResponseMIMEType: "application/json"` for guaranteed valid JSON output. See `backend/internal/services/gemini_generation.go` for the full implementation with system prompt and temperature settings.
 
 ### 5. Quality Review (`services/review.go`)
 
-Second Claude call. Compares generated article against source inputs.
+Second Gemini call. Compares generated article against source inputs.
 
-```go
-// services/review.go
-
-const reviewPrompt = `You are an editorial reviewer. Compare the article against the
-source transcript and notes. Return JSON:
-{
-  "score": 1-10,
-  "flags": [
-    {"type": "unverified_claim|missing_context|tone|attribution|factual",
-     "text": "the specific text",
-     "suggestion": "what to fix"}
-  ],
-  "approved": true/false
-}
-
-Flag if:
-- A quote doesn't match the transcript
-- A factual claim seems extreme or isn't in the source
-- Important context is missing
-- Tone is inappropriate for local news
-- Anything potentially defamatory`
-
-func (s *ReviewService) Review(article *Article, transcript, notes string) (*ReviewResult, error) {
-    articleJSON, _ := json.Marshal(article)
-    message, err := s.client.Messages.New(context.Background(), anthropic.MessageNewParams{
-        Model:     anthropic.ModelClaudeSonnet4_6,
-        MaxTokens: 1000,
-        System:    []anthropic.TextBlockParam{{Text: reviewPrompt}},
-        Messages: []anthropic.MessageParam{
-            anthropic.NewUserMessage(
-                anthropic.NewTextBlock(fmt.Sprintf(
-                    "Article:\n%s\n\nSource transcript:\n%s\n\nSource notes:\n%s",
-                    string(articleJSON), transcript, notes,
-                )),
-            ),
-        },
-    })
-    if err != nil {
-        return nil, err
-    }
-
-    var review ReviewResult
-    err = json.Unmarshal([]byte(message.Content[0].Text), &review)
-    return &review, err
-}
-```
+Uses the same model as generation with a lower temperature (0.2) for more consistent editorial judgment. See `backend/internal/services/gemini_review.go` for the full implementation.
 
 ### 6. Pipeline Orchestration
 
@@ -1358,8 +1275,8 @@ Two-request pattern with SSE for real-time progress:
 
 2. GET /api/submissions/{id}/stream  →  SSE connection opens
    → transcribe audio (ElevenLabs)     → event: status "transcribing"
-   → generate article (Claude)         → event: status "generating"
-   → review article (Claude)           → event: status "reviewing"
+   → generate article (Gemini)         → event: status "generating"
+   → review article (Gemini)           → event: status "reviewing"
    → save article to DB                → event: complete { article, review }
 ```
 
@@ -1731,8 +1648,8 @@ Embeddings are generated as part of the submission pipeline, after the article i
 POST /api/submissions → save files → return { submission_id }
 GET  /api/submissions/{id}/stream → SSE connection:
   → ElevenLabs transcribe → event: status "transcribing"
-  → Claude generate       → event: status "generating"
-  → Claude review         → event: status "reviewing"
+  → Gemini generate       → event: status "generating"
+  → Gemini review         → event: status "reviewing"
   → Gemini embed chunks   → event: status "embedding"
   → save to DB            → event: complete { article, review }
 ```
@@ -1856,8 +1773,8 @@ export function streamPipeline(
   return source;  // caller can close early if needed
 }
 
-export async function publishArticle(articleId: string) {
-  const res = await fetch(`${API_BASE}/api/articles/${articleId}/publish`, {
+export async function publishSubmission(submissionId: string) {
+  const res = await fetch(`${API_BASE}/api/submissions/${submissionId}/publish`, {
     method: "POST",
   });
   return res.json();
@@ -1935,8 +1852,8 @@ func SetupCORS(r *gin.Engine) {
 | Audio recording component (MediaRecorder) | Frontend dev | 2-3h |
 | ElevenLabs transcription + SSE pipeline | Backend dev | 2-3h |
 | Photo upload (capture + file) | Frontend dev | 1-2h |
-| Article generation (Claude) | Backend dev | 2-3h |
-| Quality review (Claude) | Backend dev | 2-3h |
+| Article generation (Gemini) | Backend dev | 2-3h |
+| Quality review (Gemini) | Backend dev | 2-3h |
 | Contributor flow UI (4-step) | Frontend dev | 3-4h |
 | Newspaper reader page | Frontend dev | 3-4h |
 | Article detail page | Frontend dev | 1-2h |
@@ -1964,7 +1881,7 @@ func SetupCORS(r *gin.Engine) {
 - Gin app, GORM models, DB migrations
 - Submission endpoint (file upload + save)
 - ElevenLabs STT integration + SSE stream endpoint
-- Claude generation + review services
+- Gemini generation + review services
 - Publish endpoint
 
 **Person B — Frontend**
@@ -1990,8 +1907,8 @@ All three work in parallel from hour one. Backend exposes endpoints, frontend bu
 | Service | Per Article | 50 Articles (demo) |
 |---------|-----------|-------------------|
 | ElevenLabs STT (2 min audio) | ~$0.01 | $0.50 |
-| Claude Sonnet — generation | ~$0.01-0.03 | $0.50-1.50 |
-| Claude Sonnet — review | ~$0.005-0.015 | $0.25-0.75 |
+| Gemini Pro — generation | ~$0.01-0.03 | $0.50-1.50 |
+| Gemini Pro — review | ~$0.005-0.015 | $0.25-0.75 |
 | **Total** | ~$0.03-0.06 | **~$1.50-3.00** |
 
 Negligible. No need to worry about API costs during the hackathon.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -167,6 +168,12 @@ func (h *Handler) GetSubmission(c *gin.Context) {
 func (h *Handler) ListSubmissions(c *gin.Context) {
 	actor := services.ActorFromContext(c)
 
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	if limit > 100 {
+		limit = 100
+	}
+
 	query := h.db.Model(&models.Submission{})
 
 	if actor.IsEditor() {
@@ -178,9 +185,12 @@ func (h *Handler) ListSubmissions(c *gin.Context) {
 		)
 	}
 
+	var total int64
+	query.Count(&total)
+
 	var submissions []models.Submission
-	query.Order("created_at DESC").Find(&submissions)
-	c.JSON(http.StatusOK, submissions)
+	query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&submissions)
+	c.JSON(http.StatusOK, gin.H{"submissions": submissions, "total": total})
 }
 
 func (h *Handler) UpdateSubmission(c *gin.Context) {

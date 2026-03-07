@@ -133,6 +133,12 @@ export async function logout(): Promise<void> {
   currentToken = null;
 }
 
+// --- Auth config ---
+
+export function getAuthConfig(): Promise<{ google_enabled: boolean }> {
+  return apiFetch<{ google_enabled: boolean }>("/api/auth/config");
+}
+
 // --- Article endpoints ---
 
 export function getArticles(params?: {
@@ -318,6 +324,7 @@ export function createReply(
 
 // --- Submissions (for profile drafts) ---
 
-export function getSubmissions(): Promise<ApiSubmission[]> {
-  return apiFetch<ApiSubmission[]>("/api/submissions");
+export async function getSubmissions(): Promise<ApiSubmission[]> {
+  const res = await apiFetch<{ submissions: ApiSubmission[]; total: number }>("/api/submissions");
+  return res.submissions;
 }

@@ -1,11 +1,18 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/localnews/backend/internal/models"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 type registerRequest struct {
@@ -164,4 +171,142 @@ func (h *Handler) Logout(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) googleOAuthConfig() *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     h.cfg.GoogleClientID,
+		ClientSecret: h.cfg.GoogleSecret,
+		RedirectURL:  h.cfg.GoogleRedirect,
+		Scopes:       []string{"openid", "email", "profile"},
+		Endpoint:     google.Endpoint,
+	}
+}
+
+func (h *Handler) AuthConfig(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"google_enabled": h.cfg.GoogleClientID != "",
+	})
+}
+
+func (h *Handler) GoogleRedirect(c *gin.Context) {
+	if h.cfg.GoogleClientID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Google OAuth not configured"})
+		return
+	}
+
+	stateBytes := make([]byte, 16)
+	if _, err := rand.Read(stateBytes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate state"})
+		return
+	}
+	state := base64.URLEncoding.EncodeToString(stateBytes)
+
+	c.SetCookie("oauth_state", state, 600, "/api/auth", "", false, true)
+
+	url := h.googleOAuthConfig().AuthCodeURL(state)
+	c.Redirect(http.StatusFound, url)
+}
+
+type googleUserInfo struct {
+	ID      string `json:"id"`
+	Email   string `json:"email"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+}
+
+func (h *Handler) GoogleCallback(c *gin.Context) {
+	// Validate state
+	stateCookie, err := c.Cookie("oauth_state")
+	if err != nil || stateCookie == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing state cookie"})
+		return
+	}
+	if c.Query("state") != stateCookie {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "state mismatch"})
+		return
+	}
+	// Clear state cookie
+	c.SetCookie("oauth_state", "", -1, "/api/auth", "", false, true)
+
+	// Check for error from Google
+	if errParam := c.Query("error"); errParam != "" {
+		frontendOrigin := strings.Split(h.cfg.AllowedOrigins, ",")[0]
+		c.Redirect(http.StatusFound, frontendOrigin+"/login?error=oauth_denied")
+		return
+	}
+
+	// Exchange code for token
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing code"})
+		return
+	}
+
+	oauthCfg := h.googleOAuthConfig()
+	token, err := oauthCfg.Exchange(c.Request.Context(), code)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "code exchange failed"})
+		return
+	}
+
+	// Fetch user info from Google
+	client := oauthCfg.Client(c.Request.Context(), token)
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user info"})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read user info"})
+		return
+	}
+
+	var userInfo googleUserInfo
+	if err := json.Unmarshal(body, &userInfo); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse user info"})
+		return
+	}
+
+	if userInfo.Email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no email from Google"})
+		return
+	}
+
+	// Find or create profile
+	profile, _, err := h.auth.FindOrCreateOAuthProfile(
+		models.ProviderGoogle,
+		userInfo.ID,
+		userInfo.Email,
+		userInfo.Name,
+		userInfo.Picture,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create account"})
+		return
+	}
+
+	// Generate tokens
+	accessToken, err := h.auth.GenerateAccessToken(profile)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	refreshToken, _, err := h.auth.GenerateRefreshToken(profile.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate refresh token"})
+		return
+	}
+
+	h.auth.SetRefreshCookie(c, refreshToken)
+	h.auth.CacheProfile(profile)
+
+	// Redirect to frontend callback page with access token in fragment
+	frontendOrigin := strings.Split(h.cfg.AllowedOrigins, ",")[0]
+	redirectURL := fmt.Sprintf("%s/auth/callback#access_token=%s", frontendOrigin, accessToken)
+	c.Redirect(http.StatusFound, redirectURL)
 }

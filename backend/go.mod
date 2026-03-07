@@ -1,6 +1,6 @@
 module github.com/localnews/backend
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/gin-contrib/cors v1.7.3
@@ -10,7 +10,10 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/pgvector/pgvector-go v0.2.2
 	github.com/redis/go-redis/v9 v9.7.0
+	github.com/yalue/onnxruntime_go v1.13.0
 	golang.org/x/crypto v0.36.0
+	golang.org/x/oauth2 v0.23.0
+	golang.org/x/sync v0.19.0
 	google.golang.org/genai v1.49.0
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/driver/sqlite v1.6.0
@@ -58,7 +61,6 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/arch v0.12.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect

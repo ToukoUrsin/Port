@@ -47,6 +47,12 @@ const (
 	EntityLocation   int16 = 3
 )
 
+// --- OAuth providers ---
+
+const (
+	ProviderGoogle int16 = 1
+)
+
 // --- Follow target types ---
 
 const (

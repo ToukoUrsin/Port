@@ -10,6 +10,7 @@ import SignupPage from "./pages/SignupPage";
 import PostPage from "./pages/PostPage";
 import ProfilePage from "./pages/ProfilePage";
 import ArticlePage from "./pages/ArticlePage";
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="/article/:id" element={<ArticlePage />} />
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/design-system" element={<DesignSystem />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route
               path="/login"
               element={

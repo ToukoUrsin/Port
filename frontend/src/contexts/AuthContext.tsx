@@ -11,6 +11,7 @@ import {
   login as apiLogin,
   register as apiRegister,
   logout as apiLogout,
+  getProfile as apiGetProfile,
   setToken,
 } from "@/lib/api.ts";
 
@@ -25,6 +26,7 @@ interface AuthContextValue {
     displayName: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  handleOAuthCallback: (accessToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -87,6 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const handleOAuthCallback = useCallback(async (accessToken: string) => {
+    setToken(accessToken);
+    const profile = await apiGetProfile();
+    setUser(profile);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -96,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         logout,
+        handleOAuthCallback,
       }}
     >
       {children}

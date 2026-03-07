@@ -29,6 +29,8 @@ func NewGeminiGenerationService(client *genai.Client, model string) *GeminiGener
 	return &GeminiGenerationService{client: client, model: model}
 }
 
+func (s *GeminiGenerationService) ModelName() string { return s.model }
+
 func (s *GeminiGenerationService) Generate(ctx context.Context, input GenerationInput) (*GenerationOutput, error) {
 	userPrompt := buildGenerationUserPrompt(input)
 

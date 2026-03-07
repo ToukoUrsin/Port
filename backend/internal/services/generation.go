@@ -29,6 +29,7 @@ type GenerationOutput struct {
 
 type GenerationService interface {
 	Generate(ctx context.Context, input GenerationInput) (*GenerationOutput, error)
+	ModelName() string
 }
 
 type StubGenerationService struct{}
@@ -36,6 +37,8 @@ type StubGenerationService struct{}
 func NewStubGenerationService() *StubGenerationService {
 	return &StubGenerationService{}
 }
+
+func (s *StubGenerationService) ModelName() string { return "stub" }
 
 func (s *StubGenerationService) Generate(ctx context.Context, input GenerationInput) (*GenerationOutput, error) {
 	time.Sleep(3 * time.Second)

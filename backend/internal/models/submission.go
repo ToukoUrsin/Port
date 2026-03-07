@@ -109,7 +109,7 @@ type SubmissionMeta struct {
 
 type Submission struct {
 	ID          uuid.UUID             `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-	OwnerID     uuid.UUID             `gorm:"type:uuid;not null" json:"owner_id"`
+	OwnerID     uuid.UUID             `gorm:"type:uuid;not null;index" json:"owner_id"`
 	LocationID  uuid.UUID             `gorm:"type:uuid;not null;index" json:"location_id"`
 	ContinentID *uuid.UUID            `gorm:"type:uuid;index" json:"continent_id,omitempty"`
 	CountryID   *uuid.UUID            `gorm:"type:uuid;index" json:"country_id,omitempty"`

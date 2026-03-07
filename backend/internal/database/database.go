@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -38,12 +39,30 @@ func AutoMigrate(db *gorm.DB) error {
 }
 
 func RunMigrations(db *gorm.DB, migrationsDir string) error {
+	// Ensure tracking table
+	db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+		filename VARCHAR(255) PRIMARY KEY,
+		applied_at TIMESTAMP NOT NULL DEFAULT NOW()
+	)`)
+
+	// Load applied set
+	var applied []struct{ Filename string }
+	db.Raw("SELECT filename FROM schema_migrations").Scan(&applied)
+	appliedSet := make(map[string]bool, len(applied))
+	for _, a := range applied {
+		appliedSet[a.Filename] = true
+	}
+
+	// Run new migrations only
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
 		return fmt.Errorf("read migrations dir: %w", err)
 	}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+		if appliedSet[entry.Name()] {
 			continue
 		}
 		path := filepath.Join(migrationsDir, entry.Name())
@@ -54,6 +73,8 @@ func RunMigrations(db *gorm.DB, migrationsDir string) error {
 		if err := db.Exec(string(sql)).Error; err != nil {
 			return fmt.Errorf("run migration %s: %w", entry.Name(), err)
 		}
+		db.Exec("INSERT INTO schema_migrations (filename) VALUES (?)", entry.Name())
+		log.Printf("applied migration: %s", entry.Name())
 	}
 	return nil
 }

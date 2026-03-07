@@ -12,6 +12,7 @@ import (
 	"github.com/localnews/backend/internal/handlers"
 	"github.com/localnews/backend/internal/middleware"
 	"github.com/localnews/backend/internal/models"
+	"github.com/localnews/backend/internal/search"
 	"github.com/localnews/backend/internal/services"
 	"google.golang.org/genai"
 )
@@ -33,7 +34,7 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 	if err := database.RunMigrations(db, "migrations"); err != nil {
-		log.Printf("seed migrations: %v (may be normal if already applied)", err)
+		log.Fatalf("migrations: %v", err)
 	}
 
 	// Redis cache
@@ -47,38 +48,80 @@ func main() {
 	accessSvc := services.NewAccessService(db)
 	mediaSvc := services.NewMediaService(cfg.MediaStoragePath)
 
-	// AI services — use real Gemini when API key is set, stubs otherwise
-	transcription := services.NewStubTranscriptionService()
-	chunker := services.NewStubChunkerService()
-	embedding := services.NewNoOpEmbeddingService()
-
-	var generation services.GenerationService
-	var review services.ReviewService
-	var photoDesc services.PhotoDescriptionService
-
+	// Shared Gemini client — used for embedding, generation, review, and photo description
+	var geminiClient *genai.Client
 	if cfg.GeminiAPIKey != "" {
-		geminiClient, geminiErr := genai.NewClient(context.Background(), &genai.ClientConfig{
+		var err error
+		geminiClient, err = genai.NewClient(context.Background(), &genai.ClientConfig{
 			APIKey:  cfg.GeminiAPIKey,
 			Backend: genai.BackendGeminiAPI,
 		})
-		if geminiErr != nil {
-			log.Fatalf("gemini client: %v", geminiErr)
+		if err != nil {
+			log.Printf("gemini client: %v (falling back to stubs)", err)
 		}
-		generation = services.NewGeminiGenerationService(geminiClient, "")
-		review = services.NewGeminiReviewService(geminiClient, "")
-		photoDesc = services.NewGeminiPhotoDescriptionService(geminiClient, "", cfg.MediaStoragePath)
-		log.Println("Using real Gemini AI services")
-	} else {
-		generation = services.NewStubGenerationService()
-		review = services.NewStubReviewService()
-		photoDesc = services.NewStubPhotoDescriptionService()
-		log.Println("Using stub AI services (set GEMINI_API_KEY to enable real AI)")
 	}
 
-	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embedding)
+	// Embedding service
+	var embeddingSvc services.EmbeddingService
+	if geminiClient != nil {
+		embeddingSvc = services.NewGeminiEmbeddingService(db, geminiClient, cfg.EmbeddingModel, cfg.EmbeddingDimensions)
+		log.Printf("Gemini embedding enabled (model=%s, dims=%d)", cfg.EmbeddingModel, cfg.EmbeddingDimensions)
+	} else {
+		embeddingSvc = services.NewNoOpEmbeddingService()
+	}
+
+	// Generation service
+	var generation services.GenerationService
+	if geminiClient != nil {
+		generation = services.NewGeminiGenerationService(geminiClient, cfg.GenerationModel)
+		log.Printf("Gemini generation enabled (model=%s)", cfg.GenerationModel)
+	} else {
+		generation = services.NewStubGenerationService()
+	}
+
+	// Review service
+	var review services.ReviewService
+	if geminiClient != nil {
+		review = services.NewGeminiReviewService(geminiClient, cfg.GenerationModel)
+		log.Printf("Gemini review enabled (model=%s)", cfg.GenerationModel)
+	} else {
+		review = services.NewStubReviewService()
+	}
+
+	// Photo description service
+	var photoDesc services.PhotoDescriptionService
+	if geminiClient != nil {
+		photoDesc = services.NewGeminiPhotoDescriptionService(geminiClient, cfg.GenerationModel, cfg.MediaStoragePath)
+	} else {
+		photoDesc = services.NewStubPhotoDescriptionService()
+	}
+
+	// Reranker — real ONNX if model path configured, otherwise passthrough
+	var rerankerSvc services.RerankerService
+	if cfg.RerankerModelPath != "" {
+		onnxReranker, err := services.NewONNXRerankerService(cfg.RerankerModelPath, cfg.RerankerVocabPath, cfg.ONNXLibPath)
+		if err != nil {
+			log.Printf("onnx reranker: %v (falling back to passthrough)", err)
+			rerankerSvc = services.NewPassthroughReranker()
+		} else {
+			rerankerSvc = onnxReranker
+			defer onnxReranker.Close()
+			log.Printf("ONNX reranker enabled (model=%s)", cfg.RerankerModelPath)
+		}
+	} else {
+		rerankerSvc = services.NewPassthroughReranker()
+	}
+
+	// Pipeline
+	transcription := services.NewStubTranscriptionService()
+	chunker := services.NewStubChunkerService()
+	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embeddingSvc)
+
+	// Search service
+	searchSvc := search.NewService(db, embeddingSvc, rerankerSvc)
 
 	// Handler
-	h := handlers.NewHandler(db, c, authSvc, accessSvc, mediaSvc, pipelineSvc)
+	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc)
 
 	// Router
 	r := gin.Default()
@@ -97,11 +140,15 @@ func main() {
 		public.POST("/auth/register", h.Register)
 		public.POST("/auth/login", h.Login)
 		public.POST("/auth/refresh", h.Refresh)
+		public.GET("/auth/google", h.GoogleRedirect)
+		public.GET("/auth/google/callback", h.GoogleCallback)
+		public.GET("/auth/config", h.AuthConfig)
 
 		// Public reads
 		public.GET("/articles", h.ListArticles)
 		public.GET("/articles/:id", h.GetArticle)
 		public.GET("/search", h.Search)
+		public.GET("/search/sessions/:id", h.SearchSession)
 		public.GET("/locations", h.ListLocations)
 		public.GET("/locations/:slug", h.GetLocation)
 		public.GET("/locations/:slug/articles", h.LocationArticles)

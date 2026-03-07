@@ -161,7 +161,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	meta.Category = genOutput.Metadata.Category
 	meta.Summary = extractFirstParagraph(article)
 	meta.GeneratedAt = &now
-	meta.Model = "stub"
+	meta.Model = p.generation.ModelName()
 
 	p.db.Model(&sub).Updates(map[string]any{
 		"title":  headline,

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -170,16 +171,25 @@ func (s *AuthService) RevokeRefreshToken(tokenStr string) error {
 func (s *AuthService) RevokeAllForProfile(profileID uuid.UUID) {
 	var tokens []models.RefreshToken
 	s.db.Where("profile_id = ? AND revoked = false", profileID).Find(&tokens)
-	for _, t := range tokens {
-		s.db.Model(&t).Update("revoked", true)
-		hashHex := hex.EncodeToString(t.TokenHash)
-		s.cache.DelRefreshToken(context.Background(), hashHex)
-		remaining := time.Until(t.ExpiresAt)
-		if remaining > 0 {
-			s.cache.MarkRevoked(context.Background(), hashHex, remaining)
-		}
+
+	// Bulk DB update — one query instead of N
+	if len(tokens) > 0 {
+		s.db.Model(&models.RefreshToken{}).
+			Where("profile_id = ? AND revoked = false", profileID).
+			Update("revoked", true)
 	}
-	s.cache.DelProfile(context.Background(), profileID.String())
+
+	// Batch cache ops via pipeline
+	ctx := context.Background()
+	entries := make([]cache.RevokeEntry, 0, len(tokens))
+	for _, t := range tokens {
+		remaining := time.Until(t.ExpiresAt)
+		entries = append(entries, cache.RevokeEntry{
+			TokenHash: hex.EncodeToString(t.TokenHash),
+			TTL:       remaining,
+		})
+	}
+	s.cache.BatchRevokeTokens(ctx, entries, profileID.String())
 }
 
 func (s *AuthService) SetRefreshCookie(c *gin.Context, tokenStr string) {
@@ -201,6 +211,94 @@ func (s *AuthService) GetRefreshCookie(r *http.Request) (string, error) {
 		return cookie.Value, nil
 	}
 	return decoded, nil
+}
+
+func (s *AuthService) FindOrCreateOAuthProfile(provider int16, providerUID, email, name, avatar string) (*models.Profile, bool, error) {
+	// 1. Look up existing OAuth link
+	var oauth models.OAuthAccount
+	if err := s.db.Where("provider = ? AND provider_uid = ?", provider, providerUID).First(&oauth).Error; err == nil {
+		var profile models.Profile
+		if err := s.db.First(&profile, "id = ?", oauth.ProfileID).Error; err != nil {
+			return nil, false, fmt.Errorf("linked profile not found: %w", err)
+		}
+		return &profile, false, nil
+	}
+
+	// 2. Look up existing profile by email → link OAuth account
+	var existing models.Profile
+	if err := s.db.Where("email = ?", email).First(&existing).Error; err == nil {
+		oauthAcct := models.OAuthAccount{
+			ProfileID:   existing.ID,
+			Provider:    provider,
+			ProviderUID: providerUID,
+			Meta: models.JSONB[models.OAuthAccountMeta]{
+				V: models.OAuthAccountMeta{
+					DisplayName: name,
+					AvatarURL:   avatar,
+				},
+			},
+		}
+		if err := s.db.Create(&oauthAcct).Error; err != nil {
+			return nil, false, fmt.Errorf("failed to link oauth: %w", err)
+		}
+		return &existing, false, nil
+	}
+
+	// 3. Create new profile + OAuth account
+	profileName := name
+	if profileName == "" {
+		parts := strings.SplitN(email, "@", 2)
+		profileName = parts[0]
+	}
+	// Replace spaces with hyphens, lowercase
+	profileName = strings.ToLower(strings.ReplaceAll(profileName, " ", "-"))
+
+	// Ensure unique profile_name
+	baseName := profileName
+	var nameCheck models.Profile
+	for i := 0; ; i++ {
+		candidate := baseName
+		if i > 0 {
+			candidate = fmt.Sprintf("%s-%d", baseName, i)
+		}
+		if s.db.Where("profile_name = ?", candidate).First(&nameCheck).Error != nil {
+			profileName = candidate
+			break
+		}
+	}
+
+	profile := models.Profile{
+		ProfileName: profileName,
+		Email:       email,
+		Role:        models.RoleContributor,
+		Permissions: models.DefaultPermissions(models.RoleContributor),
+		Meta: models.JSONB[models.ProfileMeta]{
+			V: models.ProfileMeta{
+				Avatar: avatar,
+			},
+		},
+	}
+
+	if err := s.db.Create(&profile).Error; err != nil {
+		return nil, false, fmt.Errorf("failed to create profile: %w", err)
+	}
+
+	oauthAcct := models.OAuthAccount{
+		ProfileID:   profile.ID,
+		Provider:    provider,
+		ProviderUID: providerUID,
+		Meta: models.JSONB[models.OAuthAccountMeta]{
+			V: models.OAuthAccountMeta{
+				DisplayName: name,
+				AvatarURL:   avatar,
+			},
+		},
+	}
+	if err := s.db.Create(&oauthAcct).Error; err != nil {
+		return nil, true, fmt.Errorf("failed to create oauth account: %w", err)
+	}
+
+	return &profile, true, nil
 }
 
 func (s *AuthService) CacheProfile(profile *models.Profile) {

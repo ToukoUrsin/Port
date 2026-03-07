@@ -18,7 +18,7 @@ VISION.md                       Product vision (read first)
 3_how/                          Technical specs (the implementation bible)
   TECH_SPEC.md                    API endpoints, DB schema, SSE pipeline, backend structure
   AUTH_SPEC.md                    JWT auth, OAuth, Redis cache, middleware, permissions
-  PROMPTS.md                      Claude prompt templates for article generation + review
+  PROMPTS.md                      Prompt templates for article generation + review
   UI_DESIGN_SYSTEM.md             Design tokens, component specs, typography, layout
   CORS_SPEC.md                    CORS configuration
   NGINX_SPEC.md                   Nginx reverse proxy setup
@@ -26,33 +26,77 @@ VISION.md                       Product vision (read first)
   ARCHITECTURE.md                 Early architecture draft (OUTDATED — superseded by TECH_SPEC.md)
 4_proof/                        Gate test: can Claude detect representation gaps?
 5_pitch/                        Demo script and pitch
-frontend/                       Vite + React app (scaffolded, pages exist)
+frontend/                       Vite + React app
+backend/                        Go + Gin API server
 archive/                        Previous project (Preflight) and research reports — reference only
 ```
 
-The `backend/` directory does not exist yet — create it following `3_how/TECH_SPEC.md`.
-
 ## Tech Stack
 
-- **Backend:** Go 1.22+, Gin, PostgreSQL, GORM, Redis (cache, 30min TTL)
+- **Backend:** Go 1.22+, Gin, PostgreSQL, GORM, pgvector, Redis (cache, 30min TTL)
 - **Frontend:** Vite 7 + React 19 (TypeScript), Tailwind CSS v4 (via `@tailwindcss/vite` plugin), shadcn/ui (base-nova style), react-router-dom v7, Lucide React icons, Leaflet maps
-- **AI:** ElevenLabs STT (transcription), Claude API via Anthropic Go SDK (article generation + review)
+- **AI:** ElevenLabs STT (transcription), Gemini API via `google.golang.org/genai` SDK (article generation + review + embeddings)
 - **Auth:** JWT (HS256, 15min access / 30d refresh), bcrypt passwords, Google OAuth, Redis-backed cache
 
 ## Architecture
 
-Two frontend apps (contributor PWA + public reader site) talking to a single Gin backend. Core AI pipeline runs synchronously for the hackathon:
+Single Gin backend serving a React SPA frontend. Core AI pipeline runs synchronously for the hackathon:
 
 ```
 POST /api/submissions -> save files -> return { submission_id }
 GET  /api/submissions/{id}/stream -> SSE connection:
   -> ElevenLabs transcribe -> event: status "transcribing"
-  -> Claude generate       -> event: status "generating"
-  -> Claude review         -> event: status "reviewing"
+  -> Gemini generate       -> event: status "generating"
+  -> Gemini review         -> event: status "reviewing"
   -> save to DB            -> event: complete { article, review }
 ```
 
 Two-request pattern: POST saves files and returns immediately, then frontend opens SSE stream for real-time pipeline progress (~20-30 seconds). See `3_how/TECH_SPEC.md` for detailed API endpoints, DB schema, and service structure.
+
+**Current state:** Generation and review use Gemini when `GEMINI_API_KEY` is set, otherwise stub implementations. Transcription is still a stub (replace with ElevenLabs when ready).
+
+### Backend Structure
+
+Go module: `github.com/localnews/backend`
+
+```
+backend/
+  cmd/server/main.go              Entry point — wires config, DB, Redis, services, routes
+  internal/
+    config/config.go               Env-based config with defaults
+    database/database.go           GORM connection, AutoMigrate, SQL migration runner
+    cache/cache.go                 Redis wrapper
+    middleware/auth.go             JWT auth, OptionalAuth, RequireRole, RequirePerm
+    middleware/cors.go             CORS setup
+    models/                        GORM models + constants (status codes, tag bitmasks, permission flags)
+    handlers/                      Gin route handlers (one file per domain: articles, auth, submissions, etc.)
+    services/                      Business logic (auth, pipeline, media, access, transcription, generation, review)
+  migrations/                      SQL seed files (run on startup after GORM AutoMigrate)
+```
+
+Key patterns:
+- All handlers live on a single `Handler` struct that holds DB, cache, and service references
+- Auth middleware sets `profile_id`, `role`, and `perm` on the Gin context via JWT claims
+- Roles: 0 = user, 1 = editor, 2 = admin. Permissions use a bitfield (`models.Perm*` constants)
+- Route groups: public (no auth), authed (any logged-in user), editor (role >= 1), admin (role >= 2), mod (PermModerate flag)
+- Database uses GORM AutoMigrate for schema + `migrations/` dir for SQL seeds (extensions, triggers, seed data)
+- PostgreSQL extensions: `vector` (pgvector for embeddings) and `pg_trgm` (trigram search)
+
+### Frontend Structure
+
+```
+frontend/src/
+  App.tsx                          Router with auth-guarded routes
+  contexts/AuthContext.tsx          Auth state, login/signup/logout, silent refresh on mount
+  lib/api.ts                       API client with auto-refresh on 401, token in memory (not localStorage)
+  lib/types.ts                     TypeScript types mirroring Go backend structs + display helpers
+  lib/sse.ts                       SSE stream helper for pipeline events
+  lib/utils.ts                     cn() for Tailwind class merging
+  pages/                           Page components
+  components/                      Shared components (Navbar, BottomBar, Toast, ProtectedRoute)
+  components/ui/                   shadcn components
+  styles/                          tokens.css, components.css, index.css (Tailwind theme), reset.css
+```
 
 Auth uses stateless JWT with Redis-cached profile lookups and refresh token rotation. Public endpoints (articles, search) need no auth. Submissions require auth. Publishing requires editor role. See `3_how/AUTH_SPEC.md`.
 
@@ -67,7 +111,7 @@ npm run build                # tsc -b && vite build
 npm run lint                 # eslint
 npm run preview              # preview production build
 
-# Backend (does not exist yet — create per TECH_SPEC.md)
+# Backend
 cd backend
 go mod download
 go run cmd/server/main.go    # runs on :8000 (with hot-reload via air if installed)
@@ -76,7 +120,7 @@ go test ./internal/services/ # run tests for a single package
 
 # Infrastructure (local dev)
 docker run -d --name redis -p 6379:6379 redis:7-alpine
-# PostgreSQL: use local install or Docker
+# PostgreSQL: use local install or Docker (needs vector and pg_trgm extensions)
 ```
 
 ## Frontend: Two CSS Systems
@@ -101,25 +145,32 @@ The frontend has **two coexisting CSS systems** — understand both before writi
 ### Frontend Routes
 
 ```
-/              HomePage
-/explore       ExplorePage (with Leaflet map)
-/login         LoginPage
-/signup        SignupPage
-/post          PostPage (contribution form)
-/design-system DesignSystem (token reference page)
+/                  HomePage
+/article/:id       ArticlePage
+/explore           ExplorePage (with Leaflet map)
+/login             LoginPage (public-only, redirects if logged in)
+/signup            SignupPage (public-only, redirects if logged in)
+/post              PostPage (protected, requires auth)
+/profile           ProfilePage (own profile)
+/profile/:slug     ProfilePage (other user)
+/design-system     DesignSystem (token reference page)
 ```
 
 ## Environment Variables
 
-Backend requires a `.env` file (see `TECH_SPEC.md` and `AUTH_SPEC.md` for full list):
-- `DATABASE_URL` — PostgreSQL connection string
-- `ANTHROPIC_API_KEY` — for Claude article generation + review
+Backend reads from `.env` (loaded via godotenv). All have defaults for local dev:
+- `DATABASE_URL` — PostgreSQL connection string (default `postgresql://user:pass@localhost:5432/localnews`)
+- `PORT` — server port (default `8000`)
+- `GEMINI_API_KEY` — for Gemini article generation, review, and embeddings
+- `GENERATION_MODEL` — Gemini model for generation/review (default `gemini-3.1-pro`)
 - `ELEVENLABS_API_KEY` — for speech-to-text transcription
 - `MEDIA_STORAGE_PATH` — local file uploads (default `./uploads`)
 - `REDIS_URL` — Redis connection (default `redis://localhost:6379/0`)
-- `ALLOWED_ORIGINS` — CORS origins (default `http://localhost:5173`)
+- `ALLOWED_ORIGINS` — CORS origins (default `http://localhost:5173,http://localhost:5174`)
 - `JWT_SECRET` — signing key for access tokens (min 32 bytes, random)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — for OAuth (optional)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URL` — for OAuth (optional)
+
+Frontend uses `VITE_API_URL` to override the backend base URL (default `http://localhost:8000`).
 
 ## Git Workflow
 

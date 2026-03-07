@@ -62,11 +62,39 @@ func (c *Cache) Delete(ctx context.Context, keys ...string) error {
 
 // DeletePattern removes all keys matching a glob pattern.
 func (c *Cache) DeletePattern(ctx context.Context, pattern string) error {
-	iter := c.client.Scan(ctx, 0, pattern, 0).Iterator()
+	var keys []string
+	iter := c.client.Scan(ctx, 0, pattern, 100).Iterator()
 	for iter.Next(ctx) {
-		c.client.Del(ctx, iter.Val())
+		keys = append(keys, iter.Val())
 	}
-	return iter.Err()
+	if err := iter.Err(); err != nil {
+		return err
+	}
+	if len(keys) > 0 {
+		return c.client.Del(ctx, keys...).Err()
+	}
+	return nil
+}
+
+// --- Batch operations ---
+
+type RevokeEntry struct {
+	TokenHash string
+	TTL       time.Duration
+}
+
+// BatchRevokeTokens deletes refresh tokens and marks them revoked in a single pipeline.
+func (c *Cache) BatchRevokeTokens(ctx context.Context, entries []RevokeEntry, profileID string) error {
+	pipe := c.client.Pipeline()
+	for _, e := range entries {
+		pipe.Del(ctx, "refresh:"+e.TokenHash)
+		if e.TTL > 0 {
+			pipe.Set(ctx, "revoked:"+e.TokenHash, "1", e.TTL)
+		}
+	}
+	pipe.Del(ctx, "profile:"+profileID)
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 // --- Auth-specific cache methods ---
