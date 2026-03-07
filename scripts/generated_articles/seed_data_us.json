@@ -1,0 +1,2461 @@
+{
+  "locations": [
+    {
+      "id": "b4000001-0000-0000-0000-000000000001",
+      "name": "North America",
+      "slug": "north-america",
+      "level": 0,
+      "lat": 40.0,
+      "lng": -100.0,
+      "meta": {}
+    },
+    {
+      "id": "b3000001-0000-0000-0000-000000000001",
+      "name": "United States",
+      "slug": "united-states",
+      "level": 1,
+      "parent_id": "b4000001-0000-0000-0000-000000000001",
+      "lat": 39.8,
+      "lng": -98.6,
+      "meta": {
+        "population": 334000000
+      }
+    },
+    {
+      "id": "b2000001-0000-0000-0000-000000000001",
+      "name": "Indiana",
+      "slug": "indiana",
+      "level": 2,
+      "parent_id": "b3000001-0000-0000-0000-000000000001",
+      "lat": 40.27,
+      "lng": -86.13,
+      "meta": {}
+    },
+    {
+      "id": "b2000002-0000-0000-0000-000000000001",
+      "name": "New Hampshire",
+      "slug": "new-hampshire",
+      "level": 2,
+      "parent_id": "b3000001-0000-0000-0000-000000000001",
+      "lat": 43.2,
+      "lng": -71.5,
+      "meta": {}
+    },
+    {
+      "id": "b2000003-0000-0000-0000-000000000001",
+      "name": "Mississippi",
+      "slug": "mississippi",
+      "level": 2,
+      "parent_id": "b3000001-0000-0000-0000-000000000001",
+      "lat": 32.35,
+      "lng": -89.4,
+      "meta": {}
+    },
+    {
+      "id": "b2000004-0000-0000-0000-000000000001",
+      "name": "Tennessee",
+      "slug": "tennessee",
+      "level": 2,
+      "parent_id": "b3000001-0000-0000-0000-000000000001",
+      "lat": 35.52,
+      "lng": -86.58,
+      "meta": {}
+    },
+    {
+      "id": "b1000001-0000-0000-0000-000000000001",
+      "name": "Chesterton",
+      "slug": "chesterton",
+      "level": 3,
+      "lat": 41.6103,
+      "lng": -87.0645,
+      "region_id": "b2000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 14800,
+        "about": "Small town in Porter County, Northwest Indiana. The 141-year-old Chesterton Tribune ceased publication in 2025."
+      },
+      "parent_id": "b2000001-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "b1000002-0000-0000-0000-000000000001",
+      "name": "Claremont",
+      "slug": "claremont",
+      "level": 3,
+      "lat": 43.3767,
+      "lng": -72.3468,
+      "region_id": "b2000002-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 13000,
+        "about": "Mill town in Sullivan County, New Hampshire. The Eagle Times newspaper suspended operations in 2025, creating a rare New England news desert."
+      },
+      "parent_id": "b2000002-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "b1000003-0000-0000-0000-000000000001",
+      "name": "Laurel",
+      "slug": "laurel",
+      "level": 3,
+      "lat": 31.6941,
+      "lng": -89.1306,
+      "region_id": "b2000003-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 17500,
+        "about": "City in Jones County, Mississippi. The 100-year-old Laurel Leader-Call closed in January 2025, leaving the three-county Pine Belt area without paid circulation."
+      },
+      "parent_id": "b2000003-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "b1000004-0000-0000-0000-000000000001",
+      "name": "Spencer",
+      "slug": "spencer",
+      "level": 3,
+      "lat": 35.7473,
+      "lng": -85.4669,
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 1600,
+        "about": "County seat of Van Buren County, Tennessee. Nine local newspapers have been attempted since 1915, none survived. The county's 6,200 residents rely on a Facebook community bulletin for all local news."
+      },
+      "parent_id": "b2000004-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "b2000005-0000-0000-0000-000000000001",
+      "name": "Kentucky",
+      "slug": "kentucky",
+      "level": 2,
+      "lat": 37.8393,
+      "lng": -84.27,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Appalachian state hit hard by newspaper closures, especially in eastern coal country."
+      }
+    },
+    {
+      "id": "b2000006-0000-0000-0000-000000000001",
+      "name": "Georgia",
+      "slug": "georgia",
+      "level": 2,
+      "lat": 32.1656,
+      "lng": -82.9001,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Southern state where suburban counties outside Atlanta face growing news deserts."
+      }
+    },
+    {
+      "id": "b2000007-0000-0000-0000-000000000001",
+      "name": "Delaware",
+      "slug": "delaware",
+      "level": 2,
+      "lat": 38.9108,
+      "lng": -75.5277,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Small Mid-Atlantic state where Sussex County has limited local news coverage."
+      }
+    },
+    {
+      "id": "b2000008-0000-0000-0000-000000000001",
+      "name": "Montana",
+      "slug": "montana",
+      "level": 2,
+      "lat": 46.8797,
+      "lng": -110.3626,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Vast rural state where distance and population make local journalism difficult to sustain."
+      }
+    },
+    {
+      "id": "b2000009-0000-0000-0000-000000000001",
+      "name": "North Carolina",
+      "slug": "north-carolina",
+      "level": 2,
+      "lat": 35.7596,
+      "lng": -79.0193,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Lost multiple small-town papers including The Tribune (Elkin) and McDowell News (Marion)."
+      }
+    },
+    {
+      "id": "b2000010-0000-0000-0000-000000000001",
+      "name": "Virginia",
+      "slug": "virginia",
+      "level": 2,
+      "lat": 37.4316,
+      "lng": -78.6569,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Lost Chesterfield Observer in 2023, leaving suburban communities without local coverage."
+      }
+    },
+    {
+      "id": "b2000011-0000-0000-0000-000000000001",
+      "name": "Florida",
+      "slug": "florida",
+      "level": 2,
+      "lat": 27.6648,
+      "lng": -81.5158,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Rural panhandle and north-central counties are among the state's worst news deserts."
+      }
+    },
+    {
+      "id": "b2000013-0000-0000-0000-000000000001",
+      "name": "West Virginia",
+      "slug": "west-virginia",
+      "level": 2,
+      "lat": 38.5976,
+      "lng": -80.4549,
+      "parent_slug": "usa",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Appalachian state with numerous county-level news deserts, especially in southern coalfields."
+      }
+    },
+    {
+      "id": "b1000005-0000-0000-0000-000000000001",
+      "name": "Harlan",
+      "slug": "harlan",
+      "level": 3,
+      "lat": 36.8431,
+      "lng": -83.3218,
+      "parent_slug": "kentucky",
+      "region_id": "b2000005-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in Kentucky affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000006-0000-0000-0000-000000000001",
+      "name": "Jonesboro",
+      "slug": "jonesboro",
+      "level": 3,
+      "lat": 33.5215,
+      "lng": -84.3538,
+      "parent_slug": "georgia",
+      "region_id": "b2000006-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in Georgia affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000007-0000-0000-0000-000000000001",
+      "name": "Georgetown",
+      "slug": "georgetown",
+      "level": 3,
+      "lat": 38.6901,
+      "lng": -75.3857,
+      "parent_slug": "delaware",
+      "region_id": "b2000007-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in Delaware affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000008-0000-0000-0000-000000000001",
+      "name": "Glendive",
+      "slug": "glendive",
+      "level": 3,
+      "lat": 47.1053,
+      "lng": -104.7127,
+      "parent_slug": "montana",
+      "region_id": "b2000008-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in Montana affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000009-0000-0000-0000-000000000001",
+      "name": "Marion",
+      "slug": "marion",
+      "level": 3,
+      "lat": 35.6843,
+      "lng": -82.0093,
+      "parent_slug": "north-carolina",
+      "region_id": "b2000009-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in North Carolina affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000010-0000-0000-0000-000000000001",
+      "name": "Chesterfield",
+      "slug": "chesterfield",
+      "level": 3,
+      "lat": 37.3779,
+      "lng": -77.5058,
+      "parent_slug": "virginia",
+      "region_id": "b2000010-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in Virginia affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000011-0000-0000-0000-000000000001",
+      "name": "Madison",
+      "slug": "madison-fl",
+      "level": 3,
+      "lat": 30.4694,
+      "lng": -83.413,
+      "parent_slug": "florida",
+      "region_id": "b2000011-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in Florida affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000012-0000-0000-0000-000000000001",
+      "name": "Linden",
+      "slug": "linden",
+      "level": 3,
+      "lat": 35.6173,
+      "lng": -87.8395,
+      "parent_slug": "tennessee",
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in Tennessee affected by local news decline."
+      }
+    },
+    {
+      "id": "b1000013-0000-0000-0000-000000000001",
+      "name": "Hamlin",
+      "slug": "hamlin",
+      "level": 3,
+      "lat": 38.2779,
+      "lng": -82.1032,
+      "parent_slug": "west-virginia",
+      "region_id": "b2000013-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "about": "Community in West Virginia affected by local news decline."
+      }
+    }
+  ],
+  "submissions": [
+    {
+      "id": "d1a00001-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000001-0000-0000-0000-000000000001",
+      "city_id": "b1000001-0000-0000-0000-000000000001",
+      "lat": 41.6103,
+      "lng": -87.0645,
+      "title": "Feed the Region serves free community meals in Northwest Indiana",
+      "description": "Grassroots nonprofit Feed the Region is preparing its sixth free community meal, building a network of neighbors feeding neighbors across Porter County.",
+      "tags": 40,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "In a region where the local newspaper recently ceased publication, a grassroots effort is quietly building one of the most tangible safety nets a community can have: a shared meal."
+          },
+          {
+            "type": "text",
+            "content": "Feed the Region, a volunteer-run nonprofit operating out of Nana Clare's Kitchen, is gearing up for its sixth free community meal on March 12. This month's offering is a black bean and veggie enchilada casserole, available for free pickup at 7 p.m. to anyone who needs it."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/chesterton-feed-the-region-serves-free-img0.jpg",
+            "caption": "Photo: Feed the Region",
+            "alt": "Feed the Region community meal announcement"
+          },
+          {
+            "type": "quote",
+            "content": "Please think of your neighbors. Who is hungry, sick, grieving, or just going through it right now? Please pick them up a FREE hot meal next Thursday.",
+            "author": "Steph Talarek"
+          },
+          {
+            "type": "text",
+            "content": "The organization is seeking $250 in monetary donations to cover the cost of feeding 100 people, along with shelf-stable ingredients including corn tortillas, canned black beans, and canned corn. Volunteers are also welcome to help with preparation and distribution."
+          },
+          {
+            "type": "text",
+            "content": "Feed the Region also offers frozen meals from previous dinners for those who cannot make the live pickup. More information and donation opportunities are available at FeedTheRegion.org."
+          }
+        ],
+        "review": {
+          "score": 82,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Grassroots nonprofit Feed the Region is preparing its sixth free community meal in Porter County, Indiana, offering enchilada casserole to anyone who needs it.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "chesterton-feed-the-region-serves-free",
+        "featured_img": "articles/images/chesterton-feed-the-region-serves-free-featured.jpg",
+        "sources": [
+          "Facebook: Steph Talarek / Feed the Region"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00002-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000001-0000-0000-0000-000000000001",
+      "city_id": "b1000001-0000-0000-0000-000000000001",
+      "lat": 41.6103,
+      "lng": -87.0645,
+      "title": "Bloomstead Bakery draws crowds as local farm stand scene thrives in Chesterton",
+      "description": "Bloomstead Bakery and Farmstand reports booming demand as the Chesterton area's local food economy flourishes heading into spring.",
+      "tags": 12,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The local food movement in Northwest Indiana is alive and well, judging by the scene at Bloomstead Bakery and Farmstand, where shelves are emptying as fast as they can be restocked."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/chesterton-bloomstead-bakery-draws-crow-img0.jpg",
+            "caption": "Photo: Bloomstead Bakery and Farmstand",
+            "alt": "Bloomstead Bakery loaded farmstand display"
+          },
+          {
+            "type": "text",
+            "content": "Owner Andrew Nowicki says the stand is fully loaded with fresh baked goods, a trend that has accelerated as spring approaches. The bakery has become a community gathering point for residents seeking locally made food."
+          },
+          {
+            "type": "text",
+            "content": "Other small-scale food entrepreneurs are seeing similar enthusiasm. Beautiful Things by Lp, a home bakery operating from a roadside shed at 6440 Gaywood Avenue in Portage, has been keeping busy with offerings ranging from Amish Apple Fritter Bread to Strawberry Bundt Cake and Oreo Tres Leches Cake. Owner Laurie Payne Bozman recently asked her community what baked goods they would like to see as she anticipates a busy spring season."
+          },
+          {
+            "type": "quote",
+            "content": "I want to thank you all for your business and support you definitely have been keeping me busy.",
+            "author": "Laurie Payne Bozman"
+          },
+          {
+            "type": "text",
+            "content": "The thriving cottage food scene fills a gap in Porter County's food landscape, connecting residents directly with local producers and building the kind of economic resilience small communities need."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Local bakeries and farm stands are thriving in the Chesterton area as small food entrepreneurs build community through artisan goods.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "chesterton-bloomstead-bakery-draws-crow",
+        "featured_img": "articles/images/chesterton-bloomstead-bakery-draws-crow-featured.jpg",
+        "sources": [
+          "Facebook: Andrew Nowicki / Bloomstead Bakery",
+          "Facebook: Laurie Payne Bozman / Beautiful Things by Lp"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00003-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000001-0000-0000-0000-000000000001",
+      "city_id": "b1000001-0000-0000-0000-000000000001",
+      "lat": 41.6103,
+      "lng": -87.0645,
+      "title": "Rideshare drivers in NWI ask community to consider tipping",
+      "description": "A Chesterton-area rideshare driver is raising awareness about the financial realities of gig work, asking riders to tip for the service they receive.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A local rideshare driver is speaking up about an issue that affects the growing number of gig workers in Northwest Indiana: the financial reality of driving for ride-hailing services."
+          },
+          {
+            "type": "quote",
+            "content": "If you ever order a rideshare, please keep in mind that a lot of times these are folk's full time job or how they make ends meet. We ask that you please make an effort to tip your drivers.",
+            "author": "Sarah Rivera"
+          },
+          {
+            "type": "text",
+            "content": "Rivera pointed out that rideshare drivers pay for their own fuel, mandatory car washes, and vehicle maintenance out of pocket. The gig economy has become a lifeline for many workers in the region, particularly as traditional employment opportunities shift."
+          },
+          {
+            "type": "text",
+            "content": "The post, shared in a Chesterton community group, resonated with residents. In an area where the loss of the local newspaper has made it harder for community voices to be heard, social media has become the primary forum for these kinds of civic conversations about supporting local workers and businesses."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A Northwest Indiana rideshare driver asks the community to tip gig workers who pay for fuel, car washes, and maintenance out of their own pockets.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "chesterton-rideshare-drivers-nwi-ask-co",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Sarah Rivera"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00004-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000001-0000-0000-0000-000000000001",
+      "city_id": "b1000001-0000-0000-0000-000000000001",
+      "lat": 41.6103,
+      "lng": -87.0645,
+      "title": "Local cat rescue Chevy2.0 seeks forever homes in Porter County",
+      "description": "A volunteer-run cat rescue in the Chesterton area is highlighting adoptable cats and advocating for spay and neuter programs across Northwest Indiana.",
+      "tags": 32,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A small but dedicated cat rescue operating in the Chesterton area is using social media to find homes for animals that might otherwise be overlooked. Chevy2.0, run by volunteer Chevy Stevens, has been posting detailed profiles of adoptable cats in local community groups, hoping to connect them with families."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/chesterton-local-cat-rescue-chevy-seeks-img0.jpg",
+            "caption": "Photo: Chevy Stevens / Chevy2.0",
+            "alt": "Pickles the cat available for adoption"
+          },
+          {
+            "type": "text",
+            "content": "Among the cats currently seeking homes is Pickles, a young social cat who is spayed, vaccinated, dewormed, microchipped, and tested negative for FIV and FELV. Another recent rescue, Des, was found living under a house in cold conditions before being brought in."
+          },
+          {
+            "type": "quote",
+            "content": "She's been patient. She's been loving. She's been ready. Now she just needs someone to choose her.",
+            "author": "Chevy Stevens"
+          },
+          {
+            "type": "text",
+            "content": "The rescue also advocates for community support of spay and neuter programs, which help control stray populations. Every rescued cat is fully vetted before being made available for adoption. Interested adopters can reach out through the Chevy2.0 social media pages."
+          }
+        ],
+        "review": {
+          "score": 76,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Volunteer-run cat rescue Chevy2.0 is working to find homes for adoptable cats in the Chesterton area while promoting spay and neuter programs.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "chesterton-local-cat-rescue-chevy-seeks",
+        "featured_img": "articles/images/chesterton-local-cat-rescue-chevy-seeks-featured.jpg",
+        "sources": [
+          "Facebook: Chevy Stevens / Chevy2.0"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00005-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000002-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000002-0000-0000-0000-000000000001",
+      "city_id": "b1000002-0000-0000-0000-000000000001",
+      "lat": 43.3767,
+      "lng": -72.3468,
+      "title": "Storm damage and sudden thaw hit Claremont homeowners hard",
+      "description": "Back-to-back winter storms followed by a rapid thaw are causing ice dam damage and basement flooding across the Sullivan County region.",
+      "tags": 640,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Claremont homeowners are dealing with a damaging one-two punch this week: a series of heavy winter storms, including Winter Storm Fern, followed by a sudden temperature spike that is creating dangerous conditions for roofs and foundations across Sullivan County."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/claremont-storm-damage-sudden-thaw-hit-img0.jpg",
+            "caption": "Photo: New England Gutter Systems",
+            "alt": "Storm damage to residential gutters"
+          },
+          {
+            "type": "text",
+            "content": "The rapid snow-to-melt-to-freeze cycle has created ice dams on homes throughout the region, ripping gutters loose and crushing downspouts. Local contractors report seeing gutters pulled away from houses, water pouring over roof edges, and snowmelt pooling dangerously near foundations."
+          },
+          {
+            "type": "quote",
+            "content": "When gutters are damaged during a thaw, all that melting snow has nowhere to go. Instead of draining safely away from your home, it can run straight down your foundation -- which is how basement flooding starts.",
+            "author": "New England Gutter Systems"
+          },
+          {
+            "type": "text",
+            "content": "The damage comes at a particularly difficult time for Claremont residents, who lost their local newspaper, the Eagle Times, when it suspended operations last year. Without a dedicated news outlet, residents are turning to community Facebook groups to share information about storm damage, find contractors, and check on neighbors."
+          },
+          {
+            "type": "text",
+            "content": "Homeowners are advised to inspect their roofs and gutters for visible damage and to contact a professional before the next weather shift."
+          }
+        ],
+        "review": {
+          "score": 80,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Back-to-back storms and a sudden thaw are causing ice dams, gutter damage, and flooding concerns for Claremont-area homeowners.",
+        "category": "environment",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "claremont-storm-damage-sudden-thaw-hit",
+        "featured_img": "articles/images/claremont-storm-damage-sudden-thaw-hit-featured.jpg",
+        "sources": [
+          "Facebook: Daniel Foote / New England Gutter Systems"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00006-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000002-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000002-0000-0000-0000-000000000001",
+      "city_id": "b1000002-0000-0000-0000-000000000001",
+      "lat": 43.3767,
+      "lng": -72.3468,
+      "title": "Girl Scout cookie season brings community together at The Apiary",
+      "description": "Girl Scout Troop 60263 sets up at Claremont's newest shop to sell cookies, marking a small but meaningful moment of community connection.",
+      "tags": 40,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Girl Scout cookie season is in its final stretch in Claremont, and Troop 60263 has found a new home base for sales: The Apiary, a recently opened store at 84 Pleasant Street."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/claremont-girl-scout-cookies-apiary-com-img0.jpg",
+            "caption": "Photo: The Apiary / Ashley Elizabeth",
+            "alt": "Girl Scout cookies sale at The Apiary"
+          },
+          {
+            "type": "text",
+            "content": "The troop sold cookies from 10 a.m. to 2 p.m. at the new storefront, located next to Rancho Viejo Mexican Restaurant. The partnership between the young scouts and the new business represents the kind of grassroots community building that has become essential in a city navigating life without its local newspaper."
+          },
+          {
+            "type": "text",
+            "content": "The Apiary's opening is one of several signs of commercial life along Pleasant Street. In a community where the Eagle Times once covered every new business opening, word now spreads primarily through social media and the community bulletin board Facebook group that has become Claremont's de facto town square."
+          }
+        ],
+        "review": {
+          "score": 74,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Girl Scout Troop 60263 partners with new Claremont shop The Apiary for cookie sales, highlighting community connections in the town.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "claremont-girl-scout-cookies-apiary-com",
+        "featured_img": "articles/images/claremont-girl-scout-cookies-apiary-com-featured.jpg",
+        "sources": [
+          "Facebook: Ashley Elizabeth / The Apiary",
+          "Facebook: Doree Russell / Girl Scout Troop 60263"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00007-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000002-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000002-0000-0000-0000-000000000001",
+      "city_id": "b1000002-0000-0000-0000-000000000001",
+      "lat": 43.3767,
+      "lng": -72.3468,
+      "title": "Claremont restaurants and businesses post hiring calls as spring season approaches",
+      "description": "Multiple Claremont businesses are actively recruiting staff ahead of the busy spring and summer season, signaling economic activity in the Sullivan County seat.",
+      "tags": 4,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "As temperatures begin to warm across the Upper Valley, Claremont businesses are posting a steady stream of help-wanted notices on community bulletin boards, signaling a busy season ahead."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/claremont-restaurants-businesses-hiring-img0.jpg",
+            "caption": "Photo: Taverne on the Square",
+            "alt": "Taverne on the Square hiring announcement"
+          },
+          {
+            "type": "text",
+            "content": "Taverne on the Square, a popular dining spot, is looking to fill multiple flexible, part-time positions including servers, bartenders, hosts, food runners, and dishwashers. KJ's Pizza and Subs is hiring for four positions. And Stoneface Earthworks, an excavation and land services company, is ramping up for what it calls a banner year, seeking crew members with experience in excavation, landscaping, and hardscaping."
+          },
+          {
+            "type": "text",
+            "content": "The hiring push extends to the service sector as well. Peaceful Pines Therapeutic Services is recruiting a masters-level licensed clinician, reflecting the community's growing need for mental health services in the region."
+          },
+          {
+            "type": "text",
+            "content": "Without a local newspaper to run classified ads, these businesses have turned entirely to Facebook groups to reach potential employees, a pattern that has become standard across communities that have lost their local press."
+          }
+        ],
+        "review": {
+          "score": 77,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Restaurants, contractors, and healthcare providers in Claremont are hiring for the spring season, posting openings through community Facebook groups.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "claremont-restaurants-businesses-hiring",
+        "featured_img": "articles/images/claremont-restaurants-businesses-hiring-featured.jpg",
+        "sources": [
+          "Facebook: Taverne on the Square",
+          "Facebook: KJ's Pizza and Subs",
+          "Facebook: Neil Prive / Stoneface Earthworks",
+          "Facebook: Peaceful Pines Therapeutic Services"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00008-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000003-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000003-0000-0000-0000-000000000001",
+      "city_id": "b1000003-0000-0000-0000-000000000001",
+      "lat": 31.6941,
+      "lng": -89.1306,
+      "title": "Severe weather threat looms over Jones County as Saturday storms approach",
+      "description": "The National Weather Service warns of damaging wind gusts, large hail, and possible tornadoes across south Mississippi Saturday afternoon.",
+      "tags": 640,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The National Weather Service office in Jackson has issued a severe weather outlook for Jones County and surrounding areas, warning that Saturday afternoon and evening could bring dangerous thunderstorms to the Pine Belt region."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/laurel-severe-weather-threat-jones-coun-img0.jpg",
+            "caption": "Photo: US National Weather Service Jackson Mississippi",
+            "alt": "Severe weather forecast map for Mississippi"
+          },
+          {
+            "type": "text",
+            "content": "The forecast calls for severe thunderstorms capable of producing damaging wind gusts and large hail, with tornadoes not ruled out. The storm threat is expected to shift from northwest to southeast from the daytime into nighttime hours."
+          },
+          {
+            "type": "text",
+            "content": "The warning comes at a critical time for Laurel and Jones County, where the closure of the 100-year-old Laurel Leader-Call newspaper in January has left residents without a traditional outlet for emergency information. Community members are now relying on Facebook groups and social media to share weather updates, a role once filled by local journalists."
+          },
+          {
+            "type": "text",
+            "content": "Residents are urged to monitor weather conditions closely and have a plan in place for seeking shelter if warnings are issued."
+          }
+        ],
+        "review": {
+          "score": 82,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "National Weather Service warns of severe storms with damaging winds, hail, and possible tornadoes for the Laurel and Jones County area Saturday.",
+        "category": "environment",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "laurel-severe-weather-threat-jones-coun",
+        "featured_img": "articles/images/laurel-severe-weather-threat-jones-coun-featured.jpg",
+        "sources": [
+          "Facebook: Justin Stevison / US National Weather Service Jackson Mississippi"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00009-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000003-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000003-0000-0000-0000-000000000001",
+      "city_id": "b1000003-0000-0000-0000-000000000001",
+      "lat": 31.6941,
+      "lng": -89.1306,
+      "title": "Taylorsville Flea Market opens on Front Street, first auction set for March 12",
+      "description": "A new flea market and auction house has opened in Taylorsville, Mississippi, bringing a new commerce hub to the Jones County area.",
+      "tags": 12,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A new business is breathing life into downtown Taylorsville. Anthony Davis has opened the Taylorsville Flea Market and Auction at 403 Front Street, directly across from Trustmark Bank, and the response from the community has been immediate."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/laurel-taylorsville-flea-market-opens-f-img0.jpg",
+            "caption": "Photo: Anthony Davis / Taylorsville Flea Market",
+            "alt": "Inside the Taylorsville Flea Market"
+          },
+          {
+            "type": "text",
+            "content": "The market is already open for browsing and shopping, with the first auction scheduled for March 12 at 6 p.m. Davis, who made local headlines when the opening was covered by an area outlet, has been actively promoting the venue through Jones County Facebook groups."
+          },
+          {
+            "type": "quote",
+            "content": "We are open folks! Come on in check it out and say hello! First Auction March 12th at 6pm! First 100 people get a surprise gift!",
+            "author": "Anthony Davis"
+          },
+          {
+            "type": "text",
+            "content": "The opening of a new brick-and-mortar business is significant in a region where the loss of the Laurel Leader-Call has left a gap in commercial news coverage. Small businesses throughout Jones County now rely almost entirely on social media to reach customers, making Facebook groups the de facto marketplace for the Pine Belt."
+          }
+        ],
+        "review": {
+          "score": 76,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Anthony Davis opens the Taylorsville Flea Market and Auction on Front Street, with the first auction set for March 12.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "laurel-taylorsville-flea-market-opens-f",
+        "featured_img": "articles/images/laurel-taylorsville-flea-market-opens-f-featured.jpg",
+        "sources": [
+          "Facebook: Anthony Davis / Taylorsville Flea Market and Auction"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00010-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000003-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000003-0000-0000-0000-000000000001",
+      "city_id": "b1000003-0000-0000-0000-000000000001",
+      "lat": 31.6941,
+      "lng": -89.1306,
+      "title": "Little Light Children's Consignment draws families to South Mississippi Fair grounds",
+      "description": "Thousands of discounted children's clothing items are available at the Little Light Children's Consignment event at Laurel's Magnolia Center.",
+      "tags": 8,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Families from across the Pine Belt are flocking to the South Mississippi Fair and Magnolia Center in Laurel for the Little Light Children's Consignment sale, which is offering thousands of children's and women's clothing items at steep discounts."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/laurel-little-light-consignment-draws-f-img0.jpg",
+            "caption": "Photo: Little Light Children's Consignment",
+            "alt": "Consignment sale floor with racks of children's clothing"
+          },
+          {
+            "type": "text",
+            "content": "The sale features baby through big kid sizes up to 14/16, along with women's clothing from XS to 3X, all priced at 50 to 90 percent off retail. The event runs through the evening, with doors open until 8 p.m."
+          },
+          {
+            "type": "text",
+            "content": "Consignment events like this one have become important community gathering points in Laurel, where residents seek affordable options for growing families. The sale also provides an income opportunity for parents clearing out outgrown clothes, reinforcing the kind of circular economy that sustains small-town life."
+          }
+        ],
+        "review": {
+          "score": 74,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Little Light Children's Consignment sale at Laurel's Magnolia Center offers thousands of kids' and women's items at 50-90% off retail.",
+        "category": "events",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "laurel-little-light-consignment-draws-f",
+        "featured_img": "articles/images/laurel-little-light-consignment-draws-f-featured.jpg",
+        "sources": [
+          "Facebook: Stormy Riels / Little Light Children's Consignment"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00011-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000004-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "city_id": "b1000004-0000-0000-0000-000000000001",
+      "lat": 35.7473,
+      "lng": -85.4669,
+      "title": "Helicopter airlifts patient after emergency on SR 111 in Van Buren County",
+      "description": "Multiple fire departments and law enforcement agencies coordinated a landing zone on State Route 111 for an AirEvac helicopter to transport an injured patient.",
+      "tags": 128,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Emergency responders across Van Buren County sprang into action Friday afternoon after an incident required a patient to be airlifted to a trauma center."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/spencer-helicopter-airlifts-patient-sr1-img0.jpg",
+            "caption": "Photo: Piney Volunteer Fire Department",
+            "alt": "Emergency helicopter landing zone on SR 111"
+          },
+          {
+            "type": "text",
+            "content": "Just after 4:20 p.m., Piney Volunteer Fire Department responded to a request for a helicopter landing zone near the intersection of State Route 111 and Connell Road. Spencer Fire Rescue also responded, and the two departments worked together to secure a safe landing area on the highway for the AirEvac helicopter."
+          },
+          {
+            "type": "text",
+            "content": "The City of Spencer Police Department assisted with traffic control and securing the landing zone while the Van Buren County Sheriff's Office was handling the original scene. Van Buren County EMS prepared the patient for transport to a regional trauma center."
+          },
+          {
+            "type": "text",
+            "content": "The coordinated response highlights the reliance of rural communities like Spencer on volunteer fire departments and mutual aid agreements. In a county of roughly 6,000 people with no local newspaper, the community bulletin Facebook group has become the primary channel for reporting emergency incidents and public safety information."
+          }
+        ],
+        "review": {
+          "score": 84,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Piney VFD, Spencer Fire Rescue, and local law enforcement coordinated a helicopter landing zone on SR 111 to airlift a patient to a trauma center.",
+        "category": "safety",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "spencer-helicopter-airlifts-patient-sr1",
+        "featured_img": "articles/images/spencer-helicopter-airlifts-patient-sr1-featured.jpg",
+        "sources": [
+          "Facebook: Tina K. Simmons / Piney Volunteer Fire Department"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00012-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000004-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "city_id": "b1000004-0000-0000-0000-000000000001",
+      "lat": 35.7473,
+      "lng": -85.4669,
+      "title": "Van Buren County student Lyla McCoy shines at statewide health conference",
+      "description": "A Van Buren County Schools student was selected to present at the Coordinated School Health Institute, representing the county on a statewide stage.",
+      "tags": 2,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Van Buren County Schools had a proud moment this week when student Lyla McCoy was selected as the student presenter at the statewide Coordinated School Health Institute."
+          },
+          {
+            "type": "text",
+            "content": "McCoy represented her school and community on a stage that draws educators and health officials from across Tennessee. The selection is a testament to the quality of education in the small Cumberland Plateau school system, which serves roughly 800 students across the county."
+          },
+          {
+            "type": "quote",
+            "content": "So proud of you sweet girl!",
+            "author": "Tracy McCoy"
+          },
+          {
+            "type": "text",
+            "content": "The Coordinated School Health program works to improve student health and well-being through partnerships between schools, families, and communities. McCoy's presentation drew enthusiastic support from community members who followed the news through the Van Buren County Community Bulletin, the Facebook group that has become the county's primary news source."
+          },
+          {
+            "type": "text",
+            "content": "In a county where no local newspaper has survived since the Van Buren Eagle folded in 2018, achievements like McCoy's might go unnoticed without the volunteer administrators who curate the community bulletin for its 6,200 members."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Van Buren County student Lyla McCoy was selected to present at the statewide Coordinated School Health Institute.",
+        "category": "schools",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "spencer-van-buren-student-lyla-mccoy-sh",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Tina K. Simmons / Van Buren County Schools"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00013-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000004-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "city_id": "b1000004-0000-0000-0000-000000000001",
+      "lat": 35.7473,
+      "lng": -85.4669,
+      "title": "Eaglettes rally community for white-out Substate basketball showdown",
+      "description": "The Van Buren County girls' basketball team is calling for a white-out crowd as they host Jackson County in the Substate tournament.",
+      "tags": 16,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The Van Buren County Eaglettes are asking their community to show up strong for one of the biggest games of the season. The girls' basketball team is hosting Jackson County in a Substate tournament game, and they want the stands draped in white."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/spencer-eaglettes-rally-community-white-img0.jpg",
+            "caption": "Photo: Van Buren County Boys Basketball",
+            "alt": "White-out game announcement for Eaglettes"
+          },
+          {
+            "type": "text",
+            "content": "The white-out theme has caught on across the region. As one commenter noted, neighboring White County is also planning a white-out for their own game. The coincidence drew a lighthearted response: \"Great minds think alike.\""
+          },
+          {
+            "type": "text",
+            "content": "High school athletics are the heartbeat of small Tennessee communities like Spencer, where Friday night games fill gymnasiums and provide one of the few regular community gathering opportunities. In a county without a local newspaper, game results and team news are shared exclusively through the community bulletin and word of mouth."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Van Buren County Eaglettes call for a white-out crowd for their Substate basketball game against Jackson County.",
+        "category": "sports",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "spencer-eaglettes-rally-community-white",
+        "featured_img": "articles/images/spencer-eaglettes-rally-community-white-featured.jpg",
+        "sources": [
+          "Facebook: Tina K. Simmons / Van Buren County Boys Basketball"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "d1a00014-0000-0000-0000-000000000001",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000004-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "city_id": "b1000004-0000-0000-0000-000000000001",
+      "lat": 35.7473,
+      "lng": -85.4669,
+      "title": "Severe storms target Van Buren County Saturday with strong winds and heavy rain",
+      "description": "Meteorologists are tracking a severe weather system that will move through the Cumberland Plateau Saturday afternoon, bringing potential for damaging winds.",
+      "tags": 640,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Van Buren County is squarely in the path of severe weather expected to sweep across the Tennessee Valley Saturday afternoon. Local weather tracker Chase Bryant, whose forecasts have become essential reading in the community bulletin group, is providing detailed updates as the system approaches."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/spencer-severe-storms-target-van-buren-img0.jpg",
+            "caption": "Photo: Chase Bryant Weather",
+            "alt": "Severe weather risk map for Tennessee"
+          },
+          {
+            "type": "text",
+            "content": "The latest update upgrades Van Buren County's risk level to a Level 2 slight risk, with increasing confidence in strong wind gusts. Communities named in the upgraded zone include McMinnville, Sparta, Rock Island, and Spencer. The tornado threat remains low, but all areas can expect heavy downpours, lightning, and gusty winds."
+          },
+          {
+            "type": "text",
+            "content": "For Van Buren County residents on Central Time, the storm window is estimated at 3 p.m. to 8 p.m. Bryant's forecasts, shared through the community Facebook group, fill the void left by the absence of a local news outlet. Community bulletin co-administrators Tina Simmons and Gregory Cope ensure these weather updates reach the group's 6,200 members promptly."
+          }
+        ],
+        "review": {
+          "score": 82,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Van Buren County is in an upgraded Level 2 severe weather risk zone for Saturday afternoon, with strong winds and heavy rain expected.",
+        "category": "environment",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T20:45:00.000000+00:00",
+        "slug": "spencer-severe-storms-target-van-buren",
+        "featured_img": "articles/images/spencer-severe-storms-target-van-buren-featured.jpg",
+        "sources": [
+          "Facebook: Chase Bryant / Chase Bryant Weather"
+        ],
+        "published_at": "2026-03-07T20:45:00.000000+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T20:45:00.000000+00:00",
+      "updated_at": "2026-03-07T20:45:00.000000+00:00"
+    },
+    {
+      "id": "c1e14523-4349-45b5-a5e6-6d6e40e3adcc",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000005-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000005-0000-0000-0000-000000000001",
+      "city_id": "b1000005-0000-0000-0000-000000000001",
+      "lat": 36.8431,
+      "lng": -83.3218,
+      "title": "Auto body shop in Pound offers spring paint specials starting at $899",
+      "description": "A local auto body shop near Harlan offers full base and clear coat paint jobs as spring approaches.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A body shop located just over the county line in Pound is running a spring paint special, offering full base and clear coat paint jobs starting at $899 for small cars."
+          },
+          {
+            "type": "quote",
+            "content": "GET THAT RIDE READY FOR SPRING\\! Full base/clear paint jobs starting at only $899. We also do large vehicles, equipment, motorcycles, as well as rust repair and custom work.",
+            "author": "Shop owner"
+          },
+          {
+            "type": "text",
+            "content": "The shop also provides frame repair, reinforcement, rocker panels, cab corners, and custom body work. Trucks and SUVs are priced higher, and body work and door jambs cost extra."
+          },
+          {
+            "type": "text",
+            "content": "In a county where many residents rely on their vehicles for long commutes, affordable auto body services fill a critical need. The shop encourages customers to reach out directly for estimates."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A local auto body shop near Harlan offers full base and clear coat paint jobs as spring approaches.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971418+00:00",
+        "slug": "harlan-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Harlan County KY Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971418+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971418+00:00",
+      "updated_at": "2026-03-07T19:17:01.971418+00:00"
+    },
+    {
+      "id": "d21e6347-2bd6-44b0-8652-1ccfb761ec60",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000005-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000005-0000-0000-0000-000000000001",
+      "city_id": "b1000005-0000-0000-0000-000000000001",
+      "lat": 36.8431,
+      "lng": -83.3218,
+      "title": "New house cleaning service launches in Harlan County with personalized approach",
+      "description": "A meticulous housekeeper introduces her cleaning services to the Harlan County community.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A new house cleaning service is now available in Harlan County. Abigail, who describes herself as a meticulous housekeeper, has introduced her business to the community through local social media."
+          },
+          {
+            "type": "quote",
+            "content": "I just wanted to introduce myself. I'm Abigail, a meticulous housekeeper with a passion for making homes spotless and comfortable.",
+            "author": "Abigail"
+          },
+          {
+            "type": "text",
+            "content": "The service caters to residential clients in the Harlan area. As new small businesses continue to emerge in Appalachian Kentucky, local entrepreneurs are finding Facebook community groups to be their primary marketing channel in the absence of traditional local media."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A meticulous housekeeper introduces her cleaning services to the Harlan County community.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971445+00:00",
+        "slug": "harlan-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Harlan County KY Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971445+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971445+00:00",
+      "updated_at": "2026-03-07T19:17:01.971445+00:00"
+    },
+    {
+      "id": "dad4fee5-75bf-4349-afeb-abc8c53ccafe",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000006-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000006-0000-0000-0000-000000000001",
+      "city_id": "b1000006-0000-0000-0000-000000000001",
+      "lat": 33.5215,
+      "lng": -84.3538,
+      "title": "Clayton County sheriff candidate pledges '360 approach' to accountability",
+      "description": "A candidate for Clayton County Sheriff outlines plans for structural changes at the sheriff's office.",
+      "tags": 161,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A candidate running for Clayton County Sheriff has launched a campaign centered on accountability and structural reform. The campaign, announced through community social media channels, promises a comprehensive overhaul of operations."
+          },
+          {
+            "type": "quote",
+            "content": "We have set out on this journey to bring an accountable 360 approach to the Clayton County Sheriff's Office. Structure is coming back — to the jail, patrol, and every division.",
+            "author": "Sheriff candidate"
+          },
+          {
+            "type": "text",
+            "content": "The announcement has generated significant community engagement online. Clayton County, part of metro Atlanta's southern suburbs, has seen growing reliance on social media for local political news as traditional newspaper coverage has declined."
+          },
+          {
+            "type": "text",
+            "content": "The campaign represents a broader trend in news desert communities where candidates increasingly bypass traditional media to communicate directly with voters through Facebook groups and community pages."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A candidate for Clayton County Sheriff outlines plans for structural changes at the sheriff's office.",
+        "category": "council",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971457+00:00",
+        "slug": "jonesboro-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Clayton County GA Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971457+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971457+00:00",
+      "updated_at": "2026-03-07T19:17:01.971457+00:00"
+    },
+    {
+      "id": "34c5e173-059e-4d24-b489-15dd37a905f2",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000006-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000006-0000-0000-0000-000000000001",
+      "city_id": "b1000006-0000-0000-0000-000000000001",
+      "lat": 33.5215,
+      "lng": -84.3538,
+      "title": "Teen entrepreneur builds beauty clientele through social media in Clayton County",
+      "description": "A 17-year-old aspiring stylist uses community groups to build her business in suburban Atlanta.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "In Clayton County, a 17-year-old entrepreneur named Justice Nicole is building her beauty business one client at a time. Using local Facebook community groups, she's seeking models for content creation and offering her services at The Royal Allure Co."
+          },
+          {
+            "type": "quote",
+            "content": "Hey everyone, I'm 17 years old and I'm trying to build my clientele. If anyone is willing to be my model for content or do shoutout-for-shoutout, reach out\\!",
+            "author": "Justice Nicole"
+          },
+          {
+            "type": "text",
+            "content": "Nicole specializes in hair services including straight ponytails and styling. Her entrepreneurial spirit reflects a growing trend of young people in underserved communities leveraging social media platforms to launch careers."
+          },
+          {
+            "type": "text",
+            "content": "In communities with limited local news coverage, Facebook groups serve double duty — connecting residents while also functioning as a marketplace for emerging small businesses."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A 17-year-old aspiring stylist uses community groups to build her business in suburban Atlanta.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971464+00:00",
+        "slug": "jonesboro-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Clayton County GA Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971464+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971464+00:00",
+      "updated_at": "2026-03-07T19:17:01.971464+00:00"
+    },
+    {
+      "id": "a6627fe5-a664-463f-a4e2-22505771c342",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000006-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000006-0000-0000-0000-000000000001",
+      "city_id": "b1000006-0000-0000-0000-000000000001",
+      "lat": 33.5215,
+      "lng": -84.3538,
+      "title": "DeKalb County 'Achieve the Dream' event rescheduled for March",
+      "description": "A community resource event has been moved to new dates at The Gallery at South DeKalb.",
+      "tags": 40,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The DeKalb County Achieve the Dream Event has been rescheduled to March 13-15, running from 8:00 AM to 8:00 PM at The Gallery at South DeKalb. The event was shared across Clayton County community channels."
+          },
+          {
+            "type": "text",
+            "content": "The event connects residents with resources, services, and opportunities. Community members from neighboring counties including Clayton are encouraged to attend."
+          },
+          {
+            "type": "text",
+            "content": "As suburban Atlanta communities continue to grow, cross-county events like Achieve the Dream fill the gap left by declining local media that once promoted such opportunities."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A community resource event has been moved to new dates at The Gallery at South DeKalb.",
+        "category": "events",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971470+00:00",
+        "slug": "jonesboro-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Clayton County GA Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971470+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971470+00:00",
+      "updated_at": "2026-03-07T19:17:01.971470+00:00"
+    },
+    {
+      "id": "96ff1a43-f704-4779-89e9-b12a9e484e36",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000007-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000007-0000-0000-0000-000000000001",
+      "city_id": "b1000007-0000-0000-0000-000000000001",
+      "lat": 38.6901,
+      "lng": -75.3857,
+      "title": "Church group knits chunky blankets for homeless in Sussex County",
+      "description": "Women from a local church craft hand-knitted blankets to bring warmth to those in need.",
+      "tags": 288,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A group of women from a Sussex County church are putting their knitting skills to work for a cause. The volunteers are crafting hand-knitted chunky blankets to donate to homeless individuals and those in need throughout the county."
+          },
+          {
+            "type": "quote",
+            "content": "Some of the ladies from our church are crafting hand-knitted chunky blankets to bring warmth and comfort to the homeless and to those in need.",
+            "author": "Church volunteer"
+          },
+          {
+            "type": "text",
+            "content": "The group is also looking to purchase reasonably priced yarn to continue their efforts. Community members interested in donating materials or participating can connect through local social media groups."
+          },
+          {
+            "type": "text",
+            "content": "Sussex County, Delaware's southernmost and most rural county, has seen limited local news coverage in recent years, making grassroots volunteer efforts like this one harder for residents to discover."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Women from a local church craft hand-knitted blankets to bring warmth to those in need.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971476+00:00",
+        "slug": "georgetown-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Sussex County DE Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971476+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971476+00:00",
+      "updated_at": "2026-03-07T19:17:01.971476+00:00"
+    },
+    {
+      "id": "8d6dd85b-c1ac-4c87-a649-2d12b3b7671d",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000007-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000007-0000-0000-0000-000000000001",
+      "city_id": "b1000007-0000-0000-0000-000000000001",
+      "lat": 38.6901,
+      "lng": -75.3857,
+      "title": "Mobile addiction recovery vehicle seeks staff in Sussex County",
+      "description": "The M.A.R.R.V. program offers unique career opportunities in mobile drug and alcohol treatment.",
+      "tags": 288,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A mobile addiction recovery program operating in Sussex County is hiring staff for its innovative approach to drug and alcohol treatment. The M.A.R.R.V. — Mobile Addiction Recovery Recovery Vehicle — brings treatment services directly to communities in need."
+          },
+          {
+            "type": "quote",
+            "content": "Are you seeking a unique and fun opportunity to work in the drug and alcohol treatment field? Then come join the M.A.R.R.V.\\!",
+            "author": "Program recruiter"
+          },
+          {
+            "type": "text",
+            "content": "The program addresses a critical need in rural Delaware, where transportation barriers often prevent residents from accessing treatment facilities. By bringing services to the community, the M.A.R.R.V. removes one of the biggest obstacles to recovery."
+          },
+          {
+            "type": "text",
+            "content": "Interested applicants can find more information through the organization's social media channels. The positions offer flexibility and the chance to make a direct impact in the community."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "The M.A.R.R.V. program offers unique career opportunities in mobile drug and alcohol treatment.",
+        "category": "health",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971482+00:00",
+        "slug": "georgetown-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Sussex County DE Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971482+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971482+00:00",
+      "updated_at": "2026-03-07T19:17:01.971482+00:00"
+    },
+    {
+      "id": "f3a3d02c-2750-4beb-a4fe-6f1b50161ed3",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000007-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000007-0000-0000-0000-000000000001",
+      "city_id": "b1000007-0000-0000-0000-000000000001",
+      "lat": 38.6901,
+      "lng": -75.3857,
+      "title": "Fire safety alert: Sussex County residents urged to clean dryer vents",
+      "description": "Local service provider warns of fire hazards from blocked dryer vents as prevention campaign ramps up.",
+      "tags": 160,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A Sussex County service provider is sounding the alarm about dryer vent safety, urging residents to have their vents cleaned at least once a year. Blocked dryer vents are a leading cause of house fires nationwide."
+          },
+          {
+            "type": "quote",
+            "content": "How clean is your dryer vent? Have you had it cleaned in the last 12 months? Warning signs of dryer vent blockages include taking longer than 50 minutes to dry clothes and the dryer feeling hot to the touch.",
+            "author": "Local service provider"
+          },
+          {
+            "type": "text",
+            "content": "According to the U.S. Fire Administration, dryer fires cause an estimated $35 million in property damage annually. Regular cleaning and maintenance are the most effective prevention measures."
+          },
+          {
+            "type": "text",
+            "content": "In communities without regular local news coverage, safety information like this often circulates exclusively through social media groups — underscoring the role Facebook plays as a de facto community bulletin board."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Local service provider warns of fire hazards from blocked dryer vents as prevention campaign ramps up.",
+        "category": "safety",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971495+00:00",
+        "slug": "georgetown-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Sussex County DE Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971495+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971495+00:00",
+      "updated_at": "2026-03-07T19:17:01.971495+00:00"
+    },
+    {
+      "id": "4c41901b-c1a2-4e72-bc7b-8f71485a85e9",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000008-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000008-0000-0000-0000-000000000001",
+      "city_id": "b1000008-0000-0000-0000-000000000001",
+      "lat": 47.1053,
+      "lng": -104.7127,
+      "title": "New pediatric telehealth practice opens in Glendive, Montana",
+      "description": "A pediatric mental health provider launches telehealth services in rural eastern Montana.",
+      "tags": 288,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A new pediatric telehealth company has opened in Glendive, bringing mental health and counseling services to families in Dawson County and surrounding areas of eastern Montana."
+          },
+          {
+            "type": "quote",
+            "content": "I recently joined because I just started my pediatric telehealth company here in Glendive. I will be doing mental health and counseling services for children and families.",
+            "author": "Practice owner"
+          },
+          {
+            "type": "text",
+            "content": "The practice accepts all insurance plans and offers cash-pay options for self-pay patients and those with high deductibles. Telehealth services are particularly valuable in Montana, where vast distances can make in-person visits difficult for rural families."
+          },
+          {
+            "type": "text",
+            "content": "Dawson County, with a population under 9,000 spread across more than 2,300 square miles, exemplifies the kind of rural community where telemedicine can bridge critical healthcare gaps."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A pediatric mental health provider launches telehealth services in rural eastern Montana.",
+        "category": "health",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971501+00:00",
+        "slug": "glendive-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Dawson County MT Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971501+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971501+00:00",
+      "updated_at": "2026-03-07T19:17:01.971501+00:00"
+    },
+    {
+      "id": "e007cb06-ede2-49ec-aab4-f7e1351ef33a",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000008-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000008-0000-0000-0000-000000000001",
+      "city_id": "b1000008-0000-0000-0000-000000000001",
+      "lat": 47.1053,
+      "lng": -104.7127,
+      "title": "Walk-in sports physicals offered at $30 as fall season approaches in Glendive",
+      "description": "A board-certified pediatric provider offers affordable sports physicals for Dawson County student athletes.",
+      "tags": 274,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Student athletes in the Glendive area can get their sports physicals done affordably before the upcoming season. Walk-in sports physicals are being offered at Dr. Tracy Gabbert's office for just $30."
+          },
+          {
+            "type": "quote",
+            "content": "Come have your sports physical done by a Board Certified Pediatric Provider and be all set for the upcoming sports season\\! Walk-ins welcome.",
+            "author": "Healthcare provider"
+          },
+          {
+            "type": "text",
+            "content": "Multiple dates have been announced for the walk-in physicals, with hours running from 9 AM to 5 PM on designated days. The affordable pricing aims to ensure all student athletes can participate regardless of their family's financial situation."
+          },
+          {
+            "type": "text",
+            "content": "In small Montana communities, sports are a central part of school and community life. Making physicals accessible helps ensure no student is left on the sideline due to paperwork barriers."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A board-certified pediatric provider offers affordable sports physicals for Dawson County student athletes.",
+        "category": "health",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971507+00:00",
+        "slug": "glendive-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Dawson County MT Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971507+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971507+00:00",
+      "updated_at": "2026-03-07T19:17:01.971507+00:00"
+    },
+    {
+      "id": "a1e50566-3fb8-4b36-84f0-1e8a52467735",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000009-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000009-0000-0000-0000-000000000001",
+      "city_id": "b1000009-0000-0000-0000-000000000001",
+      "lat": 35.6843,
+      "lng": -82.0093,
+      "title": "Specialty Tropicals greenhouse opens for spring season in Marion",
+      "description": "A unique tropical plant nursery on Forest Hill Drive shares late-February blooms as the season begins.",
+      "tags": 548,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Specialty Tropicals, a tropical plant nursery on Forest Hill Drive in Marion, has opened for the spring season. Owner Steve Hawkins shared photos of late-February tropical beauty blooming in the greenhouse."
+          },
+          {
+            "type": "quote",
+            "content": "Sharing some late February tropical beauty from the greenhouse today\\! Specialty Tropicals opens for the season soon.",
+            "author": "Steve Hawkins"
+          },
+          {
+            "type": "text",
+            "content": "The nursery also shares space with BlackBerry Ridge Vintage Home & Garden, creating a unique shopping destination that combines exotic plants with vintage home goods."
+          },
+          {
+            "type": "text",
+            "content": "McDowell County lost its local newspaper, the McDowell News, leaving communities like Marion reliant on social media to discover local businesses and events. Specialty Tropicals plans to offer hands-on indoor plant workshops as the season progresses."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A unique tropical plant nursery on Forest Hill Drive shares late-February blooms as the season begins.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971512+00:00",
+        "slug": "marion-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: McDowell County NC Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971512+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971512+00:00",
+      "updated_at": "2026-03-07T19:17:01.971512+00:00"
+    },
+    {
+      "id": "f1c9466d-c8f1-4221-90c3-a47e0722e711",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000009-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000009-0000-0000-0000-000000000001",
+      "city_id": "b1000009-0000-0000-0000-000000000001",
+      "lat": 35.6843,
+      "lng": -82.0093,
+      "title": "Indoor plant workshops coming to Marion — nursery asks community what to teach",
+      "description": "Specialty Tropicals plans hands-on workshops and asks residents which sessions interest them most.",
+      "tags": 44,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Specialty Tropicals in Marion is planning a series of hands-on indoor plant workshops and is turning to the community for input on what to offer."
+          },
+          {
+            "type": "quote",
+            "content": "We plan to offer a series of hands-on indoor plant workshops beginning soon\\! Tell us which sessions you'd be most interested in.",
+            "author": "Specialty Tropicals"
+          },
+          {
+            "type": "text",
+            "content": "The community-driven approach reflects how small businesses in news desert towns are using social media not just for marketing, but for genuine two-way engagement with customers."
+          },
+          {
+            "type": "text",
+            "content": "Marion, nestled in the Blue Ridge Mountains, has seen growing interest in gardening and sustainable living. The workshops aim to make tropical plant care accessible to beginners and experienced growers alike."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Specialty Tropicals plans hands-on workshops and asks residents which sessions interest them most.",
+        "category": "events",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971519+00:00",
+        "slug": "marion-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: McDowell County NC Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971519+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971519+00:00",
+      "updated_at": "2026-03-07T19:17:01.971519+00:00"
+    },
+    {
+      "id": "93464a31-1bdb-475f-90ce-48dabc27029f",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000001-0000-0000-0000-000000000001",
+      "city_id": "b1000001-0000-0000-0000-000000000001",
+      "lat": 41.6106,
+      "lng": -87.0642,
+      "title": "Recovery center hosts 'Bags Madness' cornhole tournament in Portage",
+      "description": "Portage Recovery Association plans a community cornhole event to raise awareness and funds.",
+      "tags": 296,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The Portage Recovery Association is hosting 'BAGS MADNESS,' a cornhole tournament designed to bring the community together while raising awareness and funds for addiction recovery services in Northwest Indiana."
+          },
+          {
+            "type": "text",
+            "content": "The event reflects the recovery center's community-oriented approach, using recreational activities to reduce stigma around addiction and recovery while building connections among residents."
+          },
+          {
+            "type": "text",
+            "content": "Portage Recovery Association serves the greater Chesterton and Porter County area, providing critical support services in a region where access to treatment resources can be limited."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Portage Recovery Association plans a community cornhole event to raise awareness and funds.",
+        "category": "events",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971526+00:00",
+        "slug": "chesterton-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Chesterton IN Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971526+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971526+00:00",
+      "updated_at": "2026-03-07T19:17:01.971526+00:00"
+    },
+    {
+      "id": "5f50f706-834b-433b-b84f-7f884ba2de29",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000001-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000001-0000-0000-0000-000000000001",
+      "city_id": "b1000001-0000-0000-0000-000000000001",
+      "lat": 41.6106,
+      "lng": -87.0642,
+      "title": "Mom makes 22 Dr. Seuss shirts for kid's class — Chesterton celebrates Read Across America",
+      "description": "A local parent goes above and beyond for Dr. Seuss Week, crafting custom shirts for an entire classroom.",
+      "tags": 34,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A Chesterton-area mom made headlines in local community groups after crafting 22 custom shirts for her child's entire class to celebrate Dr. Seuss Week during Read Across America festivities."
+          },
+          {
+            "type": "quote",
+            "content": "When you make 22 shirts for your kid's class for Dr. Seuss Week\\!",
+            "author": "Sara Hodges"
+          },
+          {
+            "type": "text",
+            "content": "The gesture sparked an outpouring of appreciation in the community, with parents and educators alike praising the dedication. Read Across America Week, held annually in early March, encourages reading among students nationwide."
+          },
+          {
+            "type": "text",
+            "content": "In communities like Chesterton, these kinds of heartwarming stories would once have appeared in the local newspaper. Today, they live and spread through Facebook community groups — visible to neighbors but invisible to the broader public."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "A local parent goes above and beyond for Dr. Seuss Week, crafting custom shirts for an entire classroom.",
+        "category": "schools",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971531+00:00",
+        "slug": "chesterton-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Chesterton IN Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971531+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971531+00:00",
+      "updated_at": "2026-03-07T19:17:01.971531+00:00"
+    },
+    {
+      "id": "0946b4f0-9eff-44de-942e-99d9c7592a1b",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000002-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000002-0000-0000-0000-000000000001",
+      "city_id": "b1000002-0000-0000-0000-000000000001",
+      "lat": 43.3765,
+      "lng": -72.3468,
+      "title": "Abenaki Nation seeks grant writer to support tribal programs in New Hampshire",
+      "description": "The Ko'asek Traditional Band of the Sovereign Abenaki Nation puts out a call for grant writing assistance.",
+      "tags": 96,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The Ko'asek (Co'wasuck) Traditional Band of the Sovereign Abenaki Nation, based in the Claremont area, is seeking a complete grant writer to help secure funding for tribal programs and initiatives."
+          },
+          {
+            "type": "quote",
+            "content": "Our Ko'asek Traditional Band of the Sovereign Abenaki Nation is in need of a Grant Writer who can seek grants for our programs and community initiatives.",
+            "author": "Tribal representative"
+          },
+          {
+            "type": "text",
+            "content": "The Abenaki are indigenous to the upper Connecticut River Valley region that includes parts of New Hampshire and Vermont. Grant funding is essential for tribal nations to maintain cultural programs, community services, and administrative operations."
+          },
+          {
+            "type": "text",
+            "content": "The posting appeared in local community groups, highlighting how Native communities in New England's news deserts face additional challenges in reaching potential supporters and collaborators."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "The Ko'asek Traditional Band of the Sovereign Abenaki Nation puts out a call for grant writing assistance.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971537+00:00",
+        "slug": "claremont-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Claremont NH Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971537+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971537+00:00",
+      "updated_at": "2026-03-07T19:17:01.971537+00:00"
+    },
+    {
+      "id": "df511d7e-2c11-444f-955e-ea0395747463",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000002-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000002-0000-0000-0000-000000000001",
+      "city_id": "b1000002-0000-0000-0000-000000000001",
+      "lat": 43.3765,
+      "lng": -72.3468,
+      "title": "New tree service launches in Claremont as spring season nears",
+      "description": "Maui Tree & Land Services announces its arrival as a locally owned business ready for the upcoming season.",
+      "tags": 4,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "A new locally owned tree and land service business is gearing up for the spring season in the Claremont area. Maui Tree & Land Services has announced its official launch through community social media channels."
+          },
+          {
+            "type": "quote",
+            "content": "Maui Tree & Land Services is officially getting ready for the upcoming season\\! We're a new, locally owned business focused on delivering strong, reliable service.",
+            "author": "Business owner"
+          },
+          {
+            "type": "text",
+            "content": "The business joins a growing number of service companies in the Upper Valley region. Tree services are in high demand in New Hampshire, particularly after winter storm damage — which hit Claremont homeowners hard this past season."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Maui Tree & Land Services announces its arrival as a locally owned business ready for the upcoming season.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971542+00:00",
+        "slug": "claremont-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Claremont NH Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971542+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971542+00:00",
+      "updated_at": "2026-03-07T19:17:01.971542+00:00"
+    },
+    {
+      "id": "6312e0ce-10ab-4203-9d42-38a8726f2509",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000003-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000003-0000-0000-0000-000000000001",
+      "city_id": "b1000003-0000-0000-0000-000000000001",
+      "lat": 31.6941,
+      "lng": -89.1306,
+      "title": "Taylorsville Flea Market makes the newspaper as community rallies behind new venue",
+      "description": "The flea market and auction on Front Street gains media attention as it builds momentum in Jones County.",
+      "tags": 44,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The Taylorsville Flea Market and Auction, which recently opened on Front Street, has been featured in local print media — a milestone for the small business launched by community member Anthony Davis."
+          },
+          {
+            "type": "quote",
+            "content": "Well it's official folks, we made the newspaper\\! Thanks everybody for the support. First auction March 12th at 6 PM\\!",
+            "author": "Anthony Davis"
+          },
+          {
+            "type": "text",
+            "content": "The venue serves as both a flea market and auction house, with regular events planned throughout the spring. Davis has relied heavily on Facebook community groups to spread the word, encouraging residents to share posts and help build momentum."
+          },
+          {
+            "type": "text",
+            "content": "In Jones County, where local news options have dwindled, the flea market's success story illustrates how community-driven enterprises and grassroots promotion can fill the void left by declining media coverage."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "The flea market and auction on Front Street gains media attention as it builds momentum in Jones County.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971548+00:00",
+        "slug": "laurel-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Laurel MS Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971548+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971548+00:00",
+      "updated_at": "2026-03-07T19:17:01.971548+00:00"
+    },
+    {
+      "id": "3ec0d913-4370-4916-b7f5-bbfbf918f39a",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000004-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "city_id": "b1000004-0000-0000-0000-000000000001",
+      "lat": 35.7473,
+      "lng": -85.4669,
+      "title": "Piney VFD responds to emergency helicopter landing on SR 111",
+      "description": "Volunteer firefighters assist in an emergency medical airlift on a busy Van Buren County highway.",
+      "tags": 416,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "The Piney Volunteer Fire Department responded to a request for a helicopter landing zone on SR 111 in Van Buren County on Friday afternoon. The department assisted in an emergency medical airlift of a patient."
+          },
+          {
+            "type": "text",
+            "content": "The incident, which occurred just after 4:20 PM, required the volunteer crew to secure a landing area on the highway for the medical helicopter. The patient was airlifted to a hospital for treatment."
+          },
+          {
+            "type": "text",
+            "content": "Volunteer fire departments are the backbone of emergency response in rural Tennessee. Van Buren County, with a population of approximately 6,000, relies entirely on volunteer firefighters and first responders."
+          },
+          {
+            "type": "text",
+            "content": "The department shared the incident report through its community Facebook page — one of the few ways residents learn about emergency response activities in a county without a local newspaper."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Volunteer firefighters assist in an emergency medical airlift on a busy Van Buren County highway.",
+        "category": "safety",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971555+00:00",
+        "slug": "spencer-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Van Buren County Community Bulletin"
+        ],
+        "published_at": "2026-03-07T19:17:01.971555+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971555+00:00",
+      "updated_at": "2026-03-07T19:17:01.971555+00:00"
+    },
+    {
+      "id": "7780aaea-c50f-41f1-856a-bcebf76b155c",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000004-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000004-0000-0000-0000-000000000001",
+      "city_id": "b1000004-0000-0000-0000-000000000001",
+      "lat": 35.7473,
+      "lng": -85.4669,
+      "title": "Daylight saving time reminder comes with fire safety message for Van Buren County",
+      "description": "Community members remind neighbors to check smoke alarm batteries when clocks spring forward.",
+      "tags": 160,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "As Van Buren County residents prepare to set their clocks forward, community members are sharing an important safety reminder: check your smoke alarm batteries."
+          },
+          {
+            "type": "quote",
+            "content": "Don't forget to change your clocks tonight. Always check the batteries in your smoke alarms when you change your clocks, two times a year.",
+            "author": "Community member"
+          },
+          {
+            "type": "text",
+            "content": "The twice-yearly time change has long served as a convenient reminder for fire safety maintenance. Fire departments nationwide recommend replacing smoke alarm batteries at least twice annually to ensure they function in an emergency."
+          },
+          {
+            "type": "text",
+            "content": "In communities without local media to broadcast such reminders, Facebook groups serve as the primary channel for public safety information — a role once filled by local newspapers and radio stations."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Community members remind neighbors to check smoke alarm batteries when clocks spring forward.",
+        "category": "safety",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971560+00:00",
+        "slug": "spencer-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Van Buren County Community Bulletin"
+        ],
+        "published_at": "2026-03-07T19:17:01.971560+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971560+00:00",
+      "updated_at": "2026-03-07T19:17:01.971560+00:00"
+    },
+    {
+      "id": "ff34ab53-ce9b-4062-86df-771cd51f451b",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000010-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000010-0000-0000-0000-000000000001",
+      "city_id": "b1000010-0000-0000-0000-000000000001",
+      "lat": 37.3779,
+      "lng": -77.5058,
+      "title": "Local cleaning service expands in Chesterfield County as demand grows",
+      "description": "Cap City Maid introduces residential cleaning services to Chesterfield County residents.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Cap City Maid is expanding its residential cleaning services in Chesterfield County, offering comprehensive home cleaning packages to local families."
+          },
+          {
+            "type": "quote",
+            "content": "Say goodbye to cleaning stress and hello to more 'you' time with Cap City Maid\\! Kitchens gleaming, bathrooms sparkling — we handle it all.",
+            "author": "Cap City Maid"
+          },
+          {
+            "type": "text",
+            "content": "Chesterfield County, located south of Richmond, lost its local newspaper, the Chesterfield Observer, in early 2023. Since then, community Facebook groups have become the primary platform for local business advertising and community news sharing."
+          },
+          {
+            "type": "text",
+            "content": "The growing reliance on social media for local information in Chesterfield reflects a national pattern identified by Northwestern University's Local News Initiative, which found that Facebook groups often serve as the last remaining information source in news desert communities."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Cap City Maid introduces residential cleaning services to Chesterfield County residents.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971566+00:00",
+        "slug": "chesterfield-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Chesterfield County VA Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971566+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971566+00:00",
+      "updated_at": "2026-03-07T19:17:01.971566+00:00"
+    },
+    {
+      "id": "c5241fd1-c74c-41f7-b70e-c4f2767f3ed9",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "b1000013-0000-0000-0000-000000000001",
+      "continent_id": "b4000001-0000-0000-0000-000000000001",
+      "country_id": "b3000001-0000-0000-0000-000000000001",
+      "region_id": "b2000013-0000-0000-0000-000000000001",
+      "city_id": "b1000013-0000-0000-0000-000000000001",
+      "lat": 38.2779,
+      "lng": -82.1032,
+      "title": "Lincoln County businesses turn to social media as traditional advertising vanishes",
+      "description": "With no local newspaper, West Virginia small businesses rely entirely on Facebook groups to reach customers.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "In Lincoln County, West Virginia, the absence of a local newspaper has pushed businesses and organizations to rely almost entirely on social media — particularly Facebook community groups — to reach potential customers."
+          },
+          {
+            "type": "text",
+            "content": "The county's 'Promote Your Business' group has become a de facto business directory, where service providers introduce themselves and share deals directly with neighbors. From pressure washing to home repair, the group serves as both marketplace and community bulletin board."
+          },
+          {
+            "type": "text",
+            "content": "Lincoln County, population approximately 20,000, sits in the heart of West Virginia's coal country. As the state's newspaper industry has contracted, rural counties like Lincoln have been among the hardest hit."
+          },
+          {
+            "type": "quote",
+            "content": "Anyone can join to learn more about the local businesses in the county and their deals and offers.",
+            "author": "Group administrator"
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "With no local newspaper, West Virginia small businesses rely entirely on Facebook groups to reach customers.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T19:17:01.971572+00:00",
+        "slug": "hamlin-015",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Lincoln County WV Community"
+        ],
+        "published_at": "2026-03-07T19:17:01.971572+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T19:17:01.971572+00:00",
+      "updated_at": "2026-03-07T19:17:01.971572+00:00"
+    }
+  ],
+  "generated_at": "2026-03-07T19:17:01.971581+00:00",
+  "count": 35
+}

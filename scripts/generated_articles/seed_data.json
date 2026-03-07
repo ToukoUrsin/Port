@@ -1,0 +1,2072 @@
+{
+  "locations": [
+    {
+      "id": "a4000001-0000-0000-0000-000000000001",
+      "name": "Europe",
+      "slug": "europe",
+      "level": 0,
+      "lat": 54.0,
+      "lng": 15.0,
+      "meta": {}
+    },
+    {
+      "id": "a3000001-0000-0000-0000-000000000001",
+      "name": "Suomi",
+      "slug": "suomi",
+      "level": 1,
+      "parent_id": "a4000001-0000-0000-0000-000000000001",
+      "lat": 64.0,
+      "lng": 26.0,
+      "meta": {
+        "population": 5600000
+      }
+    },
+    {
+      "id": "a2000001-0000-0000-0000-000000000001",
+      "name": "Uusimaa",
+      "slug": "uusimaa",
+      "level": 2,
+      "parent_id": "a3000001-0000-0000-0000-000000000001",
+      "lat": 60.3,
+      "lng": 24.9,
+      "meta": {}
+    },
+    {
+      "id": "a2000002-0000-0000-0000-000000000001",
+      "name": "Lappi",
+      "slug": "lappi",
+      "level": 2,
+      "parent_id": "a3000001-0000-0000-0000-000000000001",
+      "lat": 67.0,
+      "lng": 26.0,
+      "meta": {}
+    },
+    {
+      "id": "a2000003-0000-0000-0000-000000000001",
+      "name": "Varsinais-Suomi",
+      "slug": "varsinais-suomi",
+      "level": 2,
+      "parent_id": "a3000001-0000-0000-0000-000000000001",
+      "lat": 60.5,
+      "lng": 22.5,
+      "meta": {}
+    },
+    {
+      "id": "a1000001-0000-0000-0000-000000000001",
+      "name": "Karkkila",
+      "slug": "karkkila",
+      "level": 3,
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 8800,
+        "about": "Pieni kaupunki Länsi-Uudellamaalla. Paikallislehti Karkkilan Tienoo lakkautettiin 2022."
+      },
+      "parent_id": "a2000001-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "a1000002-0000-0000-0000-000000000001",
+      "name": "Kemi",
+      "slug": "kemi",
+      "level": 3,
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 20800,
+        "about": "Teollisuuskaupunki Meri-Lapissa. 102-vuotias Pohjolan Sanomat lakkautettiin 2017."
+      },
+      "parent_id": "a2000002-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "a1000003-0000-0000-0000-000000000001",
+      "name": "Loviisa",
+      "slug": "loviisa",
+      "level": 3,
+      "lat": 60.4567,
+      "lng": 26.225,
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 15000,
+        "about": "Kaksikielinen rannikkokunta. Loviisan Sanomat supistettiin kerran viikossa ilmestyväksi 2024."
+      },
+      "parent_id": "a2000001-0000-0000-0000-000000000001"
+    },
+    {
+      "id": "a1000004-0000-0000-0000-000000000001",
+      "name": "Turku",
+      "slug": "turku",
+      "level": 3,
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "meta": {
+        "population": 197000,
+        "about": "Suomen vanhin kaupunki. Ilmaisjakelulehti Turkulainen lakkautettiin 2020."
+      },
+      "parent_id": "a2000003-0000-0000-0000-000000000001"
+    }
+  ],
+  "submissions": [
+    {
+      "id": "ced3fc46-b7dc-4082-9477-623d8f6f7239",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Karkkila pyöräilee maailmankartalle — joukkue mukaan kansainväliseen kampanjaan",
+      "description": "Karkkilan ylämäki- ja vastatuulipyöräilijöiden joukkue osallistuu Pyöräile töihin -kampanjaan toukokuussa.",
+      "tags": 304,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Karkkilan pyöräilyharrastajat ovat jälleen liikkeellä. Kaupungin oma joukkue osallistuu toukokuussa järjestettävään valtakunnalliseen Pyöräile töihin -kampanjaan, joka kannustaa suomalaisia valitsemaan pyörän työmatkoillaan."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/karkkila-karkkila-pyorailee-maailmankar-img0.jpg",
+            "caption": "Kuva: Heikki Savola / Karkkilan Puskaradio",
+            "alt": "Karkkilan pyöräilyjoukkue"
+          },
+          {
+            "type": "quote",
+            "content": "Hei taas, me pyöräillään Karkkila maailmankartalle!",
+            "author": "Heikki Savola"
+          },
+          {
+            "type": "text",
+            "content": "Kampanja on osa laajempaa liikettä, jossa pienet paikkakunnat haastavat suuremmat kaupungit pyöräilyaktiivisuudessa. Karkkilassa pyöräilykausi on juuri alkanut ulkojäiden sulattua."
+          },
+          {
+            "type": "text",
+            "content": "Joukkueeseen voi liittyä kuka tahansa karkkilalainen. Lisätietoja kampanjasta löytyy Pyöräile töihin -tapahtuman verkkosivuilta."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Karkkilan ylämäki- ja vastatuulipyöräilijöiden joukkue osallistuu Pyöräile töihin -kampanjaan toukokuussa.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "karkkila-karkkila-pyorailee-maailmankar",
+        "featured_img": "articles/images/karkkila-karkkila-pyorailee-maailmankar-featured.jpg",
+        "sources": [
+          "Facebook: Heikki Savola"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "8aa43b35-5873-4035-ab85-af68f98e7f05",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Ikiliikkuja-viikko tuo maksuttomia liikuntatapahtumia Karkkilaan",
+      "description": "Karkkilan liikuntapalvelut järjestää viikolla 11 avoimia ja maksuttomia liikuntatilaisuuksia kaikenikäisille.",
+      "tags": 296,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Karkkilan liikuntapalvelut kutsuu kaupunkilaiset liikkumaan viikolla 11 Ikiliikkuja-viikon merkeissä. Tapahtumaviikko tarjoaa monipuolisesti avoimia ja maksuttomia liikuntatilaisuuksia eri ikäryhmille."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/karkkila-ikiliikkuja-viikko-tuo-maksutt-img0.jpg",
+            "caption": "Kuva: Karkkilan liikuntapalvelut",
+            "alt": "Ikiliikkuja-viikon ohjelma"
+          },
+          {
+            "type": "text",
+            "content": "Valtakunnallinen Ikiliikkuja-viikko on vuosittainen kampanja, jonka tavoitteena on innostaa suomalaisia liikkumaan enemmän arjessaan. Karkkilassa viikkoa vietetään erityisesti kaupungin liikuntapaikoissa."
+          },
+          {
+            "type": "text",
+            "content": "Tarkempi ohjelma ja aikataulut löytyvät Karkkilan liikuntapalveluiden kanavista."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Karkkilan liikuntapalvelut järjestää viikolla 11 avoimia ja maksuttomia liikuntatilaisuuksia kaikenikäisille.",
+        "category": "events",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "karkkila-ikiliikkuja-viikko-tuo-maksutt",
+        "featured_img": "articles/images/karkkila-ikiliikkuja-viikko-tuo-maksutt-featured.jpg",
+        "sources": [
+          "Facebook: Karkkilan liikuntapalvelut"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "365e375a-963d-4f51-a010-941aeaf1e6da",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Paloturvallisuus kerrostaloissa — näin opetat lapselle toimintaohjeet",
+      "description": "Karkkilan Puskaradiossa jaettu paloturvallisuusohje muistuttaa, miten lapset voivat toimia tulipalon sattuessa kerrostalossa.",
+      "tags": 160,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kerrostaloasumisen turvallisuus puhuttaa Karkkilassa. Paikallisessa Facebook-ryhmässä jaettu paloturvallisuusohje on kerännyt huomiota erityisesti lapsiperheiden keskuudessa."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/karkkila-paloturvallisuus-kerrostaloiss-img0.jpg",
+            "caption": "Kuva: Sirpa Järvinen / Karkkilan Puskaradio",
+            "alt": "Paloturvallisuusohjeet"
+          },
+          {
+            "type": "text",
+            "content": "Ohjeen mukaan tulipalon sattuessa muualla kuin omassa asunnossa lapsen tulisi: 1) pysyä kotona, 2) sulkea ovet ja ikkunat, 3) soittaa hätänumeroon 112 ja 4) odottaa hätäkeskuspäivystäjän ohjeita."
+          },
+          {
+            "type": "quote",
+            "content": "Opeta lapselle, miten toimitaan, jos kerrostalossa muualla kuin omassa kodissa palaa!",
+            "author": "Sirpa Järvinen"
+          },
+          {
+            "type": "text",
+            "content": "Pelastusviranomaiset muistuttavat, että kerrostalopalon sattuessa tärkeintä on pysyä omassa asunnossa oven ja ikkunat suljettuina, ellei oma asunto ole välittömässä vaarassa. Savuinen porraskäytävä on vaarallisempi kuin asuntoon jääminen."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Karkkilan Puskaradiossa jaettu paloturvallisuusohje muistuttaa, miten lapset voivat toimia tulipalon sattuessa kerrostalossa.",
+        "category": "safety",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "karkkila-paloturvallisuus-kerrostaloiss",
+        "featured_img": "articles/images/karkkila-paloturvallisuus-kerrostaloiss-featured.jpg",
+        "sources": [
+          "Facebook: Sirpa Järvinen"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "cb994541-23c4-4077-b653-0a9e62a75390",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Isille suunnattuja MASI-keskusteluryhmiä käynnistyy keväällä verkossa",
+      "description": "Miessakit ry:n MASI-toiminta tarjoaa verkkovälitteisiä keskusteluryhmiä isille keväällä 2026.",
+      "tags": 288,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Miessakit ry:n MASI-toiminta järjestää keväällä 2026 verkkovälitteisiä keskusteluryhmiä isille. Ryhmät kokoontuvat Teamsissa tiistaisin 24.3.–5.5. välisenä aikana."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/karkkila-isille-suunnattuja-masi-keskus-img0.jpg",
+            "caption": "Kuva: MASI-toiminta / Miessakit ry",
+            "alt": "MASI-ryhmien mainos"
+          },
+          {
+            "type": "text",
+            "content": "MASI-ryhmät on suunnattu kaikille isille, jotka haluavat keskustella isyydestä ja perhe-elämästä turvallisessa ympäristössä. Ryhmät ovat maksuttomia ja niihin voi osallistua paikkakunnasta riippumatta."
+          },
+          {
+            "type": "text",
+            "content": "Lisätietoja ja ilmoittautuminen Miessakit ry:n verkkosivuilta."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Miessakit ry:n MASI-toiminta tarjoaa verkkovälitteisiä keskusteluryhmiä isille keväällä 2026.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "karkkila-isille-suunnattuja-masi-keskus",
+        "featured_img": "articles/images/karkkila-isille-suunnattuja-masi-keskus-featured.jpg",
+        "sources": [
+          "Facebook: Masi-toiminta Miessakit Henri"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "489263fe-7baf-444d-b143-4506d5c2a824",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000002-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "city_id": "a1000002-0000-0000-0000-000000000001",
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "title": "Kevään merkit näkyvät Meri-Lapissa — \"Elämä alkaa herätä maalla ja merellä\"",
+      "description": "Keväinen luonto herää Meri-Lapissa. Paikalliset iloitsevat valon lisääntymisestä ja luonnon heräämisestä.",
+      "tags": 544,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kevät tekee tuloaan Meri-Lappiin. Päivät pitenevät, aurinko lämmittää ja luonto alkaa heräillä pitkän talven jälkeen. Paikalliset asukkaat ovat jo huomanneet muutoksen."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/kemi-kevaan-merkit-nakyvat-meri-lap-img0.jpg",
+            "caption": "Kuva: Jorma Mehtomaa",
+            "alt": "Kevätmaisema Meri-Lapista"
+          },
+          {
+            "type": "quote",
+            "content": "Neiti kevät tekee tuloaan ja elämä alkaa herätä niin maalla kuin merellä.",
+            "author": "Jorma Mehtomaa"
+          },
+          {
+            "type": "text",
+            "content": "Meri-Lapissa keväällä on erityinen merkitys pitkän ja pimeän talven jälkeen. Valon lisääntyminen ja lumen sulaminen muuttavat maisemaa päivä päivältä."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Keväinen luonto herää Meri-Lapissa. Paikalliset iloitsevat valon lisääntymisestä ja luonnon heräämisestä.",
+        "category": "environment",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "kemi-kevaan-merkit-nakyvat-meri-lap",
+        "featured_img": "articles/images/kemi-kevaan-merkit-nakyvat-meri-lap-featured.jpg",
+        "sources": [
+          "Facebook: Jorma Mehtomaa"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "53d4cc37-8bcb-4f3b-98be-b9be7de742c2",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000002-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "city_id": "a1000002-0000-0000-0000-000000000001",
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "title": "Jätskiauto palaa Tornion ja Kemin kaduille — kausi 2026 käynnistyy",
+      "description": "Jäätelöautokausi alkaa Meri-Lapissa. Jätskiautot kiertävät lauantaisin Tornion ja Kemin alueella.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kevään merkki myös Meri-Lapissa: jätskiautot aloittavat jälleen kauden. Ensimmäiset ajot suuntautuvat lauantaina 7.3. Tornion ja Kemin alueelle."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/kemi-jatskiauto-palaa-tornion-ja-ke-img0.jpg",
+            "caption": "Kuva: Jätskiauto",
+            "alt": "Jätskiauto"
+          },
+          {
+            "type": "quote",
+            "content": "HEIPPARALLAA! Jätskiautot taas liikkeellä!",
+            "author": "Pasi, Myyjä Jätskiautolta"
+          },
+          {
+            "type": "text",
+            "content": "Reitti kulkee Tornion Korijärven ja Arpelin kautta. Jäätelöauto on ollut Meri-Lapin kesien vakionäky jo vuosien ajan."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Jäätelöautokausi alkaa Meri-Lapissa. Jätskiautot kiertävät lauantaisin Tornion ja Kemin alueella.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "kemi-jatskiauto-palaa-tornion-ja-ke",
+        "featured_img": "articles/images/kemi-jatskiauto-palaa-tornion-ja-ke-featured.jpg",
+        "sources": [
+          "Facebook: Pasi, Myyjä Jätskiautolta"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "c5b7b195-aec6-468f-9ba1-3d073445da80",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000002-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "city_id": "a1000002-0000-0000-0000-000000000001",
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "title": "Yksinhuoltajanuorten vertaisryhmä alkaa Kemissä — ilmoittautuminen auki",
+      "description": "YVPL järjestää maksuttoman vertaisryhmän nuorille, jotka kasvavat ilman toista vanhempaa.",
+      "tags": 288,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Yhden Vanhemman Perheiden Liitto (YVPL) käynnistää maksuttoman vertaisryhmän nuorille, jotka kasvavat ilman toista vanhempaa. Ryhmä on tarkoitettu Meri-Lapin alueen nuorille."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/kemi-yksinhuoltajanuorten-vertaisry-img0.jpg",
+            "caption": "Kuva: YVPL",
+            "alt": "Vertaisryhmän mainos"
+          },
+          {
+            "type": "text",
+            "content": "Ilmoittautuminen ryhmään on auki 20.4. asti. Ryhmässä nuoret pääsevät jakamaan kokemuksiaan ja saamaan vertaistukea samanlaisessa elämäntilanteessa olevilta."
+          },
+          {
+            "type": "text",
+            "content": "Ilmoittautuminen tapahtuu YVPL:n verkkosivujen kautta."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "YVPL järjestää maksuttoman vertaisryhmän nuorille, jotka kasvavat ilman toista vanhempaa.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "kemi-yksinhuoltajanuorten-vertaisry",
+        "featured_img": "articles/images/kemi-yksinhuoltajanuorten-vertaisry-featured.jpg",
+        "sources": [
+          "Facebook: YVPL"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "547a8700-9395-4b74-a88e-f93591943046",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000003-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000003-0000-0000-0000-000000000001",
+      "lat": 60.4567,
+      "lng": 26.225,
+      "title": "Loviisan kevään 2026 kulttuuriavustushaku on avattu",
+      "description": "Loviisan kaupunki hakee kulttuuriavustushakemuksia keväälle 2026. Haku on auki kaupungin kulttuuripalveluissa.",
+      "tags": 96,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Loviisan kaupungin kulttuuripalvelut ilmoittaa, että kevään 2026 kulttuuriavustushaku on nyt avattu. Avustuksia voivat hakea paikalliset yhdistykset ja toimijat kulttuuritoimintaan."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/loviisa-loviisan-kevaan-2026-kulttuuri-img0.jpg",
+            "caption": "Kuva: Loviisan kulttuuripalvelut",
+            "alt": "Kulttuuriavustushaku"
+          },
+          {
+            "type": "text",
+            "content": "Kulttuuriavustukset ovat tärkeä osa Loviisan paikallista kulttuurielämää. Avustuksilla tuetaan muun muassa tapahtumia, näyttelyitä ja esityksiä, jotka rikastuttavat kaksikielisen kaupungin kulttuuritarjontaa."
+          },
+          {
+            "type": "text",
+            "content": "Hakuohjeet ja -lomakkeet löytyvät Loviisan kaupungin verkkosivuilta kulttuuripalveluiden osiosta."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Loviisan kaupunki hakee kulttuuriavustushakemuksia keväälle 2026. Haku on auki kaupungin kulttuuripalveluissa.",
+        "category": "culture",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "loviisa-loviisan-kevaan-2026-kulttuuri",
+        "featured_img": "articles/images/loviisa-loviisan-kevaan-2026-kulttuuri-featured.jpg",
+        "sources": [
+          "Facebook: Loviisan kulttuuripalvelut"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "c5861c94-6c88-4436-9fe9-9167f8f6ecce",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000003-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000003-0000-0000-0000-000000000001",
+      "lat": 60.4567,
+      "lng": 26.225,
+      "title": "Teatteri Soittorasia päättää kauden — viimeiset esitykset viikonloppuna",
+      "description": "Loviisalainen Teatteri Soittorasia esittää kauden viimeiset näytökset tulevana viikonloppuna.",
+      "tags": 72,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Loviisalaisen Teatteri Soittorasian kevätkausi huipentuu tulevana viikonloppuna, kun kauden viimeiset kaksi esitystä ovat tarjolla. Teatterin edustajat kehottavat hankkimaan liput ajoissa."
+          },
+          {
+            "type": "quote",
+            "content": "Viimeiset kaksi esitystä tänä viikonloppuna! Hanki liput pian.",
+            "author": "Teatteri Soittorasia"
+          },
+          {
+            "type": "text",
+            "content": "Teatteri Soittorasia on vakiinnuttanut asemansa Loviisan kulttuurielämässä. Pienteatterin esitykset ovat olleet suosittuja erityisesti paikallisen yleisön keskuudessa."
+          },
+          {
+            "type": "text",
+            "content": "Liput ovat saatavilla Soittorasian verkkokaupasta sekä ovelta 20 minuuttia ennen esityksen alkua."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Loviisalainen Teatteri Soittorasia esittää kauden viimeiset näytökset tulevana viikonloppuna.",
+        "category": "culture",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "loviisa-teatteri-soittorasia-paattaa-k",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Teatteri Soittorasia"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "7c009052-72a5-4c3d-8815-401824ed00ab",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000003-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000003-0000-0000-0000-000000000001",
+      "lat": 60.4567,
+      "lng": 26.225,
+      "title": "LoviSavi avaa keramiikkapajan ovet — kokeile käsinrakennustekniikoita",
+      "description": "Loviisalainen LoviSavi-keramiikkapaja järjestää pop-up-kursseja, joissa pääsee kokeilemaan keramiikan tekoa.",
+      "tags": 100,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Loviisalainen LoviSavi-keramiikkapaja kutsuu kokeilemaan keramiikan tekoa 2,5 tunnin pop-up-kurssilla. Kurssilla pääsee tutustumaan erilaisiin käsinrakennustekniikoihin ohjatusti."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/loviisa-lovisavi-avaa-keramiikkapajan--img0.jpg",
+            "caption": "Kuva: LoviSavi keramiikkapaja",
+            "alt": "Keramiikkakurssi"
+          },
+          {
+            "type": "text",
+            "content": "Keramiikka on noussut suosituksi harrastukseksi ympäri Suomea. Loviisassa LoviSavi tarjoaa mahdollisuuden kokeilla käsityötä paikallisessa pajassa."
+          },
+          {
+            "type": "text",
+            "content": "Lisätietoja kursseista ja ilmoittautumisesta LoviSavin sosiaalisen median kanavissa."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Loviisalainen LoviSavi-keramiikkapaja järjestää pop-up-kursseja, joissa pääsee kokeilemaan keramiikan tekoa.",
+        "category": "culture",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "loviisa-lovisavi-avaa-keramiikkapajan-",
+        "featured_img": "articles/images/loviisa-lovisavi-avaa-keramiikkapajan--featured.jpg",
+        "sources": [
+          "Facebook: Janine Bergström"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "726a7734-7bf0-4d39-a31b-a02d34b6cbc5",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Kaupunkiköysirata — voisiko se toimia Turussa?",
+      "description": "Turussa keskustellaan uusista joukkoliikennemuodoista. Kaupunkiköysirata on herättänyt kiinnostusta maailmalla.",
+      "tags": 544,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turun joukkoliikenteen tulevaisuus puhuttaa. Ratikkapäätöksen jälkeen keskusteluun on noussut yllättävä vaihtoehto: kaupunkiköysirata. Joukkoliikennemuoto on yleistynyt nopeasti maailmalla."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/turku-kaupunkikoysirata-—-voisiko-se-img0.jpg",
+            "caption": "Kuva: Turun Puskaradio",
+            "alt": "Kaupunkiköysirata"
+          },
+          {
+            "type": "text",
+            "content": "Köysiradat tunnetaan perinteisesti hiihtokeskuksista, mutta modernit kaupunkiköysiradat ovat joukkoliikenneratkaisuja. Ne sopivat erityisesti vesistöjen ylitykseen ja mäkiseen maastoon."
+          },
+          {
+            "type": "text",
+            "content": "Turussa Aurajoen ylitys ja yhteydet saaristoon voisivat tehdä köysiradasta kiinnostavan vaihtoehdon. Toistaiseksi ajatus on kuitenkin vasta keskustelun tasolla."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turussa keskustellaan uusista joukkoliikennemuodoista. Kaupunkiköysirata on herättänyt kiinnostusta maailmalla.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "turku-kaupunkikoysirata-—-voisiko-se",
+        "featured_img": "articles/images/turku-kaupunkikoysirata-—-voisiko-se-featured.jpg",
+        "sources": [
+          "Facebook: Turun Puskaradio"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "cb36d156-d85a-4f13-89c6-ae04c764ef72",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Taksimatkan hinta yllätti turkulaisen — \"Luotto kaikenlaisiin takseihin meni\"",
+      "description": "Turkulainen matkustaja kertoo yllättävän kalliista taksimatkasta Kauppatorilta Ruissaloon.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turkulainen Petri Tamminen kertoo Puskaradiossa hämmästyttävästä kokemuksestaan taksikyydissä Kauppatorin liepeiltä Ruissalon Saarronniemeen."
+          },
+          {
+            "type": "quote",
+            "content": "Pitää todeta että luotto kaikenlaisiin takseihin meni.",
+            "author": "Petri Tamminen"
+          },
+          {
+            "type": "text",
+            "content": "Taksialan vapauttaminen vuonna 2018 on johtanut suuriin hintaeroihin eri taksien välillä. Kuluttajien kokemusten mukaan erityisesti tilauspalveluiden kautta tilattujen taksien hinnoittelu voi yllättää."
+          },
+          {
+            "type": "text",
+            "content": "Kilpailu- ja kuluttajavirasto muistuttaa, että taksin hinta kannattaa aina tarkistaa etukäteen. Turussa Föli-joukkoliikenne tarjoaa edullisen vaihtoehdon lyhyemmille matkoille."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turkulainen matkustaja kertoo yllättävän kalliista taksimatkasta Kauppatorilta Ruissaloon.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "turku-taksimatkan-hinta-yllatti-turk",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Petri Tamminen"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "e68df8c3-a28f-41db-986b-980cb86d6de1",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Ratikka-äänestys kuumentaa tunteita Turussa — \"Mielipidettä voi vaihtaa\"",
+      "description": "Turun ratikkapäätöksestä käydään vilkasta keskustelua. Epävirallinen äänestys kerää mielipiteitä.",
+      "tags": 33,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turun raitiotiehanke jakaa kaupunkilaisten mielipiteitä. Turun Puskaradiossa jaettu epävirallinen äänestys ratikasta on kerännyt runsaasti ääniä ja kommentteja."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/turku-ratikka-aanestys-kuumentaa-tun-img0.jpg",
+            "caption": "Kuva: Turun Ratikka -äänestys",
+            "alt": "Ratikka-äänestys"
+          },
+          {
+            "type": "quote",
+            "content": "Äänestitkö jo? Ei haittaa, mielipidettä voi vaihtaa jos siltä tuntuu.",
+            "author": "Turun Ratikka -äänestys"
+          },
+          {
+            "type": "text",
+            "content": "Turun raitiotiehanke on kaupungin historian suurimpia infrastruktuuri-investointeja. Hanke on herättänyt sekä innostusta että vastustusta kaupunkilaisten keskuudessa."
+          },
+          {
+            "type": "text",
+            "content": "Kaupunginvaltuusto tekee lopullisen päätöksen ratikan rakentamisesta myöhemmin tänä vuonna."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turun ratikkapäätöksestä käydään vilkasta keskustelua. Epävirallinen äänestys kerää mielipiteitä.",
+        "category": "council",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "turku-ratikka-aanestys-kuumentaa-tun",
+        "featured_img": "articles/images/turku-ratikka-aanestys-kuumentaa-tun-featured.jpg",
+        "sources": [
+          "Facebook: Turun Ratikka -äänestys"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "5ab69a75-f5d7-492a-af7e-b4c7d07f7f6c",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Lapsi kertoi huolestuttavasta kohtaamisesta Föripuistossa",
+      "description": "Turkulainen äiti jakoi lapsensa kokemuksen Föripuistossa tapahtuneesta kohtaamisesta.",
+      "tags": 160,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turkulainen Vane Alina Lindström kertoo Puskaradiossa huolestuttavasta tilanteesta, josta hänen lapsensa kertoi eskarin retkellä Föripuistossa. Lapsi kertoi, että puistossa oli ollut henkilö, joka oli käyttäytynyt huomiota herättävästi."
+          },
+          {
+            "type": "text",
+            "content": "Tapaus on herättänyt keskustelua lasten turvallisuudesta julkisissa puistoissa. Useat vanhemmat ovat kommentoineet vastaavia kokemuksia alueelta."
+          },
+          {
+            "type": "text",
+            "content": "Poliisi muistuttaa, että huolestuttavista havainnoista tulee aina ilmoittaa joko hätänumeroon 112 tai poliisin vihjenumeroon."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turkulainen äiti jakoi lapsensa kokemuksen Föripuistossa tapahtuneesta kohtaamisesta.",
+        "category": "safety",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:04:17.054267+00:00",
+        "slug": "turku-lapsi-kertoi-huolestuttavasta-",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Vane Alina Lindström"
+        ],
+        "published_at": "2026-03-07T18:04:17.054267+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:04:17.054267+00:00",
+      "updated_at": "2026-03-07T18:04:17.054267+00:00"
+    },
+    {
+      "id": "5e931244-156c-4148-8136-6baa75a041a9",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Karkkilan kasvatti rokkaa Vihdin lavalla — Christian Casagrande keikalla",
+      "description": "Karkkilasta lähtöisin oleva muusikko Christian Casagrande esiintyi viikonloppuna Vihdissä.",
+      "tags": 72,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Karkkilan omat pojat soittavat jälleen. Kaupungista lähtöisin oleva kitaristi Christian Casagrande esiintyi viikonloppuna Vihdin lavalla yhdessä nuoren vihtiläisen kitarasankarin kanssa."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/karkkila-karkkilan-kasvatti-rokkaa-vihd-img0.jpg",
+            "caption": "Kuva: Simo Kalliomäki / Karkkilan Puskaradio",
+            "alt": "Christian Casagrande lavalla"
+          },
+          {
+            "type": "quote",
+            "content": "Tänään Karkkilan kasvatti Christian Casagrande ja joku vihtiläinen nuori kitarasankari rokkaamassa!",
+            "author": "Simo Kalliomäki"
+          },
+          {
+            "type": "text",
+            "content": "Paikallinen musiikkielämä on Karkkilassa aktiivista, vaikka kaupunki on pieni. Elävän musiikin keikkoja järjestetään alueen ravintoloissa ja tapahtumissa säännöllisesti."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Karkkilasta lähtöisin oleva muusikko Christian Casagrande esiintyi viikonloppuna Vihdissä.",
+        "category": "culture",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "karkkila-karkkilan-kasvatti-rokkaa-vihd",
+        "featured_img": "articles/images/karkkila-karkkilan-kasvatti-rokkaa-vihd-featured.jpg",
+        "sources": [
+          "Facebook: Simo Kalliomäki"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "a515c8ab-315a-4291-a503-f7aeb397cd8c",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Jäälle meno vaarallista keväällä — vesillä liikkujille varoitus",
+      "description": "Kevään edetessä jäiden kantavuuden arviointi vaikeutuu. Viranomaiset muistuttavat varovaisuudesta.",
+      "tags": 640,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kevään edetessä jäätilanne muuttuu nopeasti arvaamattomaksi. Viisaasti vesillä -kampanja muistuttaa, että jään kantavuuden arviointi on keväällä erityisen hankalaa."
+          },
+          {
+            "type": "text",
+            "content": "Aurinko, lämpötilan vaihtelut ja virtaukset heikentävät jäätä epätasaisesti. Kantavalta näyttävä jää voi olla paikoin täysin heikkoa. Erityisesti rantojen lähellä ja virtapaikkojen kohdalla jää haurastuu nopeasti."
+          },
+          {
+            "type": "quote",
+            "content": "Jään kantavuuden arviointi on hankalaa ja virhearvioinnin voi tehdä kuka tahansa.",
+            "author": "Viisaasti vesillä"
+          },
+          {
+            "type": "text",
+            "content": "Pelastusviranomaiset kehottavat välttämään jäälle menoa kevätauringon aikaan. Jos jäälle on pakko mennä, mukana tulisi olla naskalit ja vedenpitävä puhelin."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Kevään edetessä jäiden kantavuuden arviointi vaikeutuu. Viranomaiset muistuttavat varovaisuudesta.",
+        "category": "safety",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "karkkila-jaalle-meno-vaarallista-kevaal",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Viisaasti vesillä"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "446fca18-f284-4223-b59f-418406f4819a",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Ravintola Noki julkaisi viikon lounasmenun — paikallinen suosikki palvelee arkisin",
+      "description": "Karkkilan Ravintola Noki tarjoaa monipuolista lounasta arkipäivisin Tammelantien toimipisteessään.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Karkkilan keskustassa Tammelantiellä toimiva Ravintola Noki on julkaissut viikon 11 lounaslistan. Ravintola palvelee arkisin ja tarjoaa päivittäin vaihtuvaa lounasta."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/karkkila-ravintola-noki-julkaisi-viikon-img0.jpg",
+            "caption": "Kuva: Ravintola Noki",
+            "alt": "Ravintola Nokin viikon lounaslista"
+          },
+          {
+            "type": "text",
+            "content": "Noki on vakiinnuttanut paikkansa karkkilalaisten lounasravintolana. Viikolla 11 tarjolla on muun muassa kotiruokahenkistä lounasta päivittäin vaihtuvalla listalla."
+          },
+          {
+            "type": "text",
+            "content": "Ravintola Noki sijaitsee osoitteessa Tammelantie 4–6, Karkkila. Avoinna arkipäivisin, tarkemmat aukioloajat ravintolan some-kanavissa."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Karkkilan Ravintola Noki tarjoaa monipuolista lounasta arkipäivisin Tammelantien toimipisteessään.",
+        "category": "business",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "karkkila-ravintola-noki-julkaisi-viikon",
+        "featured_img": "articles/images/karkkila-ravintola-noki-julkaisi-viikon-featured.jpg",
+        "sources": [
+          "Facebook: Ravintola Noki / Mari Nordman"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "45f6d5cb-d3c9-4960-8796-fb7b4cf80300",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Tarvitaanko Karkkilassa lisää livemusiikkia? Paikallinen bändi tarjoutuu soittamaan",
+      "description": "Karkkilalainen muusikko Toni Savolainen kysyy, onko elävällä musiikilla kysyntää paikkakunnalla.",
+      "tags": 100,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Onko Karkkilassa tarvetta elävälle musiikille? Tätä kysyy paikallinen muusikko Toni Savolainen Karkkilan Puskaradiossa. Hänen bändinsä taipuu trubaduurista viisihenkiseen kokoonpanoon."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/karkkila-tarvitaanko-karkkilassa-lisaa--img0.jpg",
+            "caption": "Kuva: Toni Savolainen",
+            "alt": "Bändi"
+          },
+          {
+            "type": "quote",
+            "content": "Onko livemusiikille tarvetta? Meidän bändi taittuu moneen, trubaduurista aina viisihenkiseen bändiin.",
+            "author": "Toni Savolainen"
+          },
+          {
+            "type": "text",
+            "content": "Pienillä paikkakunnilla elävän musiikin tarjonta on usein vähäistä. Ravintoloiden ja tapahtumajärjestäjien kiinnostus ratkaisee, syntyykö keikkatoimintaa. Savolaisen aloite on herättänyt keskustelua ryhmässä."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Karkkilalainen muusikko Toni Savolainen kysyy, onko elävällä musiikilla kysyntää paikkakunnalla.",
+        "category": "culture",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "karkkila-tarvitaanko-karkkilassa-lisaa-",
+        "featured_img": "articles/images/karkkila-tarvitaanko-karkkilassa-lisaa--featured.jpg",
+        "sources": [
+          "Facebook: Toni Savolainen"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "e3ea6736-4701-4092-8c2c-2ccbe4556005",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000002-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "city_id": "a1000002-0000-0000-0000-000000000001",
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "title": "Tuulivoimaloiden purkaminen huolettaa — \"Kunnissa varauduttu huonosti\"",
+      "description": "Meri-Lapissa keskustellaan tuulivoimaloiden elinkaaren päättymisestä ja purkuvastuista.",
+      "tags": 545,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Tuulivoimaloiden purkaminen nousi puheenaiheeksi Meri-Lapin Puskaradiossa. Keskustelijat ovat huolissaan siitä, miten kunnat ovat varautuneet voimaloiden elinkaaren päättymiseen."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/kemi-tuulivoimaloiden-purkaminen-hu-img0.jpg",
+            "caption": "Kuva: Erkki Hurtig",
+            "alt": "Tuulivoimaloita"
+          },
+          {
+            "type": "quote",
+            "content": "Tällä hetkellä kunnissa on varauduttu huonosti. Tulevat kuntapäättäjät eivät tule olemaan kateellisia edeltäjilleen.",
+            "author": "Erkki Hurtig"
+          },
+          {
+            "type": "text",
+            "content": "Suomessa ensimmäisten maatuulivoimaloiden käyttöikä alkaa lähestyä päätöspistettään. Purkukustannusten jakautuminen voimalayhtiöiden ja kuntien välillä on monessa kunnassa vielä avoin kysymys."
+          },
+          {
+            "type": "text",
+            "content": "Lapin alueella tuulivoimarakentaminen on ollut erityisen vilkasta viime vuosina, mikä tekee kysymyksestä ajankohtaisen koko maakunnalle."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Meri-Lapissa keskustellaan tuulivoimaloiden elinkaaren päättymisestä ja purkuvastuista.",
+        "category": "council",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "kemi-tuulivoimaloiden-purkaminen-hu",
+        "featured_img": "articles/images/kemi-tuulivoimaloiden-purkaminen-hu-featured.jpg",
+        "sources": [
+          "Facebook: Erkki Hurtig"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "2617bac8-2849-40ff-a6ae-2b329cb37978",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000002-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "city_id": "a1000002-0000-0000-0000-000000000001",
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "title": "Flunssa-aalto jyllää Meri-Lapissa — \"Sairastakaa kotona\"",
+      "description": "Kausi-influenssa leviää Meri-Lapissa. Paikalliset muistuttavat tartuntojen ehkäisystä.",
+      "tags": 288,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kausi-influenssa ja muut hengitystieinfektiot kiertävät jälleen Meri-Lapissa. Paikallisessa Puskaradiossa kehotetaan sairastamaan kotona ja välttämään muiden tartuttamista."
+          },
+          {
+            "type": "quote",
+            "content": "Se on taas se vuodenaika, kun kannattaisi sairastaa kotosalla, välttäen muita tartuttamasta. Tauti kun tuppaa toisiin tarttumaan.",
+            "author": "Nimimerkki Tavan ihminen"
+          },
+          {
+            "type": "text",
+            "content": "Kevättalvi on perinteisesti vilkasta aikaa hengitystieinfektioille. Terveydenhuollon ammattilaiset muistuttavat käsihygieniasta ja siitä, että sairaana tulisi pysyä kotona."
+          },
+          {
+            "type": "text",
+            "content": "Meri-Lapin terveydenhuoltopalvelut ovat saatavilla normaaleina aikoina. Kiireettömissä asioissa suositellaan yhteydenottoa ensin puhelimitse."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Kausi-influenssa leviää Meri-Lapissa. Paikalliset muistuttavat tartuntojen ehkäisystä.",
+        "category": "health",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "kemi-flunssa-aalto-jyllaa-meri-lapi",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Tavan ihminen"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "4b22724f-451d-4fd1-9a9e-e3598a85eb36",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000003-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000003-0000-0000-0000-000000000001",
+      "lat": 60.4567,
+      "lng": 26.225,
+      "title": "Loviisan nuorten sporttirippikouluun ilmoittautuminen lähestyy",
+      "description": "Vuoden 2012 syntyneiden sporttiripari käynnistyy Loviisassa. Ilmoittautuminen on tavallista myöhemmin.",
+      "tags": 40,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Loviisan seurakunta järjestää sporttirippikoulun vuonna 2012 syntyneille nuorille. Toisin kuin monissa muissa kunnissa, Loviisassa ripari-ilmoittautuminen tapahtuu vasta loppuvuodesta."
+          },
+          {
+            "type": "quote",
+            "content": "Koska Loviisassa on ripari-ilmoittautuminen vasta loppuvuodesta, tiedoksi alustavasti jo nyt.",
+            "author": "Sami Lahtinen"
+          },
+          {
+            "type": "text",
+            "content": "Sporttirippikoulussa yhdistyvät perinteinen rippikoulu ja liikunnallinen ohjelma. Muoto on suosittu erityisesti urheilusta kiinnostuneiden nuorten keskuudessa."
+          },
+          {
+            "type": "text",
+            "content": "Tarkemmat tiedot ilmoittautumisesta ja aikataulusta julkaistaan Loviisan seurakunnan kanavissa myöhemmin."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Vuoden 2012 syntyneiden sporttiripari käynnistyy Loviisassa. Ilmoittautuminen on tavallista myöhemmin.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "loviisa-loviisan-nuorten-sporttirippik",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Sami Lahtinen"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "e2fd855c-c59c-4afa-b4f9-1ee6058e83c6",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000003-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000003-0000-0000-0000-000000000001",
+      "lat": 60.4567,
+      "lng": 26.225,
+      "title": "Vanhus sai parkkisakon kiekkokoneelta — \"Olisi voinut tehdä toisin\"",
+      "description": "Loviisalainen suuttui 80-vuotiaan läheisensä saamasta pysäköintivirhemaksusta.",
+      "tags": 33,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Pysäköinnin kiekkokonevalvonta kuumentaa tunteita Loviisassa. Paikallinen asukas kertoo tapauksesta, jossa 80-vuotias läheinen sai parkkisakon automaattisen kiekkokoneen perusteella."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/loviisa-vanhus-sai-parkkisakon-kiekkok-img0.jpg",
+            "caption": "Kuva: Magnus Blomqvist",
+            "alt": "Pysäköintiautomaatti"
+          },
+          {
+            "type": "quote",
+            "content": "Onhan tään voinut tehä varman vähän eri lailla. Vanhus on 80-vuotias.",
+            "author": "Magnus Blomqvist"
+          },
+          {
+            "type": "text",
+            "content": "Automaattinen pysäköinninvalvonta on yleistynyt kunnissa, mutta sen koetaan ajoittain kohtelevan erityisesti ikäihmisiä kohtuuttomasti. Keskustelussa toivotaan joustavampaa linjaa iäkkäiden kohdalla."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Loviisalainen suuttui 80-vuotiaan läheisensä saamasta pysäköintivirhemaksusta.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "loviisa-vanhus-sai-parkkisakon-kiekkok",
+        "featured_img": "articles/images/loviisa-vanhus-sai-parkkisakon-kiekkok-featured.jpg",
+        "sources": [
+          "Facebook: Magnus Blomqvist"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "9a67ceb4-5aa1-47fc-a235-d9d3574f3989",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Fölin kausikortti ei toiminut sovelluksessa — bussikuski ei päästänyt kyytiin",
+      "description": "Turkulainen matkustaja jäi bussista, kun Fölin mobiililippu ei toiminut. Tapaus herättää kysymyksiä digilipuista.",
+      "tags": 33,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turkulainen matkustaja yritti nousta bussiin keskustaan, mutta Föli-sovelluksen kausikortti ei toiminut. Kuljettaja ei päästänyt kyytiin ilman toimivaa lippua."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/turku-folin-kausikortti-ei-toiminut--img0.jpg",
+            "caption": "Kuva: Turun Puskaradio",
+            "alt": "Föli-bussi"
+          },
+          {
+            "type": "quote",
+            "content": "Eikö Fölin kausikortti ole voimassa sovelluksen kautta? Ei tule mentyä, koska kuski ei päästänyt kyytiin.",
+            "author": "Nimimerkki AuriLasi"
+          },
+          {
+            "type": "text",
+            "content": "Mobiililippujen toimintaongelmat ovat tuttuja monille joukkoliikenteen käyttäjille. Föli on siirtynyt yhä enemmän digitaalisiin lippuratkaisuihin, mutta tekniset ongelmat voivat jättää matkustajan ilman kyytiä."
+          },
+          {
+            "type": "text",
+            "content": "Föli suosittelee pitämään mukana myös fyysistä matkakorttia mobiilisovelluksen varajärjestelmänä."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turkulainen matkustaja jäi bussista, kun Fölin mobiililippu ei toiminut. Tapaus herättää kysymyksiä digilipuista.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "turku-folin-kausikortti-ei-toiminut-",
+        "featured_img": "articles/images/turku-folin-kausikortti-ei-toiminut--featured.jpg",
+        "sources": [
+          "Facebook: AuriLasi"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "bac7c6dd-1b90-4e65-9a76-a63da2082828",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Kunnioitus kadonnut katuliikenteessä? Turkulaiset pohtivat käytöstapoja",
+      "description": "Turun Puskaradiossa käydään vilkasta keskustelua liikennekulttuurin rapautumisesta.",
+      "tags": 160,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turun Puskaradiossa puretaan turhautumista liikenteessä koettuun epäkohteliaisuuteen. Useampi kirjoittaja ihmettelee, mistä lähtien toisten kunnioitus liikenteessä on vähentynyt."
+          },
+          {
+            "type": "quote",
+            "content": "Mistä lähtien on sellainen kulttuuri, että muita ei enää yhtä paljon kunnioiteta?",
+            "author": "Turkulainen asukas"
+          },
+          {
+            "type": "text",
+            "content": "Keskustelussa nousee esiin kokemuksia aggressiivisesta ajotavasta, turhasta äänitorven käytöstä ja käsimerkeistä parkkipaikoilla. Ilmiö ei rajoitu Turkuun, vaan vastaavaa keskustelua käydään ympäri Suomea."
+          },
+          {
+            "type": "text",
+            "content": "Liikenneturva muistuttaa, että maltti on valttia liikenteessä. Provokaatioon ei kannata vastata, ja vaaratilanteista voi ilmoittaa poliisille."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turun Puskaradiossa käydään vilkasta keskustelua liikennekulttuurin rapautumisesta.",
+        "category": "community",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "turku-kunnioitus-kadonnut-katuliiken",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Turun Puskaradio"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "00d97acf-6768-4c16-af9d-0005d8747936",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Biljardi ei ole vain miesten laji — Aura Biljardi avaa ovet koko viikonlopuksi",
+      "description": "Turkulainen biljardisali kannustaa kaikkia kokeilemaan lajia pidennetyillä aukioloajoilla.",
+      "tags": 112,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turkulainen Aura Biljardi avaa ovensa koko viikonlopuksi laajennetuilla aukioloajoilla. Sali haluaa muistuttaa, että biljardi on kaikille avoin harrastus."
+          },
+          {
+            "type": "image",
+            "src": "articles/images/turku-biljardi-ei-ole-vain-miesten-l-img0.jpg",
+            "caption": "Kuva: Aura Biljardi",
+            "alt": "Biljardipöytä"
+          },
+          {
+            "type": "quote",
+            "content": "Biljardi ei ole vain miesten laji.",
+            "author": "Aura Biljardi"
+          },
+          {
+            "type": "text",
+            "content": "Biljardi on kokenut pientä renessanssia harrastuksena viime vuosina. Erityisesti nuorten ja naisten kiinnostus lajia kohtaan on kasvanut. Turussa lajia voi harrastaa useissa saleissa ympäri kaupunkia."
+          }
+        ],
+        "review": {
+          "score": 78,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turkulainen biljardisali kannustaa kaikkia kokeilemaan lajia pidennetyillä aukioloajoilla.",
+        "category": "culture",
+        "model": "claude-sonnet-4-20250514",
+        "generated_at": "2026-03-07T18:14:03.786343+00:00",
+        "slug": "turku-biljardi-ei-ole-vain-miesten-l",
+        "featured_img": "articles/images/turku-biljardi-ei-ole-vain-miesten-l-featured.jpg",
+        "sources": [
+          "Facebook: Aura Biljardi"
+        ],
+        "published_at": "2026-03-07T18:14:03.786343+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:14:03.786343+00:00",
+      "updated_at": "2026-03-07T18:14:03.786343+00:00"
+    },
+    {
+      "id": "0508a0e9-6011-4bf3-a406-b15a198262fc",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Hiiden Laulu vie yleisön Euroviisu-maailmaan Vihdissä",
+      "description": "Hiiden Laulu -kuoro järjestää Eurovision-teemaisen konsertin Vihdin Kultsalla toukokuun alussa.",
+      "tags": 72,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Hiiden Laulu -kuoro tuo Eurovision-tunnelman Vihdin Kultsalle lauantaina 2. toukokuuta. \"Hiiden Laulu Sings Eurovision\" -konsertti alkaa kello 17 ja lupaa yleisölle glitteriä, tunnetta ja euroviisu-taikaa."
+          },
+          {
+            "type": "text",
+            "content": "Konsertin ohjelmisto kattaa tunnettuja Eurovision-kappaleita useilta vuosikymmeniltä. Kuoro esittää muun muassa Dancing Lasha Tumbain, Rise Like a Phoenixin ja suomalaisten suosikin Hard Rock Hallelujahn."
+          },
+          {
+            "type": "quote",
+            "content": "Glitteriä, tunnetta ja Euroviisu-taikaa — tule nauttimaan ikimuistoisesta illasta Kultsalle\\!",
+            "author": "Hiiden Laulu -kuoro"
+          },
+          {
+            "type": "text",
+            "content": "Liput maksavat 15 euroa aikuisilta ja 10 euroa lapsilta. Lipunmyynti tapahtuu sekä ennakkoon että ovella. Konsertti on osa kuoron kevätkauden ohjelmistoa."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Hiiden Laulu -kuoro järjestää Eurovision-teemaisen konsertin Vihdin Kultsalla toukokuun alussa.",
+        "category": "culture",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.456992+00:00",
+        "slug": "karkkila-026",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Puskaradio Karkkila"
+        ],
+        "published_at": "2026-03-07T18:46:43.456992+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.456992+00:00",
+      "updated_at": "2026-03-07T18:46:43.456992+00:00"
+    },
+    {
+      "id": "68a4e2d0-337f-4d8e-8d33-e298ad3b749a",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000002-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "city_id": "a1000002-0000-0000-0000-000000000001",
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "title": "Perungan Pojat myy talviarpaa — pääpalkintona sähkömoottorikelkka",
+      "description": "Kemin Perungan Poikien talviarpajaisissa pääpalkintona on Lynx Adventure Electric -sähkömoottorikelkka.",
+      "tags": 544,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kemin Perungan Pojat -yhdistys myy talviarpaa kaudella 2025–2026. Arpajaisten pääpalkinto on poikkeuksellisen arvokas: Lynx Adventure Electric -sähkömoottorikelkka."
+          },
+          {
+            "type": "text",
+            "content": "Arpalippuja voi ostaa Lippuringin kautta. Arpajaisten tuotto käytetään yhdistyksen toiminnan tukemiseen ja paikallisen yhteisöllisyyden edistämiseen Meri-Lapin alueella."
+          },
+          {
+            "type": "text",
+            "content": "Sähkökelkat ovat yleistymässä Lapissa, ja palkinto heijastaa siirtymää kohti ympäristöystävällisempää moottorikelkkailua. Arvonta suoritetaan kauden päätteeksi."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Kemin Perungan Poikien talviarpajaisissa pääpalkintona on Lynx Adventure Electric -sähkömoottorikelkka.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.457023+00:00",
+        "slug": "kemi-027",
+        "featured_img": "scripts/fb_output/239350891413816/images/img_6_0.jpg",
+        "sources": [
+          "Facebook: Puskaradio Kemi"
+        ],
+        "published_at": "2026-03-07T18:46:43.457023+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.457023+00:00",
+      "updated_at": "2026-03-07T18:46:43.457023+00:00"
+    },
+    {
+      "id": "f8accf37-0f81-4f70-ac19-528d541c754b",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000003-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000003-0000-0000-0000-000000000001",
+      "lat": 60.4567,
+      "lng": 26.225,
+      "title": "Kuubalaisen sonesin tiiviskurssi saapuu Porvooseen — avoin kaikille",
+      "description": "Porvoon lähellä järjestetään kuubalaisen paritanssin tiiviskurssi maaliskuussa.",
+      "tags": 72,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kuubalaisen paritanssin ystäville on tarjolla tiiviskurssi Porvoossa perjantaina 14. maaliskuuta kello 13–16. Kurssi keskittyy sonesin perusaskeliin ja tunnelmalliseen paritanssiin."
+          },
+          {
+            "type": "quote",
+            "content": "Kaipaatko tanssiisi lisää tunnetta, yhteyttä ja kuubalaista sielua? Tule tutustumaan sonesin maailmaan\\!",
+            "author": "Kurssin järjestäjä"
+          },
+          {
+            "type": "text",
+            "content": "Son cubano on Kuuban perinteisimpiä tanssityylejä, joka tunnetaan lämpimästä ja sielukkaasta ilmaisustaan. Kurssille mahtuu rajattu määrä osallistujia, joten ennakkoilmoittautuminen on suositeltavaa."
+          },
+          {
+            "type": "text",
+            "content": "Kurssi sopii kaikentasoisille tanssijoille. Paria ei tarvitse tuoda mukaan. Tarkemmat tiedot ja ilmoittautuminen järjestäjän kautta."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Porvoon lähellä järjestetään kuubalaisen paritanssin tiiviskurssi maaliskuussa.",
+        "category": "culture",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.457037+00:00",
+        "slug": "loviisa-028",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Puskaradio Loviisa"
+        ],
+        "published_at": "2026-03-07T18:46:43.457037+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.457037+00:00",
+      "updated_at": "2026-03-07T18:46:43.457037+00:00"
+    },
+    {
+      "id": "b2baa4c9-1973-4212-a10b-e756c3f075db",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Aggressiivinen käytös Turun kauppakeskuksen pihalla — silminnäkijä kertoo",
+      "description": "Turkulainen raportoi uhkaavasta liikennekäyttäytymisestä Länkkärin Cittarin parkkipaikalla.",
+      "tags": 160,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turkulainen kertoo kohtaamisesta Länkkärin Citymarketin parkkipaikalla, jossa tumman katumaasturin kuljettaja käyttäytyi uhkaavasti ja näytti kansainvälisiä käsimerkkejä toiselle autoilijalle."
+          },
+          {
+            "type": "text",
+            "content": "Tapaus on herättänyt keskustelua Turun paikallisyhteisössä liikennekäyttäytymisen tilasta kaupungissa. Useat kommentoijat jakavat vastaavia kokemuksia eri puolilta Turkua."
+          },
+          {
+            "type": "quote",
+            "content": "Hei sinä tummassa katumaasturissa raivonnut — kamerat kuitenkin tallentaa. Kannattaa miettiä käytöstään.",
+            "author": "Silminnäkijä"
+          },
+          {
+            "type": "text",
+            "content": "Poliisi muistuttaa, että uhkaava käytös liikenteessä voi täyttää liikenneturvallisuuden vaarantamisen tunnusmerkistön. Aggressiivisesta ajokäyttäytymisestä voi ilmoittaa poliisille."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turkulainen raportoi uhkaavasta liikennekäyttäytymisestä Länkkärin Cittarin parkkipaikalla.",
+        "category": "safety",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.457045+00:00",
+        "slug": "turku-029",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Puskaradio Turku"
+        ],
+        "published_at": "2026-03-07T18:46:43.457045+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.457045+00:00",
+      "updated_at": "2026-03-07T18:46:43.457045+00:00"
+    },
+    {
+      "id": "5a881561-c3dc-4991-af73-bd3ec5aa9e0a",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000004-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000003-0000-0000-0000-000000000001",
+      "city_id": "a1000004-0000-0000-0000-000000000001",
+      "lat": 60.4518,
+      "lng": 22.2666,
+      "title": "Entisten asukkaiden posti tulvii turkulaisen postilaatikkoon — myös taksiyritys rekisteröity osoitteeseen",
+      "description": "Turkulainen ihmettelee vuoden jatkunutta tilannetta, jossa vanha osoite kerää entisten asukkaiden ja tuntemattoman yrityksen postia.",
+      "tags": 32,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Turkulainen asukas on vastaanottanut lähes vuoden ajan postia edellisille asukkaille — ja huomannut lisäksi, että hänen osoitteeseensa on rekisteröity tuntematon taksiyritys."
+          },
+          {
+            "type": "quote",
+            "content": "Osoitteeseeni on tullut postia entisille asukkaille pian vuoden verran ja yhden taksiyrityksen. Olen lähettänyt useita palautuksia, mutta mitään ei tapahdu.",
+            "author": "Turkulainen asukas"
+          },
+          {
+            "type": "text",
+            "content": "Ongelma ei ole harvinainen. Osoitteenmuutoksen laiminlyönti aiheuttaa päänvaivaa uusille asukkaille. Postin ohjeiden mukaan vastaanottaja voi palauttaa väärin osoitetun postin merkinnällä \"ei asu täällä\"."
+          },
+          {
+            "type": "text",
+            "content": "Taksiyrityksen rekisteröinti toisen osoitteeseen herättää kuitenkin lisäkysymyksiä. Asukas pohtii mahdollisuuksiaan puuttua tilanteeseen virallisia kanavia pitkin."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Turkulainen ihmettelee vuoden jatkunutta tilannetta, jossa vanha osoite kerää entisten asukkaiden ja tuntemattoman yrityksen postia.",
+        "category": "community",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.457053+00:00",
+        "slug": "turku-030",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Puskaradio Turku"
+        ],
+        "published_at": "2026-03-07T18:46:43.457053+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.457053+00:00",
+      "updated_at": "2026-03-07T18:46:43.457053+00:00"
+    },
+    {
+      "id": "99185ce1-0631-49ea-a17c-adac79c698dd",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000001-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000001-0000-0000-0000-000000000001",
+      "lat": 60.5341,
+      "lng": 24.2093,
+      "title": "Lounaskahvila Rinne houkuttelee arkisin kotiruoalla — viikon menu julkaistu",
+      "description": "Karkkilan Lounaskahvila Rinne palvelee arkisin monipuolisella lounaalla.",
+      "tags": 36,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Karkkilan keskustan Lounaskahvila Rinne on julkaissut viikon lounaslistansa. Tarjolla on perinteistä suomalaista kotiruokaa, joka vaihtelee päivittäin."
+          },
+          {
+            "type": "text",
+            "content": "Tiistain listalla ovat rapeaksi paistetut kalapihvit tartarkastikkeen kera, perunamuusi sekä perinteinen hernekeitto. Keskiviikkona tarjolla on jauheliha-perunakiusaus ja torstaina uunilohi."
+          },
+          {
+            "type": "quote",
+            "content": "Rapeaksi paistetut kalapihvit ja tartarkastike — tule maistamaan\\!",
+            "author": "Lounaskahvila Rinne"
+          },
+          {
+            "type": "text",
+            "content": "Rinne on vakiinnuttanut paikkansa karkkialaisena arkiruokapaikkana. Lounas sisältää salaattipöydän, leivän ja kahvin. Kahvila palvelee arkisin ja sijaitsee keskeisellä paikalla Karkkilan keskustassa."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Karkkilan Lounaskahvila Rinne palvelee arkisin monipuolisella lounaalla.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.457059+00:00",
+        "slug": "karkkila-031",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Puskaradio Karkkila"
+        ],
+        "published_at": "2026-03-07T18:46:43.457059+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.457059+00:00",
+      "updated_at": "2026-03-07T18:46:43.457059+00:00"
+    },
+    {
+      "id": "3d85dad9-d319-4492-96e5-239e4df70e21",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000003-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000001-0000-0000-0000-000000000001",
+      "city_id": "a1000003-0000-0000-0000-000000000001",
+      "lat": 60.4567,
+      "lng": 26.225,
+      "title": "Maalauskausi lähestyy — loviisalaiset muistutetaan varaamaan tekijät ajoissa",
+      "description": "Loviisan seudulla maalauskauden varaukset ovat alkaneet ja yrittäjät kehottavat varaamaan aikoja hyvissä ajoin.",
+      "tags": 4,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kevät lähestyy ja samalla alkaa maalauskauden suunnittelu Loviisan seudulla. Paikalliset maalausalan yrittäjät muistuttavat asukkaita varaamaan palvelut ajoissa tulevalle kesälle."
+          },
+          {
+            "type": "quote",
+            "content": "Maalauskausi lähestyy — varmista siis ajoissa, että maalimimmit maalaa teillä tulevana kesänä\\!",
+            "author": "Paikallinen maalausyrittäjä"
+          },
+          {
+            "type": "text",
+            "content": "Erityisesti pientalojen julkisivumaalaukset ovat kysyttyjä kesäisin, ja suosituimmat tekijät varataan jo alkukeväästä. Yrittäjät tarjoavat maksuttomia arviokäyntejä ja neuvontaa maalityypin valinnassa."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Loviisan seudulla maalauskauden varaukset ovat alkaneet ja yrittäjät kehottavat varaamaan aikoja hyvissä ajoin.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.457065+00:00",
+        "slug": "loviisa-032",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Puskaradio Loviisa"
+        ],
+        "published_at": "2026-03-07T18:46:43.457065+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.457065+00:00",
+      "updated_at": "2026-03-07T18:46:43.457065+00:00"
+    },
+    {
+      "id": "04d63431-0e61-48d9-8141-42dbd55ca5ad",
+      "owner_id": "00000000-0000-0000-0000-000000000001",
+      "location_id": "a1000002-0000-0000-0000-000000000001",
+      "continent_id": "a4000001-0000-0000-0000-000000000001",
+      "country_id": "a3000001-0000-0000-0000-000000000001",
+      "region_id": "a2000002-0000-0000-0000-000000000001",
+      "city_id": "a1000002-0000-0000-0000-000000000001",
+      "lat": 65.7364,
+      "lng": 24.5634,
+      "title": "Hyvän Olon Hoitola laajentaa palveluitaan Kemissä — ripsipidennykset uutuutena",
+      "description": "Kemin Hyvän Olon Hoitola tarjoaa nyt myös ripsipidennyksiä klassisista volyymiripsiin.",
+      "tags": 260,
+      "status": 5,
+      "error": 0,
+      "views": 0,
+      "share_count": 0,
+      "reactions": {},
+      "meta": {
+        "blocks": [
+          {
+            "type": "text",
+            "content": "Kemin Hyvän Olon Hoitola on laajentanut palveluvalikoimaansa ripsipidennyksin. Tarjolla on sekä klassisia ripsipidennyksiä että volyymiripsiä erilaisiin tyyleihin."
+          },
+          {
+            "type": "quote",
+            "content": "Ripsienpidennyksillä näyttävyyttä katseeseen — uudet klassiset ripsienpidennykset nyt saatavilla\\!",
+            "author": "Hyvän Olon Hoitola"
+          },
+          {
+            "type": "text",
+            "content": "Hoitola on toiminut Kemissä usean vuoden ajan ja tunnetaan laajasta kauneudenhoitopalveluiden valikoimastaan. Ripsipidennysten lisäksi tarjolla on hierontaa, kasvohoitoja ja muita hyvinvointipalveluja."
+          },
+          {
+            "type": "text",
+            "content": "Ajanvaraus onnistuu suoraan hoitolan kautta. Uusille asiakkaille on tarjolla tutustumistarjouksia."
+          }
+        ],
+        "review": {
+          "score": 75,
+          "flags": [],
+          "approved": true
+        },
+        "summary": "Kemin Hyvän Olon Hoitola tarjoaa nyt myös ripsipidennyksiä klassisista volyymiripsiin.",
+        "category": "business",
+        "model": "claude-opus-4-6",
+        "generated_at": "2026-03-07T18:46:43.457072+00:00",
+        "slug": "kemi-033",
+        "featured_img": "",
+        "sources": [
+          "Facebook: Puskaradio Kemi"
+        ],
+        "published_at": "2026-03-07T18:46:43.457072+00:00",
+        "published_by": "00000000-0000-0000-0000-000000000001"
+      },
+      "created_at": "2026-03-07T18:46:43.457072+00:00",
+      "updated_at": "2026-03-07T18:46:43.457072+00:00"
+    }
+  ],
+  "generated_at": "2026-03-07T18:46:43.457078+00:00",
+  "count": 33
+}
