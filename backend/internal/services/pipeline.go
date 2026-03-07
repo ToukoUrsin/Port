@@ -116,6 +116,26 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
+	// Send gathered data to frontend
+	gatherData := map[string]any{}
+	if transcript != "" {
+		gatherData["transcript"] = transcript
+	}
+	if len(photoDescs) > 0 {
+		gatherData["photo_descriptions"] = photoDescs
+	}
+	if len(photoFileURLs) > 0 {
+		gatherData["photo_urls"] = photoFileURLs
+	}
+	if sub.Description != "" {
+		gatherData["notes"] = sub.Description
+	}
+	if len(gatherData) > 0 {
+		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "gathered", Message: "Input collected", Data: gatherData}) {
+			return
+		}
+	}
+
 	// RESEARCH (non-fatal — continue with empty context on failure)
 	var researchContext string
 	var researchResult *models.ResearchResult
@@ -140,6 +160,8 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		} else if rr != nil {
 			researchContext = rr.Context
 			researchResult = rr
+			// Send research results to frontend
+			sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "researched", Message: "Research complete", Data: rr})
 		}
 	}
 
@@ -191,11 +213,13 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		return
 	}
 
-	// Replace photo placeholders with actual URLs
+	// Replace photo placeholders with actual URLs.
+	// Replace in reverse order so photo_10 is handled before photo_1 can match it.
+	// Use markdown image context (photo_N) to avoid replacing plain text occurrences.
 	article := genOutput.ArticleMarkdown
-	for i, fileURL := range photoFileURLs {
-		placeholder := fmt.Sprintf("photo_%d", i+1)
-		article = strings.ReplaceAll(article, placeholder, fileURL)
+	for i := len(photoFileURLs) - 1; i >= 0; i-- {
+		placeholder := fmt.Sprintf("(photo_%d)", i+1)
+		article = strings.ReplaceAll(article, placeholder, fmt.Sprintf("(%s)", photoFileURLs[i]))
 	}
 
 	// Extract headline from markdown

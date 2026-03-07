@@ -217,9 +217,23 @@ export interface SubmissionCreateResponse {
   status: string;
 }
 
+export interface SSEGatherData {
+  transcript?: string;
+  photo_descriptions?: string[];
+  photo_urls?: string[];
+  notes?: string;
+}
+
+export interface SSEResearchData {
+  context: string;
+  sources: WebSource[];
+  queries: string[];
+}
+
 export interface SSEStatusEvent {
   step: string;
   message: string;
+  data?: SSEGatherData | SSEResearchData;
 }
 
 export interface SSECompleteEvent {

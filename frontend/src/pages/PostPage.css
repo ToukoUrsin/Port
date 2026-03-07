@@ -361,6 +361,194 @@
 .building-step.active { color: var(--color-text); font-weight: var(--font-medium); }
 .building-step.pending { color: var(--color-text-tertiary); }
 
+/* ===============================================
+   Pipeline live feed (ProcessingStep)
+   =============================================== */
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 720px;
+  animation: fadeIn 0.3s ease;
+}
+
+.pipeline-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-secondary);
+  margin-bottom: var(--space-5);
+}
+
+.pipeline-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+}
+
+/* Step progress cards */
+.pipeline-card {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition: border-color 0.2s ease, opacity 0.3s ease;
+  animation: fadeIn 0.3s ease;
+}
+.pipeline-card.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg, rgba(59, 130, 246, 0.04));
+}
+.pipeline-card.done {
+  opacity: 0.6;
+}
+
+.pipeline-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pipeline-card-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-tertiary);
+}
+.pipeline-card.active .pipeline-card-icon {
+  color: var(--color-primary);
+}
+.pipeline-card.done .pipeline-card-icon {
+  color: var(--color-success, #22c55e);
+}
+
+.pipeline-card-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+}
+
+/* Data reveal blocks */
+.pipeline-data {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+  background: var(--color-gray-50, #fafafa);
+}
+
+.pipeline-data-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.pipeline-data-text {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Photo grid */
+.pipeline-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.pipeline-photo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pipeline-photo-img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.pipeline-photo-desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  line-height: var(--leading-snug);
+  margin: 0;
+}
+
+/* Research queries */
+.pipeline-queries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.pipeline-query {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  padding: 2px var(--space-2);
+  background: var(--color-gray-100);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+}
+
+/* Research sources */
+.pipeline-sources {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pipeline-sources li {
+  font-size: var(--text-xs);
+}
+.pipeline-sources a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.pipeline-sources a:hover {
+  text-decoration: underline;
+}
+
+/* Writing skeleton */
+.pipeline-writing {
+  padding: var(--space-4);
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+}
+
+.pipeline-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pipeline-skeleton-line {
+  height: 12px;
+  background: var(--color-gray-100);
+  border-radius: var(--radius-sm);
+  animation: buildingShimmer 1.5s infinite;
+}
+
 /* --- Shared keyframes --- */
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

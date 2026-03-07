@@ -147,10 +147,15 @@ func (h *Handler) StreamPipeline(c *gin.Context) {
 		case "complete":
 			data, _ = json.Marshal(event.Data)
 		default:
-			data, _ = json.Marshal(map[string]string{
+			// Include intermediate data if available
+			payload := map[string]any{
 				"step":    event.Step,
 				"message": event.Message,
-			})
+			}
+			if event.Data != nil {
+				payload["data"] = event.Data
+			}
+			data, _ = json.Marshal(payload)
 		}
 		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Event, string(data))
 		c.Writer.Flush()
@@ -318,16 +323,8 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 		return
 	}
 
-	// Gate check: RED gate blocks publishing
-	if sub.Meta.V.Review != nil && sub.Meta.V.Review.Gate == "RED" {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"error":        "gate_red",
-			"gate":         sub.Meta.V.Review.Gate,
-			"coaching":     sub.Meta.V.Review.Coaching,
-			"red_triggers": sub.Meta.V.Review.RedTriggers,
-		})
-		return
-	}
+	// Gate is informational only — never blocks publishing (anti-censorship design).
+	// The review data is still available on the article for reader transparency.
 
 	now := time.Now()
 	meta := sub.Meta.V

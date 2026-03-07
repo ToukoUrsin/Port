@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowUp, X, Loader2,
   CheckCircle, Camera, Type,
+  Mic, ImageIcon, Search, PenTool, ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useToast } from "@/components/Toast.tsx";
@@ -19,6 +20,9 @@ import type {
   ReviewResult,
   ArticleMetadata,
   SSEStatusEvent,
+  SSEGatherData,
+  SSEResearchData,
+  WebSource,
 } from "@/lib/types.ts";
 import { EditorialScreen } from "@/components/editor";
 import { VoiceRecorder } from "@/components/editor/VoiceRecorder";
@@ -200,24 +204,33 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   );
 }
 
-// --- Step 2: Processing with SSE ---
+// --- Step 2: Processing with SSE (live data feed) ---
+
+const STEP_ORDER = ["transcribing", "describing_photos", "researching", "generating", "reviewing"];
+
+const STEP_ICONS: Record<string, React.ReactNode> = {
+  transcribing: <Mic size={16} />,
+  describing_photos: <ImageIcon size={16} />,
+  researching: <Search size={16} />,
+  generating: <PenTool size={16} />,
+  reviewing: <ShieldCheck size={16} />,
+};
+
 const STEP_LABELS_EN: Record<string, string> = {
-  transcribing: "Listening",
-  describing_photos: "Seeing photos",
-  researching: "Researching",
-  generating: "Writing",
-  reviewing: "Reviewing",
+  transcribing: "Listening to your recording",
+  describing_photos: "Analyzing your photos",
+  researching: "Researching context",
+  generating: "Writing the article",
+  reviewing: "Quality review",
 };
 
 const STEP_LABELS_FI: Record<string, string> = {
-  transcribing: "Kuunnellaan",
-  describing_photos: "Katsotaan kuvia",
-  researching: "Tutkitaan",
-  generating: "Kirjoitetaan",
-  reviewing: "Tarkistetaan",
+  transcribing: "Kuunnellaan äänitettä",
+  describing_photos: "Analysoidaan kuvia",
+  researching: "Tutkitaan taustaa",
+  generating: "Kirjoitetaan artikkelia",
+  reviewing: "Laaduntarkistus",
 };
-
-const STEP_ORDER = ["transcribing", "describing_photos", "researching", "generating", "reviewing"];
 
 function ProcessingStep({
   submissionId,
@@ -232,6 +245,14 @@ function ProcessingStep({
   const STEP_LABELS = language === "fi" ? STEP_LABELS_FI : STEP_LABELS_EN;
   const [stepKeys, setStepKeys] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState<string>("");
+  const [transcript, setTranscript] = useState<string>("");
+  const [photoDescs, setPhotoDescs] = useState<string[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [notes, setNotes] = useState<string>("");
+  const [researchContext, setResearchContext] = useState<string>("");
+  const [researchSources, setResearchSources] = useState<WebSource[]>([]);
+  const [researchQueries, setResearchQueries] = useState<string[]>([]);
+  const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -246,6 +267,21 @@ function ProcessingStep({
         setStepKeys((prev) =>
           prev.includes(event.step) ? prev : [...prev, event.step],
         );
+
+        // Handle intermediate data
+        if (event.step === "gathered" && event.data) {
+          const d = event.data as SSEGatherData;
+          if (d.transcript) setTranscript(d.transcript);
+          if (d.photo_descriptions) setPhotoDescs(d.photo_descriptions);
+          if (d.photo_urls) setPhotoUrls(d.photo_urls);
+          if (d.notes) setNotes(d.notes);
+        }
+        if (event.step === "researched" && event.data) {
+          const d = event.data as SSEResearchData;
+          if (d.context) setResearchContext(d.context);
+          if (d.sources) setResearchSources(d.sources);
+          if (d.queries) setResearchQueries(d.queries);
+        }
       },
       onComplete(event) {
         onDone(event.article, event.review, event.metadata);
@@ -258,70 +294,115 @@ function ProcessingStep({
     return () => controller.abort();
   }, [submissionId, onDone, onError]);
 
-  const currentIndex = STEP_ORDER.indexOf(currentStep);
-  const reached = (step: string) => STEP_ORDER.indexOf(step) <= currentIndex;
+  // Auto-scroll feed as new content appears
+  useEffect(() => {
+    if (feedRef.current) {
+      feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    }
+  }, [stepKeys, transcript, photoDescs, researchContext, researchSources, currentStep]);
 
-  const buildingClasses = [
-    "building-article",
-    reached("transcribing") ? "building--has-headline" : "",
-    reached("describing_photos") ? "building--has-image" : "",
-    reached("generating") ? "building--has-body" : "",
-    reached("reviewing") ? "building--has-review" : "",
-  ].filter(Boolean).join(" ");
+  const isDone = (step: string) => stepKeys.includes(step) && currentStep !== step;
+  const isActive = (step: string) => currentStep === step;
+  const hasReached = (step: string) => stepKeys.includes(step);
 
   return (
-    <div className="building">
-      <h2 className="building-title">{t("post.creating")}</h2>
-      <div className={buildingClasses}>
-        {/* Gate badge placeholder */}
-        <div className="building-gate">
-          <div className="skeleton building-gate-bar" />
-        </div>
+    <div className="pipeline">
+      <h2 className="pipeline-title">{t("post.creating")}</h2>
 
-        {/* Headline */}
-        <div className="building-headline">
-          <div className="skeleton building-headline-line" style={{ width: "85%" }} />
-          <div className="skeleton building-headline-line" style={{ width: "55%" }} />
-        </div>
-
-        {/* Byline */}
-        <div className="building-byline">
-          <div className="skeleton building-byline-avatar" />
-          <div className="skeleton building-byline-text" />
-        </div>
-
-        {/* Image */}
-        <div className="building-image">
-          <div className="skeleton building-image-block" />
-        </div>
-
-        {/* Body lines */}
-        <div className="building-body">
-          {[100, 95, 88, 100, 72, 96, 60].map((w, i) => (
-            <div key={i} className="skeleton building-body-line" style={{ width: `${w}%`, transitionDelay: `${i * 0.09}s` }} />
-          ))}
-        </div>
-      </div>
-
-      {/* Step labels */}
-      <div className="building-steps">
+      <div className="pipeline-feed" ref={feedRef}>
+        {/* Step progress cards */}
         {STEP_ORDER.map((key) => {
-          const isDone = stepKeys.includes(key) && currentStep !== key;
-          const isActive = currentStep === key;
+          if (!hasReached(key) && !isActive(key)) return null;
+          const done = isDone(key);
+          const active = isActive(key);
           return (
-            <div
-              key={key}
-              className={`building-step ${isDone ? "done" : isActive ? "active" : "pending"}`}
-            >
-              {isDone ? (
-                <CheckCircle size={14} />
-              ) : isActive ? (
-                <Loader2 size={14} className="spin" />
-              ) : null}
-              <span>{STEP_LABELS[key] || key}</span>
+            <div key={key} className={`pipeline-card ${done ? "done" : active ? "active" : ""}`}>
+              <div className="pipeline-card-header">
+                <span className="pipeline-card-icon">
+                  {done ? <CheckCircle size={16} /> : active ? <Loader2 size={16} className="spin" /> : STEP_ICONS[key]}
+                </span>
+                <span className="pipeline-card-label">{STEP_LABELS[key] || key}</span>
+              </div>
             </div>
           );
         })}
+
+        {/* Transcript reveal */}
+        {transcript && (
+          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
+            <div className="pipeline-data-label">
+              <Mic size={14} /> Transcript
+            </div>
+            <p className="pipeline-data-text">{transcript}</p>
+          </div>
+        )}
+
+        {/* Notes reveal */}
+        {notes && !transcript && (
+          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
+            <div className="pipeline-data-label">
+              <Type size={14} /> Your notes
+            </div>
+            <p className="pipeline-data-text">{notes}</p>
+          </div>
+        )}
+
+        {/* Photo descriptions */}
+        {photoDescs.length > 0 && (
+          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
+            <div className="pipeline-data-label">
+              <ImageIcon size={14} /> Photos analyzed
+            </div>
+            <div className="pipeline-photos">
+              {photoUrls.map((url, i) => (
+                <div key={i} className="pipeline-photo">
+                  <img src={url} alt={`Photo ${i + 1}`} className="pipeline-photo-img" />
+                  {photoDescs[i] && <p className="pipeline-photo-desc">{photoDescs[i]}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Research results */}
+        {researchQueries.length > 0 && (
+          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
+            <div className="pipeline-data-label">
+              <Search size={14} /> Research
+            </div>
+            {researchQueries.length > 0 && (
+              <div className="pipeline-queries">
+                {researchQueries.map((q, i) => (
+                  <span key={i} className="pipeline-query">{q}</span>
+                ))}
+              </div>
+            )}
+            {researchSources.length > 0 && (
+              <ul className="pipeline-sources">
+                {researchSources.map((s, i) => (
+                  <li key={i}>
+                    <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || s.url}</a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Writing / Reviewing skeleton */}
+        {(isActive("generating") || isActive("reviewing") || isActive("embedding")) && (
+          <div className="pipeline-writing" style={{ animation: "fadeIn 0.3s ease" }}>
+            <div className="pipeline-skeleton-lines">
+              {[100, 92, 85, 100, 70, 95, 55].map((w, i) => (
+                <div
+                  key={i}
+                  className="skeleton pipeline-skeleton-line"
+                  style={{ width: `${w}%`, animationDelay: `${i * 0.12}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -440,11 +521,7 @@ export default function PostPage() {
           await updateSubmissionMarkdown(submissionId, articleMarkdown);
         }
       }
-      const result = await publishArticle(submissionId);
-      if ("error" in result && result.error === "gate_red") {
-        toast(pt("post.gateRedError"), "error");
-        return;
-      }
+      await publishArticle(submissionId);
       toast(pt("post.published"), "success");
       navigate("/");
     } catch (err) {
