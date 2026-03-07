@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
@@ -22,6 +22,7 @@ import "./HomePage.css";
    ======================================== */
 
 function RankedCard({ article, rank }: { article: Article; rank: number }) {
+  const navigate = useNavigate();
   return (
     <Link
       to={`/article/${article.id}`}
@@ -40,7 +41,16 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
       </div>
       <div className="ranked-card__body">
         <div className="ranked-card__meta">
-          <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          <span
+            className={`badge badge--clickable ${BADGE_CLASS[article.category]}`}
+            role="link"
+            tabIndex={0}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/tag/${article.category}`);
+            }}
+          >
             {article.category}
           </span>
         </div>

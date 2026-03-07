@@ -147,6 +147,16 @@ textarea.input {
 .badge-opinion   { background: #3B2D5C10; color: var(--color-cat-opinion); }
 .badge-news      { background: #2A3A4A10; color: var(--color-cat-news); }
 
+.badge--clickable {
+  cursor: pointer;
+  transition: opacity var(--transition-fast), box-shadow var(--transition-fast);
+  text-decoration: none;
+}
+.badge--clickable:hover {
+  opacity: 0.8;
+  box-shadow: 0 0 0 2px currentColor;
+}
+
 /* ========================================
    REVIEW FLAGS
    ======================================== */

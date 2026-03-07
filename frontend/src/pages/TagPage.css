@@ -1,0 +1,111 @@
+.tag-container {
+  max-width: var(--size-container);
+  margin: 0 auto;
+  padding: 0 var(--space-4) calc(var(--space-12) + 60px);
+}
+
+@media (min-width: 1024px) {
+  .tag-container {
+    padding: 0 var(--space-6) var(--space-12);
+  }
+}
+
+.tag-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) 0 var(--space-4);
+}
+
+.tag-header__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  background: var(--color-gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.tag-header__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-secondary);
+  line-height: var(--leading-tight);
+}
+
+.tag-header__title .badge {
+  font-size: var(--text-lg);
+  padding: var(--space-1) var(--space-3);
+}
+
+.tag-header__count {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-1);
+}
+
+.tag-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-16) 0;
+  color: var(--color-text-tertiary);
+}
+
+.tag-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-16) var(--space-4);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+.tag-empty p {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}
+
+.tag-section {
+  margin-top: var(--space-6);
+}
+
+.tag-section__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-secondary);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tag-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .tag-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .tag-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.tag-section__more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-6) 0;
+}

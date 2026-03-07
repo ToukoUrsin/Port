@@ -13,6 +13,7 @@ import PostPage from "./pages/PostPage";
 import ProfilePage from "./pages/ProfilePage";
 import ArticlePage from "./pages/ArticlePage";
 import SearchPage from "./pages/SearchPage";
+import TagPage from "./pages/TagPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
@@ -28,6 +29,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/article/:id" element={<ArticlePage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/tag/:slug" element={<TagPage />} />
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/design-system" element={<DesignSystem />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />

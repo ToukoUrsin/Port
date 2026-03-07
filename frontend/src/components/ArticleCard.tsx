@@ -22,7 +22,16 @@ export default function ArticleCard({ article, featured }: { article: Article; f
       </div>
       <div className="article-card__body">
         <div className="article-card__meta">
-          <span className={`badge ${BADGE_CLASS[article.category] || ""}`}>
+          <span
+            className={`badge badge--clickable ${BADGE_CLASS[article.category] || ""}`}
+            role="link"
+            tabIndex={0}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/tag/${article.category}`);
+            }}
+          >
             {article.category}
           </span>
         </div>

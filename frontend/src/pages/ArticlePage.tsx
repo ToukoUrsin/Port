@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
@@ -122,6 +122,7 @@ function Comments({ articleId }: { articleId: string }) {
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { t } = useLanguage();
 
   const fetchArticle = useCallback(() => getArticle(id!), [id]);
@@ -179,9 +180,9 @@ export default function ArticlePage() {
 
       <div className="article-content">
         <div className="article-meta">
-          <span className={`badge ${BADGE_CLASS[article.category] || "badge-community"}`}>
+          <Link to={`/tag/${article.category}`} className={`badge badge--clickable ${BADGE_CLASS[article.category] || "badge-community"}`}>
             {article.category}
-          </span>
+          </Link>
           <span className="article-meta__time">
             <Clock size={12} />
             {article.timeAgo}
@@ -225,9 +226,9 @@ export default function ArticlePage() {
             <span className="contributor-date">{article.timeAgo}</span>
           </div>
           {apiData?.meta?.article_metadata?.category && (
-            <span className={`badge ${BADGE_CLASS[apiData.meta.article_metadata.category] || "badge-community"}`}>
+            <Link to={`/tag/${apiData.meta.article_metadata.category}`} className={`badge badge--clickable ${BADGE_CLASS[apiData.meta.article_metadata.category] || "badge-community"}`}>
               {apiData.meta.article_metadata.category}
-            </span>
+            </Link>
           )}
         </div>
 
@@ -303,7 +304,15 @@ export default function ArticlePage() {
                       )}
                     </div>
                     <div className="similar-card__body">
-                      <span className={`badge ${BADGE_CLASS[a.category] || "badge-community"}`}>
+                      <span
+                        className={`badge badge--clickable ${BADGE_CLASS[a.category] || "badge-community"}`}
+                        role="link"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/tag/${a.category}`);
+                        }}
+                      >
                         {a.category}
                       </span>
                       <h3 className="similar-card__title">{a.title}</h3>
@@ -335,9 +344,13 @@ export default function ArticlePage() {
                 </div>
               )}
               <div className="article-modal__content">
-                <span className={`badge ${BADGE_CLASS[a.category] || "badge-community"}`}>
+                <Link
+                  to={`/tag/${a.category}`}
+                  className={`badge badge--clickable ${BADGE_CLASS[a.category] || "badge-community"}`}
+                  onClick={() => setModalArticle(null)}
+                >
                   {a.category}
-                </span>
+                </Link>
                 <h2 className="article-modal__title">{a.title}</h2>
                 <p className="article-modal__author">
                   By{" "}
