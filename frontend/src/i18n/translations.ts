@@ -156,6 +156,8 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "profile.noDrafts": "Ei luonnoksia",
     "profile.logout": "Kirjaudu ulos",
     "profile.loginRequired": "Kirjaudu sisään nähdäksesi profiilisi",
+    "profile.files": "Tiedostot",
+    "profile.noFiles": "Ei ladattuja tiedostoja",
     "profile.articles": "Artikkelit",
 
     // Onboarding
@@ -383,6 +385,8 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "profile.noDrafts": "No drafts",
     "profile.logout": "Log out",
     "profile.loginRequired": "Sign in to view your profile",
+    "profile.files": "Files",
+    "profile.noFiles": "No uploaded files",
     "profile.articles": "Articles",
 
     // Onboarding

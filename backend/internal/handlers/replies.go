@@ -26,6 +26,7 @@ func (h *Handler) ListReplies(c *gin.Context) {
 	h.db.Where("submission_id = ? AND status = ?", subID, models.ReplyVisible).
 		Order("created_at ASC").Find(&replies)
 
+	h.fillReplyProfileNames(replies)
 	c.JSON(http.StatusOK, gin.H{"replies": replies})
 }
 
@@ -70,7 +71,34 @@ func (h *Handler) CreateReply(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, reply)
+	replies := []models.Reply{reply}
+	h.fillReplyProfileNames(replies)
+	c.JSON(http.StatusCreated, replies[0])
+}
+
+// fillReplyProfileNames populates the ProfileName field on each reply
+// by looking up profile names from the profiles table.
+func (h *Handler) fillReplyProfileNames(replies []models.Reply) {
+	if len(replies) == 0 {
+		return
+	}
+	seen := make(map[uuid.UUID]bool)
+	var ids []uuid.UUID
+	for _, r := range replies {
+		if !seen[r.ProfileID] {
+			seen[r.ProfileID] = true
+			ids = append(ids, r.ProfileID)
+		}
+	}
+	var profiles []models.Profile
+	h.db.Select("id, profile_name").Where("id IN ?", ids).Find(&profiles)
+	nameMap := make(map[uuid.UUID]string, len(profiles))
+	for _, p := range profiles {
+		nameMap[p.ID] = p.ProfileName
+	}
+	for i := range replies {
+		replies[i].ProfileName = nameMap[replies[i].ProfileID]
+	}
 }
 
 func (h *Handler) UpdateReply(c *gin.Context) {

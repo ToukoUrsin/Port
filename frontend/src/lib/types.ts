@@ -384,6 +384,7 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     category: s.meta.category || tagsToCategory(s.tags),
     author: s.meta.anonymous ? "Anonymous contributor" : (s.owner_name || s.owner_id?.slice(0, 8) || "Anonymous"),
     authorId: s.owner_id,
+    authorSlug: s.meta.anonymous ? undefined : s.owner_name,
     timeAgo: timeAgo(s.created_at, t),
     image: s.meta.featured_img || "",
     area: s.location_name || s.meta.place_name,
@@ -401,6 +402,7 @@ export interface ApiReply {
   id: string;
   submission_id: string;
   profile_id: string;
+  profile_name?: string;
   parent_id?: string;
   body: string;
   status: number;
@@ -422,6 +424,36 @@ export interface ReplyReactionMap {
     user_liked?: number;
   };
 }
+
+// --- File types ---
+
+export interface FileMeta {
+  mime_type?: string;
+  width?: number;
+  height?: number;
+  duration_secs?: number;
+  thumbnail?: string;
+}
+
+export interface ApiFile {
+  id: string;
+  entity_id: string;
+  entity_category: number;
+  submission_id: string;
+  contributor_id: string;
+  file_type: number; // 1=audio, 2=photo
+  name: string;
+  size: number;
+  uploaded_at: string;
+  meta: FileMeta;
+}
+
+export interface FileListResponse {
+  files: ApiFile[];
+  total: number;
+}
+
+export const FileType = { Audio: 1, Photo: 2 } as const;
 
 export interface FollowStatus {
   following: boolean;

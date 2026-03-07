@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Heart } from "lucide-react";
+import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Heart, Reply as ReplyIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { BADGE_CLASS, authorSlug } from "@/data/articles";
+import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
 import { getArticle, getSimilarArticles, getReplies, createReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
@@ -125,6 +125,172 @@ function CommentLikeButton({ replyId, initialLikes, initialLiked }: {
   );
 }
 
+function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
+  articleId: string;
+  parentId: string;
+  onSubmitted: (reply: ApiReply) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSubmit = async () => {
+    const body = text.trim();
+    if (!body || submitting) return;
+    setSubmitting(true);
+    try {
+      const reply = await createReply(articleId, body, parentId);
+      onSubmitted(reply);
+      setText("");
+    } catch {
+      // ignore
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="comment-reply-form">
+      <div className="comment-reply-form__input-wrapper">
+        <textarea
+          ref={inputRef}
+          className="input comment-form__input"
+          placeholder="Write a reply..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+            if (e.key === "Escape") onCancel();
+          }}
+          rows={1}
+        />
+        <div className="comment-reply-form__actions">
+          <button className="comment-reply-form__cancel" onClick={onCancel}>Cancel</button>
+          <button
+            className="comment-reply-form__submit"
+            onClick={handleSubmit}
+            disabled={!text.trim() || submitting}
+          >
+            {submitting ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommentItem({ reply, depth, replyReactions, articleId, onNewReply }: {
+  reply: ApiReply;
+  depth: number;
+  replyReactions: ReplyReactionMap;
+  articleId: string;
+  onNewReply: (reply: ApiReply) => void;
+}) {
+  const { isAuthenticated } = useAuth();
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const rxn = replyReactions[reply.id];
+
+  return (
+    <div className={`comment ${depth > 0 ? "comment--nested" : ""}`}>
+      {depth > 0 && (
+        <div className="comment__thread-line" />
+      )}
+      <div className="comment__avatar">
+        <User size={depth > 0 ? 12 : 14} />
+      </div>
+      <div className="comment__body">
+        <div className="comment__header">
+          <Link to={`/profile/${reply.profile_id}`} className="comment__author">{reply.profile_name || reply.profile_id.slice(0, 8)}</Link>
+          <span className="comment__time">{timeAgo(reply.created_at)}</span>
+        </div>
+        <p className="comment__text">{reply.body}</p>
+        <div className="comment__actions">
+          <CommentLikeButton
+            replyId={reply.id}
+            initialLikes={rxn?.likes ?? reply.meta?.reactions?.like ?? 0}
+            initialLiked={!!rxn?.user_liked}
+          />
+          {isAuthenticated && depth < 3 && (
+            <button
+              className="comment__reply-btn"
+              onClick={() => setShowReplyForm((v) => !v)}
+            >
+              <ReplyIcon size={12} />
+              Reply
+            </button>
+          )}
+        </div>
+        {showReplyForm && (
+          <InlineReplyForm
+            articleId={articleId}
+            parentId={reply.id}
+            onSubmitted={(r) => {
+              onNewReply(r);
+              setShowReplyForm(false);
+            }}
+            onCancel={() => setShowReplyForm(false)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function buildThread(replies: ApiReply[]): Map<string | null, ApiReply[]> {
+  const map = new Map<string | null, ApiReply[]>();
+  for (const r of replies) {
+    const key = r.parent_id ?? null;
+    const list = map.get(key) ?? [];
+    list.push(r);
+    map.set(key, list);
+  }
+  return map;
+}
+
+function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onNewReply }: {
+  parentId: string | null;
+  tree: Map<string | null, ApiReply[]>;
+  depth: number;
+  replyReactions: ReplyReactionMap;
+  articleId: string;
+  onNewReply: (reply: ApiReply) => void;
+}) {
+  const children = tree.get(parentId);
+  if (!children || children.length === 0) return null;
+
+  return (
+    <div className={depth > 0 ? "comment__children" : undefined}>
+      {children.map((reply) => (
+        <div key={reply.id}>
+          <CommentItem
+            reply={reply}
+            depth={depth}
+            replyReactions={replyReactions}
+            articleId={articleId}
+            onNewReply={onNewReply}
+          />
+          <ThreadedReplies
+            parentId={reply.id}
+            tree={tree}
+            depth={depth + 1}
+            replyReactions={replyReactions}
+            articleId={articleId}
+            onNewReply={onNewReply}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Comments({ articleId }: { articleId: string }) {
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
@@ -144,6 +310,8 @@ function Comments({ articleId }: { articleId: string }) {
   }, [articleId]);
 
   const allReplies = [...(repliesData?.replies ?? []), ...localReplies];
+  const tree = buildThread(allReplies);
+  const topLevel = tree.get(null) ?? [];
 
   const handleSubmit = async () => {
     const text = newComment.trim();
@@ -161,8 +329,13 @@ function Comments({ articleId }: { articleId: string }) {
     }
   };
 
-  const visible = showAll ? allReplies : allReplies.slice(0, 3);
-  const hasMore = allReplies.length > 3 && !showAll;
+  const handleNewReply = (reply: ApiReply) => {
+    setLocalReplies((prev) => [...prev, reply]);
+    setShowAll(true);
+  };
+
+  const visibleTop = showAll ? topLevel : topLevel.slice(0, 3);
+  const hasMore = topLevel.length > 3 && !showAll;
 
   return (
     <div className="comments-section">
@@ -209,30 +382,27 @@ function Comments({ articleId }: { articleId: string }) {
         </div>
       )}
 
-      {visible.length > 0 && (
+      {visibleTop.length > 0 && (
         <div className="comments-list">
-          {visible.map((reply) => {
-            const rxn = replyReactions[reply.id];
-            return (
-              <div key={reply.id} className="comment">
-                <div className="comment__avatar">
-                  <User size={14} />
-                </div>
-                <div className="comment__body">
-                  <div className="comment__header">
-                    <span className="comment__author">{reply.profile_id.slice(0, 8)}</span>
-                    <span className="comment__time">{timeAgo(reply.created_at)}</span>
-                  </div>
-                  <p className="comment__text">{reply.body}</p>
-                  <CommentLikeButton
-                    replyId={reply.id}
-                    initialLikes={rxn?.likes ?? reply.meta?.reactions?.like ?? 0}
-                    initialLiked={!!rxn?.user_liked}
-                  />
-                </div>
-              </div>
-            );
-          })}
+          {visibleTop.map((reply) => (
+            <div key={reply.id}>
+              <CommentItem
+                reply={reply}
+                depth={0}
+                replyReactions={replyReactions}
+                articleId={articleId}
+                onNewReply={handleNewReply}
+              />
+              <ThreadedReplies
+                parentId={reply.id}
+                tree={tree}
+                depth={1}
+                replyReactions={replyReactions}
+                articleId={articleId}
+                onNewReply={handleNewReply}
+              />
+            </div>
+          ))}
         </div>
       )}
 
@@ -331,7 +501,7 @@ export default function ArticlePage() {
 
         <h1 className="article-title">{article.title}</h1>
         <p className="article-author">
-          {t("article.by")} <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link">{article.author}</Link>
+          {t("article.by")} <Link to={`/profile/${article.authorId}`} className="article-author__link">{article.author}</Link>
         </p>
 
         <div className="article-body">
@@ -482,7 +652,7 @@ export default function ArticlePage() {
                 <p className="article-modal__author">
                   By{" "}
                   <Link
-                    to={`/profile/${authorSlug(a.author)}`}
+                    to={`/profile/${a.authorId}`}
                     className="article-author__link"
                     onClick={() => setModalArticle(null)}
                   >
