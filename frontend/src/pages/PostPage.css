@@ -460,8 +460,14 @@
   line-height: var(--leading-relaxed);
   color: var(--color-text-secondary);
   margin: 0;
-  max-height: 120px;
+  max-height: 200px;
   overflow-y: auto;
+  white-space: pre-line;
+}
+
+.pipeline-research-context {
+  max-height: 300px;
+  margin-bottom: var(--space-2);
 }
 
 /* Photo grid */

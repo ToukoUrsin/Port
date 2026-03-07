@@ -365,10 +365,10 @@ function ProcessingStep({
         )}
 
         {/* Research results */}
-        {researchQueries.length > 0 && (
+        {(researchContext || researchQueries.length > 0) && (
           <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
             <div className="pipeline-data-label">
-              <Search size={14} /> Research
+              <Search size={14} /> {t("post.research") || "Research findings"}
             </div>
             {researchQueries.length > 0 && (
               <div className="pipeline-queries">
@@ -376,6 +376,9 @@ function ProcessingStep({
                   <span key={i} className="pipeline-query">{q}</span>
                 ))}
               </div>
+            )}
+            {researchContext && (
+              <p className="pipeline-data-text pipeline-research-context">{researchContext}</p>
             )}
             {researchSources.length > 0 && (
               <ul className="pipeline-sources">
