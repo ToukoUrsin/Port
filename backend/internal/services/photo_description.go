@@ -1,4 +1,4 @@
-// Photo description service for Claude Vision.
+// Photo description service for Gemini Vision.
 //
 // Plan: 1_what/article_engine/spec/build/PROMPTS_SPEC.md
 //

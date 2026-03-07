@@ -491,7 +491,7 @@ func TestPipeline_ErrorHandling_GenerationFails(t *testing.T) {
 	}
 	insertSubmission(t, db, &sub)
 
-	gen := &mockGeneration{err: fmt.Errorf("Claude API error")}
+	gen := &mockGeneration{err: fmt.Errorf("Gemini API error")}
 	rev := &mockReview{result: defaultReviewResult()}
 
 	pipeline := buildPipeline(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{})

@@ -13,7 +13,7 @@ type Config struct {
 	JWTSecret        string
 	JWTAccessTTL     time.Duration
 	JWTRefreshTTL    time.Duration
-	AnthropicAPIKey  string
+	GeminiAPIKey     string
 	ElevenLabsAPIKey string
 	MediaStoragePath string
 	GoogleClientID   string
@@ -28,7 +28,7 @@ func Load() *Config {
 		Port:             env("PORT", "8000"),
 		AllowedOrigins:   env("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174"),
 		JWTSecret:        env("JWT_SECRET", "dev-secret-change-me-in-production-min32bytes"),
-		AnthropicAPIKey:  env("ANTHROPIC_API_KEY", ""),
+		GeminiAPIKey:     env("GEMINI_API_KEY", ""),
 		ElevenLabsAPIKey: env("ELEVENLABS_API_KEY", ""),
 		MediaStoragePath: env("MEDIA_STORAGE_PATH", "./uploads"),
 		GoogleClientID:   env("GOOGLE_CLIENT_ID", ""),

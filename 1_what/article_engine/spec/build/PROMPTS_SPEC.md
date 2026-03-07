@@ -2,7 +2,7 @@
 # Date: 2026-03-07 UTC+3
 # Plan: 1_what/article_engine/spec/ARCHITECTURE.md
 
-The article engine runs on two Claude calls (generation + review) and one photo vision call per photo. This file contains the exact prompt text, output schemas, and test cases. Everything a developer needs to wire these into Go services.
+The article engine runs on two Gemini calls (generation + review) and one photo vision call per photo. This file contains the exact prompt text, output schemas, and test cases. Everything a developer needs to wire these into Go services.
 
 ---
 
@@ -162,7 +162,7 @@ Regenerate the article incorporating the contributor's direction. Keep what work
 |----------|--------|-------------|
 | `transcript` | ElevenLabs STT output | Yes — notes-only submissions are valid |
 | `notes` | Contributor's text notes | Yes |
-| `photo_descriptions` | Claude Vision output, one per photo | Yes |
+| `photo_descriptions` | Gemini Vision output, one per photo | Yes |
 | `town_context` | Static town context blob | No |
 | `previous_article` | Previous article markdown (refinement only) | Yes — absent on first generation |
 | `direction` | Transcribed voice clip or text note from refinement (refinement only) | Yes — absent on first generation |
@@ -439,7 +439,7 @@ This is the exact shape that Go and TypeScript must parse. Field names and types
 
 ## Photo Vision Prompt
 
-Called once per submitted photo via Claude Vision. Output feeds into both generation and review as `photo_descriptions`.
+Called once per submitted photo via Gemini Vision. Output feeds into both generation and review as `photo_descriptions`.
 
 ```
 Describe this photo for a local news article. Be factual and specific:
@@ -463,20 +463,20 @@ Output: 2-4 sentences of factual description.
 
 The generation prompt asks for markdown + `---METADATA---` + JSON. Two failure modes:
 
-1. **Missing delimiter**: Claude omits `---METADATA---` or writes it differently. Backend must:
+1. **Missing delimiter**: The model omits `---METADATA---` or writes it differently. Backend must:
    - Search for `---METADATA---` (exact match)
    - If not found, search for common variants: `--- METADATA ---`, `---metadata---`, `## METADATA`
    - If still not found, treat the entire output as the article. Use defaults: `{"chosen_structure": "news_report", "category": "community", "confidence": 0.5, "missing_context": []}`
 
-2. **JSON in code fences**: Claude wraps the metadata JSON in ` ```json ... ``` `. Backend must strip code fences before parsing.
+2. **JSON in code fences**: The model wraps the metadata JSON in ` ```json ... ``` `. Backend must strip code fences before parsing.
 
-3. **Trailing text after JSON**: Claude sometimes adds commentary after the JSON. Backend must extract the first valid JSON object after the delimiter.
+3. **Trailing text after JSON**: The model sometimes adds commentary after the JSON. Backend must extract the first valid JSON object after the delimiter.
 
 ### Review output parsing
 
 The review prompt says "Output ONLY valid JSON." Two failure modes:
 
-1. **Code fences**: Claude wraps in ` ```json ... ``` `. Backend strips fences (`strings.TrimPrefix` / `strings.TrimSuffix` for ` ```json\n ` and ` \n``` `).
+1. **Code fences**: The model wraps in ` ```json ... ``` `. Backend strips fences (`strings.TrimPrefix` / `strings.TrimSuffix` for ` ```json\n ` and ` \n``` `).
 
 2. **Parse failure**: If JSON parsing fails after stripping fences, retry the review call once with an appended user message: `"Your previous response was not valid JSON. Output ONLY the JSON object, no other text."` If the retry also fails, return a fallback review:
    ```json

@@ -5,8 +5,8 @@ package models
 const (
 	StatusDraft        int16 = 0 // just created, raw files saved
 	StatusTranscribing int16 = 1 // audio being transcribed
-	StatusGenerating   int16 = 2 // Claude generating article
-	StatusReviewing    int16 = 3 // Claude reviewing article
+	StatusGenerating   int16 = 2 // Gemini generating article
+	StatusReviewing    int16 = 3 // Gemini reviewing article
 	StatusReady        int16 = 4 // pipeline complete, awaiting publish decision
 	StatusPublished    int16 = 5 // publicly visible
 	StatusArchived     int16 = 6 // hidden by owner or editor
@@ -19,8 +19,8 @@ const (
 const (
 	ErrNone          int16 = 0
 	ErrTranscription int16 = 1 // ElevenLabs call failed
-	ErrGeneration    int16 = 2 // Claude generation failed
-	ErrReview        int16 = 3 // Claude review failed
+	ErrGeneration    int16 = 2 // Gemini generation failed
+	ErrReview        int16 = 3 // Gemini review failed
 	ErrModeration    int16 = 4 // flagged by moderation
 )
 

@@ -194,7 +194,7 @@ New interface:
 type GenerationInput struct {
     Transcript       string   // from ElevenLabs STT (may be empty for notes-only)
     Notes            string   // contributor's text notes (may be empty)
-    PhotoDescriptions []string // from Claude Vision, one per photo (may be empty)
+    PhotoDescriptions []string // from Gemini Vision, one per photo (may be empty)
     TownContext      string   // static town context blob
     PreviousArticle  string   // previous markdown for refinement (empty on first run)
     Direction        string   // contributor's refinement direction (empty on first run)
@@ -213,7 +213,7 @@ type GenerationService interface {
 The stub keeps sleeping 3s and returning a dummy markdown article + metadata. The real implementation:
 1. Builds the system prompt (from PROMPTS_SPEC.md generation system prompt, verbatim)
 2. Builds the user prompt from `GenerationInput` fields
-3. Calls Claude with extended thinking enabled
+3. Calls Gemini API
 4. Parses the response: splits on `---METADATA---`, extracts article markdown and metadata JSON
 5. Applies fallback parsing per PROMPTS_SPEC.md parsing concerns
 
@@ -248,7 +248,7 @@ type ReviewService interface {
 The stub keeps sleeping 2s. Returns a dummy `ReviewResult` with GREEN gate, sample scores, and coaching. The real implementation:
 1. Builds the system prompt (from PROMPTS_SPEC.md review system prompt, verbatim)
 2. Builds the user prompt from `ReviewInput` fields
-3. Calls Claude (no extended thinking needed — the prompt structures the reasoning)
+3. Calls Gemini API
 4. Parses the JSON response, stripping code fences if present
 5. On parse failure, retries once per PROMPTS_SPEC.md parsing concerns
 6. On second failure, returns the fallback review from PROMPTS_SPEC.md
@@ -273,7 +273,7 @@ func (s *StubPhotoDescriptionService) Describe(ctx context.Context, photoPath st
 }
 ```
 
-The real implementation sends the image to Claude Vision with the photo vision prompt from PROMPTS_SPEC.md.
+The real implementation sends the image to Gemini Vision with the photo vision prompt from PROMPTS_SPEC.md.
 
 ---
 
@@ -736,10 +736,10 @@ func (a *AccessService) CanAppealSubmission(actor Actor, sub *models.Submission)
 
 ## 7. Dependency
 
-Add the Anthropic Go SDK for real Claude API calls:
+Add the Google Gemini Go SDK for real API calls:
 
 ```bash
-go get github.com/anthropics/anthropic-sdk-go
+go get google.golang.org/genai
 ```
 
 This is needed for the real `GenerationService`, `ReviewService`, and `PhotoDescriptionService` implementations (not the stubs).
@@ -784,9 +784,9 @@ Work in this order to keep the codebase compiling at each step:
 
 5. **Access control** — Add `CanRefineSubmission` and `CanAppealSubmission` to `access.go`.
 
-6. **Real API services** (when ready) — Implement `ClaudeGenerationService`, `ClaudeReviewService`, `ClaudePhotoDescriptionService` using the Anthropic Go SDK and the prompts from PROMPTS_SPEC.md. Each wraps one Claude API call. Include the parsing logic from PROMPTS_SPEC.md (delimiter search, fence stripping, retry on parse failure).
+6. **Real API services** (when ready) — Implement `GeminiGenerationService`, `GeminiReviewService`, `GeminiPhotoDescriptionService` using the Google Gemini Go SDK and the prompts from PROMPTS_SPEC.md. Each wraps one Gemini API call. Include the parsing logic from PROMPTS_SPEC.md (delimiter search, fence stripping, retry on parse failure).
 
-7. **Test** — Write test cases matching PROMPTS_SPEC.md test cases 1-7. Run against real Claude API. Verify gate classifications, coaching vocabulary constraints, and output schema compliance.
+7. **Test** — Write test cases matching PROMPTS_SPEC.md test cases 1-7. Run against real Gemini API. Verify gate classifications, coaching vocabulary constraints, and output schema compliance.
 
 ---
 
