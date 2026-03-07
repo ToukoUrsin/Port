@@ -392,14 +392,7 @@ function ProcessingStep({
                 {elapsed != null && <span className="pl-step-time">{elapsed}s</span>}
               </div>
 
-              {/* Active step: show pulsing indicator */}
-              {active && (
-                <div className="pl-step-body">
-                  <div className="pl-thinking">
-                    <span /><span /><span />
-                  </div>
-                </div>
-              )}
+
 
               {/* GATHER: transcript + notes + photos inline */}
               {key === "transcribing" && done && transcript && (
