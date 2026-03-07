@@ -1,30 +1,21 @@
-import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import HomePage from "./pages/HomePage";
 import DesignSystem from "./pages/DesignSystem";
+import ExplorePage from "./pages/ExplorePage";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+import PostPage from "./pages/PostPage";
 
 function App() {
   return (
     <BrowserRouter>
-      <nav
-        style={{
-          display: "flex",
-          gap: "var(--space-4)",
-          padding: "var(--space-3) var(--space-6)",
-          borderBottom: "1px solid var(--color-border)",
-          background: "var(--color-surface)",
-          fontSize: "var(--text-sm)",
-          fontWeight: 500,
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
-        }}
-      >
-        <NavLink to="/design-system" style={{ color: "var(--color-text-link)" }}>
-          Design System
-        </NavLink>
-      </nav>
       <Routes>
-        <Route path="/" element={<DesignSystem />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/explore" element={<ExplorePage />} />
         <Route path="/design-system" element={<DesignSystem />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/post" element={<PostPage />} />
       </Routes>
     </BrowserRouter>
   );

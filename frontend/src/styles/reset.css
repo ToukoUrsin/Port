@@ -1,44 +1,46 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-html {
-  -webkit-text-size-adjust: 100%;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-body {
-  font-family: var(--font-sans);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
-  color: var(--color-text);
-  background: var(--color-bg);
-}
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    color: var(--color-text);
+    background: var(--color-bg);
+  }
 
-img, svg {
-  display: block;
-  max-width: 100%;
-}
+  img, svg {
+    display: block;
+    max-width: 100%;
+  }
 
-button, input, textarea, select {
-  font: inherit;
-  color: inherit;
-}
+  button, input, textarea, select {
+    font: inherit;
+    color: inherit;
+  }
 
-button {
-  cursor: pointer;
-  border: none;
-  background: none;
-}
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
 
-a {
-  color: var(--color-text-link);
-  text-decoration: none;
-}
+  a {
+    color: var(--color-text-link);
+    text-decoration: none;
+  }
 
-ul, ol {
-  list-style: none;
+  ul, ol {
+    list-style: none;
+  }
 }
