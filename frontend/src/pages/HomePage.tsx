@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, X } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import { useAuth } from "@/contexts/AuthContext.tsx";
+import { useApi } from "@/hooks/useApi.ts";
+import { getArticles } from "@/lib/api.ts";
+import type { ArticleListResponse } from "@/lib/types.ts";
 import { ARTICLES, BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
 import "./HomePage.css";
 
@@ -516,6 +519,30 @@ function NewsSection({
   );
 }
 
+function apiToArticle(s: import("@/lib/types.ts").ApiSubmission): Article {
+  const blocks = s.meta.blocks ?? [];
+  const body = blocks.map((b) => b.content).filter(Boolean).join("\n\n");
+  const diff = Date.now() - new Date(s.created_at).getTime();
+  const mins = Math.floor(diff / 60000);
+  let timeAgo = `${mins}m ago`;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    timeAgo = hours < 24 ? `${hours} hours ago` : `${Math.floor(hours / 24)}d ago`;
+  }
+  return {
+    id: Math.abs(s.id.split("").reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)),
+    title: s.title,
+    excerpt: s.description || s.meta.summary || "",
+    body,
+    category: s.meta.category || "community",
+    author: "Local Contributor",
+    timeAgo,
+    image: s.meta.featured_img || "",
+    area: s.meta.place_name,
+    qualityScore: s.meta.review?.score,
+  };
+}
+
 export default function HomePage() {
   const [searchParams] = useSearchParams();
   const cities = searchParams.getAll("city");
@@ -524,6 +551,11 @@ export default function HomePage() {
   const [radius, setRadius] = useState(25);
   const [modalOpen, setModalOpen] = useState(false);
   const { isAuthenticated } = useAuth();
+
+  const fetchArticles = useCallback(() => getArticles({ limit: 20 }), []);
+  const { data: apiData } = useApi<ArticleListResponse>(fetchArticles, []);
+  const liveArticles = (apiData?.articles ?? []).map(apiToArticle);
+  const recentWithLive = [...liveArticles, ...RECENT_ARTICLES];
 
   return (
     <>
@@ -577,7 +609,7 @@ export default function HomePage() {
       />
 
       <main className="home-container">
-        <RecentSection articles={RECENT_ARTICLES} />
+        <RecentSection articles={recentWithLive} />
         <AdBanner />
         <BestOfWeekSection articles={BEST_OF_WEEK} />
         <OpinionSection articles={OPINION_ARTICLES} />
