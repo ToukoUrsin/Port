@@ -319,6 +319,33 @@ func (s *AuthService) FindOrCreateOAuthProfile(provider int16, providerUID, emai
 	return &profile, true, nil
 }
 
+func (s *AuthService) ChangePassword(profileID uuid.UUID, currentPassword, newPassword string) error {
+	var profile models.Profile
+	if err := s.db.First(&profile, "id = ?", profileID).Error; err != nil {
+		return fmt.Errorf("profile not found")
+	}
+
+	if len(profile.PasswordHash) == 0 {
+		return fmt.Errorf("no password set")
+	}
+
+	if err := s.CheckPassword(profile.PasswordHash, currentPassword); err != nil {
+		return fmt.Errorf("invalid current password")
+	}
+
+	hash, err := s.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	if err := s.db.Model(&profile).Update("password_hash", hash).Error; err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	s.RevokeAllForProfile(profileID)
+	return nil
+}
+
 func (s *AuthService) CacheProfile(profile *models.Profile) {
 	s.cache.SetProfile(context.Background(), profile.ID.String(), &cache.CachedProfile{
 		Role:        int(profile.Role),

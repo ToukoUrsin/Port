@@ -12,6 +12,11 @@ import (
 	"github.com/localnews/backend/internal/services"
 )
 
+type myProfileResponse struct {
+	models.Profile
+	HasPassword bool `json:"has_password"`
+}
+
 func (h *Handler) GetMyProfile(c *gin.Context) {
 	profileID, _ := c.Get("profile_id")
 	id, _ := uuid.Parse(profileID.(string))
@@ -22,7 +27,10 @@ func (h *Handler) GetMyProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, profile)
+	c.JSON(http.StatusOK, myProfileResponse{
+		Profile:     profile,
+		HasPassword: len(profile.PasswordHash) > 0,
+	})
 }
 
 func (h *Handler) GetProfile(c *gin.Context) {

@@ -1,0 +1,179 @@
+/* ========================================
+   ACCOUNT SETTINGS
+   ======================================== */
+
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-top: var(--space-6);
+}
+
+.settings-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-section__title {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-secondary);
+  margin-bottom: var(--space-5);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-field__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+}
+
+.settings-field__row {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.settings-field__row > .settings-field {
+  flex: 1;
+}
+
+.settings-field__hint {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  margin-top: var(--space-1);
+}
+
+/* Name input with status icon */
+.settings-name-wrapper {
+  position: relative;
+}
+
+.settings-name-wrapper .input {
+  padding-right: var(--space-10);
+}
+
+.settings-name-icon {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+/* Toggle switch */
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+}
+
+.settings-toggle__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-toggle__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+}
+
+.settings-toggle__desc {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--color-gray-300);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.toggle-switch--active {
+  background: var(--color-primary);
+}
+
+.toggle-switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle-switch--active .toggle-switch__knob {
+  transform: translateX(20px);
+}
+
+/* Danger zone */
+.settings-section--danger {
+  background: var(--color-error-light);
+  border-left: 3px solid var(--color-error);
+}
+
+.settings-section--danger .settings-section__title {
+  color: var(--color-error);
+}
+
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+  .settings-actions {
+    flex-direction: row;
+  }
+}
+
+/* Form footer with save button */
+.settings-form__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-2);
+}
+
+.settings-error {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
+
+.settings-success {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-success);
+}

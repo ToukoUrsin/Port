@@ -186,6 +186,7 @@ func main() {
 	authed := r.Group("/api", middleware.Auth(jwtSecret))
 	{
 		authed.POST("/auth/logout", h.Logout)
+		authed.PUT("/auth/password", h.ChangePassword)
 
 		// Submissions
 		authed.POST("/submissions", h.CreateSubmission)
