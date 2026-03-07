@@ -50,7 +50,13 @@ def blocks_to_markdown(blocks, title=""):
                 parts.append(f'> "{content}" — {author}')
             else:
                 parts.append(f"> {content}")
-        # skip image blocks — the referenced files don't exist
+        elif btype == "image":
+            alt = block.get("alt", "")
+            caption = block.get("caption", "")
+            src = block.get("src", "")
+            if src:
+                label = caption or alt or "Photo"
+                parts.append(f"![{label}]({src})")
     return "\n\n".join(parts)
 
 
@@ -123,14 +129,19 @@ def seed_articles(submissions, id_map, batch_size=50):
         loc_id = sub["location_id"]
         actual_loc_id = id_map.get(loc_id, loc_id)
 
-        articles.append({
+        article = {
             "title": title,
             "content": content,
             "location_id": actual_loc_id,
             "owner_id": SEED_OWNER_ID,
             "category": meta.get("category", "community"),
             "tags": sub.get("tags", 0),
-        })
+        }
+        if meta.get("summary"):
+            article["summary"] = meta["summary"]
+        if meta.get("featured_img"):
+            article["featured_img"] = meta["featured_img"]
+        articles.append(article)
 
     if skipped:
         print(f"  Skipped {skipped} empty articles")

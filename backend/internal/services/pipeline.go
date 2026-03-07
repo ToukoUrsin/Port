@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -222,8 +223,9 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		article = strings.ReplaceAll(article, placeholder, fmt.Sprintf("(%s)", photoFileURLs[i]))
 	}
 
-	// Extract headline from markdown
+	// Extract headline and featured image from markdown
 	headline := ExtractHeadline(article)
+	featuredImg := ExtractFirstImage(article)
 
 	// Persist transcript on first run
 	meta := sub.Meta.V
@@ -243,6 +245,9 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	meta.Summary = ExtractFirstParagraph(article)
 	meta.GeneratedAt = &now
 	meta.Model = p.generation.ModelName()
+	if featuredImg != "" {
+		meta.FeaturedImg = featuredImg
+	}
 
 	p.db.Model(&sub).Updates(map[string]any{
 		"title":  headline,
@@ -359,6 +364,16 @@ func ExtractHeadline(markdown string) string {
 		if strings.HasPrefix(line, "# ") {
 			return strings.TrimPrefix(line, "# ")
 		}
+	}
+	return ""
+}
+
+var mdImageRe = regexp.MustCompile(`!\[.*?\]\(([^)]+)\)`)
+
+func ExtractFirstImage(markdown string) string {
+	m := mdImageRe.FindStringSubmatch(markdown)
+	if len(m) >= 2 {
+		return m[1]
 	}
 	return ""
 }
