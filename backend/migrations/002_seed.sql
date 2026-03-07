@@ -9,7 +9,7 @@ VALUES
   ('a0000000-0000-0000-0000-000000000004', 'Kirkkonummi', 'kirkkonummi', 3, 'a0000000-0000-0000-0000-000000000003', 'europe/finland/uusimaa/kirkkonummi', 'Municipality of Kirkkonummi / Kyrkslätt', true, 60.1233, 24.4397),
   ('a0000000-0000-0000-0000-000000000005', 'Masala', 'masala', 4, 'a0000000-0000-0000-0000-000000000004', 'europe/finland/uusimaa/kirkkonummi/masala', 'Masala district, Kirkkonummi', true, 60.1508, 24.5141),
   ('a0000000-0000-0000-0000-000000000006', 'Veikkola', 'veikkola', 4, 'a0000000-0000-0000-0000-000000000004', 'europe/finland/uusimaa/kirkkonummi/veikkola', 'Veikkola village, Kirkkonummi', true, 60.2500, 24.4500)
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 -- Test accounts (password: "editor123")
 -- bcrypt hash for "editor123" with default cost
