@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ func (h *Handler) ListArticles(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	locationID := c.Query("location_id")
+	locationIDs := c.Query("location_ids")
 
 	if limit > 100 {
 		limit = 100
@@ -21,7 +23,10 @@ func (h *Handler) ListArticles(c *gin.Context) {
 
 	query := h.db.Model(&models.Submission{}).Where("status = ?", models.StatusPublished)
 
-	if locationID != "" {
+	if locationIDs != "" {
+		ids := strings.Split(locationIDs, ",")
+		query = query.Where("location_id IN ?", ids)
+	} else if locationID != "" {
 		query = query.Where("location_id = ?", locationID)
 	}
 

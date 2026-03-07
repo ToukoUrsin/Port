@@ -103,6 +103,7 @@ export interface SubmissionMeta {
   published_by?: string;
   flagged?: boolean;
   flag_reason?: string;
+  anonymous?: boolean;
 }
 
 export interface ApiSubmission {
@@ -262,6 +263,25 @@ export const TagBits: Record<string, number> = {
   environment: 1 << 9,
 };
 
+// --- Quality score ---
+
+const DIMENSION_WEIGHTS: Record<keyof QualityScores, number> = {
+  evidence: 0.25,
+  perspectives: 0.20,
+  representation: 0.18,
+  ethical_framing: 0.15,
+  cultural_context: 0.12,
+  manipulation: 0.10,
+};
+
+export function computeOverallScore(scores: QualityScores): number {
+  let sum = 0;
+  for (const [dim, weight] of Object.entries(DIMENSION_WEIGHTS)) {
+    sum += (scores[dim as keyof QualityScores] ?? 0) * weight;
+  }
+  return Math.round(sum * 100);
+}
+
 // --- Display helpers ---
 
 import type { Article } from "@/data/articles";
@@ -300,7 +320,7 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     excerpt: (s.meta.article_markdown || s.description || s.meta.summary || "").slice(0, 200),
     body,
     category: s.meta.category || tagsToCategory(s.tags),
-    author: s.owner_name || s.owner_id?.slice(0, 8) || "Anonymous",
+    author: s.meta.anonymous ? "Anonymous contributor" : (s.owner_name || s.owner_id?.slice(0, 8) || "Anonymous"),
     authorId: s.owner_id,
     timeAgo: timeAgo(s.created_at, t),
     image: s.meta.featured_img || "",

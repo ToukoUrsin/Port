@@ -35,6 +35,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -74,6 +75,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
         formData.append("photos[]", f.file);
       }
       if (text.trim()) formData.append("notes", text);
+      if (anonymous) formData.append("anonymous", "true");
       formData.append("location_id", user?.location_id || "a0000000-0000-0000-0000-000000000004");
 
       const res = await createSubmission(formData);
@@ -165,6 +167,15 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             style={{ display: "none" }}
             onChange={onFiles}
           />
+          <label className="compose-anon">
+            <input
+              type="checkbox"
+              checked={anonymous}
+              onChange={(e) => setAnonymous(e.target.checked)}
+              disabled={isSubmitting}
+            />
+            <span>Anonymous</span>
+          </label>
           <button
             type="submit"
             className="compose-submit"
@@ -381,13 +392,17 @@ export default function PostPage() {
   );
 
   const handlePublish = useCallback(async () => {
-    const result = await publishArticle(submissionId);
-    if ("error" in result && result.error === "gate_red") {
-      toast(pt("post.gateRedError"), "error");
-      return;
+    try {
+      const result = await publishArticle(submissionId);
+      if ("error" in result && result.error === "gate_red") {
+        toast(pt("post.gateRedError"), "error");
+        return;
+      }
+      toast(pt("post.published"), "success");
+      navigate("/");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Publish failed.", "error");
     }
-    toast(pt("post.published"), "success");
-    navigate("/");
   }, [submissionId, toast, navigate]);
 
   const handleAppeal = useCallback(async () => {

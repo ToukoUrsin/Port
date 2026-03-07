@@ -10,6 +10,7 @@ import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse, ApiLocation } from "@/lib/types.ts";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BADGE_CLASS, type Article } from "@/data/articles";
+import { getSavedLocationIds } from "@/pages/ExplorePage";
 import "./HomePage.css";
 
 
@@ -289,13 +290,22 @@ export default function HomePage() {
   );
 
   const selectedLocation = locations.find((l) => l.slug === locationSlug);
+  const savedLocationIds = useMemo(() => getSavedLocationIds(), []);
 
   // Fetch articles, filtered by location when one is selected
   const fetchArticles = useCallback(
-    () => getArticles({ limit: 100, location_id: selectedLocation?.id }),
-    [selectedLocation?.id],
+    () => {
+      if (selectedLocation) {
+        return getArticles({ limit: 100, location_id: selectedLocation.id });
+      }
+      if (savedLocationIds.length > 0) {
+        return getArticles({ limit: 100, location_ids: savedLocationIds });
+      }
+      return getArticles({ limit: 100 });
+    },
+    [selectedLocation?.id, savedLocationIds],
   );
-  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id]);
+  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id, savedLocationIds]);
   const allArticles = useMemo(
     () => (apiData?.articles ?? []).map((a) => apiToArticle(a, t)),
     [apiData, t],
@@ -321,7 +331,12 @@ export default function HomePage() {
         left={
           <Link to="/explore" className="home-nav__city-btn">
             <MapPin size={16} />
-            <span>{selectedLocation?.name ?? t("navbar.selectCities")}</span>
+            <span>
+              {selectedLocation?.name
+                ?? (savedLocationIds.length > 0
+                  ? locations.filter((l) => savedLocationIds.includes(l.id)).map((l) => l.name).join(", ") || t("navbar.selectCities")
+                  : t("navbar.selectCities"))}
+            </span>
           </Link>
         }
       />

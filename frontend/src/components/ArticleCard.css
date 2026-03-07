@@ -152,6 +152,7 @@
 .article-card__author-link {
   color: var(--color-text-tertiary);
   text-decoration: none;
+  cursor: pointer;
   transition: color var(--transition-fast);
 }
 

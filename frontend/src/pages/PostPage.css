@@ -201,6 +201,20 @@
   transform: scale(0.95);
 }
 
+.compose-anon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  user-select: none;
+}
+.compose-anon input {
+  accent-color: var(--color-primary);
+}
+
 /* ===============================================
    Building animation (skeleton article)
    =============================================== */

@@ -109,6 +109,7 @@ type SubmissionMeta struct {
 	ScheduledAt *time.Time    `json:"scheduled_at,omitempty"`
 	Flagged     bool          `json:"flagged,omitempty"`
 	FlagReason  string        `json:"flag_reason,omitempty"`
+	Anonymous   bool          `json:"anonymous,omitempty"`
 	EditHistory []EditEntry   `json:"edit_history,omitempty"`
 	Blocks      []Block       `json:"blocks,omitempty"` // deprecated — kept for existing DB rows
 }

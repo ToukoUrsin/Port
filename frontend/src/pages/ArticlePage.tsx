@@ -1,14 +1,15 @@
 import { useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
-import { getArticle, getSimilarArticles, getReplies, createReply } from "@/lib/api";
-import { apiToArticle, timeAgo } from "@/lib/types";
+import { getArticle, getSimilarArticles, getReplies, createReply, flagArticle } from "@/lib/api";
+import { apiToArticle, timeAgo, computeOverallScore } from "@/lib/types";
 import type { ApiSubmission, ApiReply } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { QualityPanel } from "@/components/QualityPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
@@ -131,6 +132,12 @@ export default function ArticlePage() {
   const { data: similarData } = useApi(fetchSimilar, [id]);
 
   const [modalArticle, setModalArticle] = useState<{ article: Article; submission: ApiSubmission } | null>(null);
+  const [showQuality, setShowQuality] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   const article = apiData ? apiToArticle(apiData, t) : null;
   const similarSubmissions = similarData?.articles ?? [];
@@ -208,12 +215,22 @@ export default function ArticlePage() {
             <Clock size={12} />
             {article.timeAgo}
           </span>
-          {gate && (
-            <span className={`gate-badge-inline gate-badge-inline--${gate.toLowerCase()}`}>
-              {gate === "GREEN" ? t("article.gateGreen") : gate === "YELLOW" ? t("article.gateYellow") : t("article.gateRed")}
-            </span>
+          {gate && apiData?.meta?.review && (
+            <button className="gate-badge-btn" onClick={() => setShowQuality((v) => !v)}>
+              <span className={`gate-badge-inline gate-badge-inline--${gate.toLowerCase()}`}>
+                {gate === "GREEN" ? t("article.gateGreen") : gate === "YELLOW" ? t("article.gateYellow") : t("article.gateRed")}
+              </span>
+              <span className="gate-badge-btn__score">
+                {computeOverallScore(apiData.meta.review.scores)}
+              </span>
+              <ChevronDown size={12} style={{ transform: showQuality ? "rotate(180deg)" : undefined, transition: "transform 0.2s" }} />
+            </button>
           )}
         </div>
+
+        {showQuality && apiData?.meta?.review && (
+          <QualityPanel review={apiData.meta.review} />
+        )}
 
         <h1 className="article-title">{article.title}</h1>
         <p className="article-author">
@@ -242,6 +259,54 @@ export default function ArticlePage() {
             </span>
           )}
         </div>
+
+        {isAuthenticated && !reportDone && (
+          <div className="report-section">
+            {!showReport ? (
+              <button className="report-trigger" onClick={() => setShowReport(true)}>
+                <Flag size={14} /> Report this article
+              </button>
+            ) : (
+              <div className="report-form">
+                <textarea
+                  className="input"
+                  placeholder="Why are you reporting this article?"
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  rows={3}
+                />
+                <div className="report-form__actions">
+                  <button
+                    className="btn btn-primary"
+                    disabled={!reportReason.trim() || reportSubmitting}
+                    onClick={async () => {
+                      setReportSubmitting(true);
+                      try {
+                        await flagArticle(id!, reportReason.trim());
+                        setReportDone(true);
+                        setShowReport(false);
+                      } catch {
+                        // Could show error toast
+                      } finally {
+                        setReportSubmitting(false);
+                      }
+                    }}
+                  >
+                    {reportSubmitting ? <Loader2 size={14} className="animate-spin" /> : "Submit report"}
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setShowReport(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {reportDone && (
+          <p style={{ color: "var(--color-text-tertiary)", fontSize: "var(--text-sm)", fontFamily: "var(--font-sans)", marginTop: "var(--space-4)" }}>
+            Thank you for your report. Our team will review it.
+          </p>
+        )}
 
         <Comments articleId={id!} />
 

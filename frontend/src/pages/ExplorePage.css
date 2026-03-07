@@ -1,76 +1,148 @@
 /* ========================================
-   EXPLORE PAGE — Full-screen Finland map
+   EXPLORE PAGE — City picker map
    ======================================== */
 
-.explore-fullmap {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
+.explore {
+  position: relative;
+  height: calc(100vh - 56px);
+  overflow: hidden;
 }
 
-.explore-fullmap .leaflet-container {
+.explore .leaflet-container {
   width: 100%;
   height: 100%;
 }
 
-.explore-fullmap .leaflet-control-attribution {
+.explore .leaflet-control-attribution {
   display: none;
 }
 
-.explore-fullmap .leaflet-tile-pane {
+.explore .leaflet-tile-pane {
   opacity: 0.8;
   filter: saturate(0) brightness(1.05);
 }
 
-/* City markers */
-.explore-city-marker {
+/* Map markers */
+.explore-marker {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: var(--space-2);
   width: max-content;
   background: var(--color-surface);
-  border: 1px solid var(--color-gray-200);
+  border: 1.5px solid var(--color-gray-200);
   border-radius: var(--radius-full);
   padding: var(--space-1) var(--space-3);
   box-shadow: var(--shadow-md);
   cursor: pointer;
   white-space: nowrap;
   font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  color: var(--color-primary);
   transition: all var(--transition-fast);
   transform: translateX(-50%);
 }
 
-.explore-city-marker:hover {
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-  border-color: var(--color-primary);
-  transform: translateX(-50%) scale(1.08);
+.explore-marker__name {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-primary);
 }
 
-.explore-city-marker--selected {
-  background: var(--color-primary);
+.explore-marker__count {
+  font-size: 10px;
+  font-weight: var(--font-bold);
   color: var(--color-text-inverse);
+  background: var(--color-primary);
+  border-radius: var(--radius-full);
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+
+.explore-marker__check {
+  font-size: 11px;
+  color: var(--color-text-inverse);
+  line-height: 1;
+}
+
+.explore-marker:hover {
+  border-color: var(--color-primary);
+  transform: translateX(-50%) scale(1.06);
+  box-shadow: var(--shadow-lg);
+}
+
+.explore-marker--active {
+  background: var(--color-primary);
   border-color: var(--color-primary);
 }
 
-/* Confirm button */
-.explore-confirm {
-  position: fixed;
-  bottom: var(--space-8);
+.explore-marker--active .explore-marker__name {
+  color: var(--color-text-inverse);
+}
+
+.explore-marker--active .explore-marker__count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Coverage tier modifiers */
+.explore-marker--low-coverage {
+  border-color: var(--color-warning, #8A7A2B);
+}
+.explore-marker--low-coverage .explore-marker__name {
+  color: var(--color-warning, #8A7A2B);
+}
+
+.explore-marker--no-coverage {
+  border-style: dashed;
+  border-color: var(--color-text-tertiary);
+  opacity: 0.7;
+}
+.explore-marker--no-coverage .explore-marker__name {
+  color: var(--color-text-tertiary);
+}
+
+/* Bottom bar with tags + apply */
+.explore-bottom {
+  position: absolute;
+  bottom: var(--space-6);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
   display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: var(--space-3);
+}
+
+.explore-bottom__tags {
+  display: flex;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-6);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.explore-bottom__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.explore-bottom__apply {
   background: var(--color-primary);
   color: var(--color-text-inverse);
   border: none;
   border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-8);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
@@ -79,7 +151,26 @@
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.explore-confirm:hover {
-  transform: translateX(-50%) scale(1.03);
+.explore-bottom__apply:hover:not(:disabled) {
+  transform: scale(1.03);
   box-shadow: var(--shadow-xl);
+}
+
+.explore-bottom__apply:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .explore {
+    height: calc(100vh - 56px - 56px);
+  }
+
+  .explore-bottom {
+    bottom: var(--space-4);
+    left: var(--space-3);
+    right: var(--space-3);
+    transform: none;
+  }
 }

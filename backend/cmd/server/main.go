@@ -232,6 +232,9 @@ func main() {
 		// Follows
 		authed.POST("/follows", h.CreateFollow)
 		authed.DELETE("/follows/:id", h.DeleteFollow)
+
+		// Flagging
+		authed.POST("/articles/:id/flag", h.FlagSubmission)
 	}
 
 	// --- Editor+ routes (articles editing) ---

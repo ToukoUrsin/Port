@@ -35,6 +35,8 @@ export default function ArticleCard({ article, featured }: { article: Article; f
         <div className="article-card__footer">
           <span
             className="article-card__author-link"
+            role="link"
+            tabIndex={0}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

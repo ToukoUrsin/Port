@@ -38,6 +38,7 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 
 	notes := c.PostForm("notes")
 	title := c.PostForm("title")
+	anonymous := c.PostForm("anonymous") == "true"
 
 	sub := models.Submission{
 		OwnerID:     actor.ProfileID,
@@ -45,6 +46,7 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 		Title:       title,
 		Description: notes,
 		Status:      models.StatusDraft,
+		Meta:        models.JSONB[models.SubmissionMeta]{V: models.SubmissionMeta{Anonymous: anonymous}},
 	}
 
 	if err := h.db.Create(&sub).Error; err != nil {
@@ -465,4 +467,42 @@ func (h *Handler) AppealSubmission(c *gin.Context) {
 
 	h.db.Model(&sub).Update("status", models.StatusAppealed)
 	c.JSON(http.StatusOK, gin.H{"status": "under_review"})
+}
+
+func (h *Handler) FlagSubmission(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	if sub.Status != models.StatusPublished {
+		c.JSON(http.StatusConflict, gin.H{"error": "can only flag published articles"})
+		return
+	}
+
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Reason == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "reason is required"})
+		return
+	}
+
+	meta := sub.Meta.V
+	meta.Flagged = true
+	meta.FlagReason = body.Reason
+	h.db.Model(&sub).Update("meta", models.JSONB[models.SubmissionMeta]{V: meta})
+
+	// Invalidate article cache
+	cacheKey := fmt.Sprintf("article:%s", id)
+	h.cache.Delete(c.Request.Context(), cacheKey)
+
+	c.JSON(http.StatusOK, gin.H{"status": "flagged"})
 }
