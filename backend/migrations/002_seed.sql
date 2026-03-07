@@ -50,6 +50,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Strong factual reporting with multiple perspectives from the council session.", "suggestions": ["Consider reaching out to parent associations for reaction quotes."]}
     },
+    "featured_img": "https://picsum.photos/seed/council-debate/800/500",
     "place_name": "Kirkkonummi",
     "published_at": "2026-03-03T20:15:00+02:00"
   }'
@@ -80,6 +81,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Lovely feature that captures both the personal story and the practical details readers need.", "suggestions": ["A quote from a neighboring business owner could add community context."]}
     },
+    "featured_img": "https://picsum.photos/seed/bakery-bread/800/500",
     "place_name": "Masala",
     "published_at": "2026-03-05T15:30:00+02:00"
   }'
@@ -110,6 +112,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Well-reported community story with good details on scope and impact.", "suggestions": ["Including the municipality''s response or timeline for their own trail work would add useful context."]}
     },
+    "featured_img": "https://picsum.photos/seed/forest-trail/800/500",
     "place_name": "Kirkkonummi",
     "published_at": "2026-03-01T17:00:00+02:00"
   }'
@@ -140,6 +143,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Clear and informative event announcement with all the practical details readers need.", "suggestions": []}
     },
+    "featured_img": "https://picsum.photos/seed/spring-market/800/500",
     "place_name": "Kirkkonummi",
     "published_at": "2026-03-06T10:30:00+02:00"
   }'
@@ -170,6 +174,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Good match report with key details: scorers, attendance, and coach reaction.", "suggestions": ["A quote from one of the goalscorers would add player perspective."]}
     },
+    "featured_img": "https://picsum.photos/seed/football-match/800/500",
     "place_name": "Kirkkonummi",
     "published_at": "2026-03-02T19:00:00+02:00"
   }'
@@ -200,6 +205,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Excellent use of both local and national data to give context to the enrollment trend.", "suggestions": ["A parent perspective on why they chose Swedish-language education would strengthen the piece."]}
     },
+    "featured_img": "https://picsum.photos/seed/school-classroom/800/500",
     "place_name": "Kirkkonummi",
     "published_at": "2026-03-04T13:00:00+02:00"
   }'
@@ -230,6 +236,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Practical, well-sourced traffic news with all the details commuters need.", "suggestions": []}
     },
+    "featured_img": "https://picsum.photos/seed/highway-road/800/500",
     "place_name": "Veikkola",
     "published_at": "2026-03-06T16:30:00+02:00"
   }'
@@ -260,6 +267,7 @@ VALUES (
       "yellow_flags": [],
       "coaching": {"celebration": "Clear service journalism — readers know exactly what, when, where, and how to participate.", "suggestions": []}
     },
+    "featured_img": "https://picsum.photos/seed/library-books/800/500",
     "place_name": "Kirkkonummi",
     "published_at": "2026-03-05T11:30:00+02:00"
   }'
