@@ -32,14 +32,13 @@ func (s *GeminiEmbeddingService) EmbedChunks(ctx context.Context, entityID uuid.
 		return nil
 	}
 
-	// Delete existing embeddings for this entity
-	if err := s.db.Where("entity_id = ? AND entity_category = ?", entityID, category).
-		Delete(&models.Embedding{}).Error; err != nil {
-		return fmt.Errorf("delete old embeddings: %w", err)
-	}
-
-	// Batch in groups of 100
+	// Fetch all embeddings from Gemini before touching the DB
 	const batchSize = 100
+	type batchResult struct {
+		embeddings []models.Embedding
+	}
+	var allResults []batchResult
+
 	for i := 0; i < len(chunks); i += batchSize {
 		end := i + batchSize
 		if end > len(chunks) {
@@ -53,7 +52,7 @@ func (s *GeminiEmbeddingService) EmbedChunks(ctx context.Context, entityID uuid.
 		}
 
 		result, err := s.client.Models.EmbedContent(ctx, s.model, contents, &genai.EmbedContentConfig{
-			TaskType:        "RETRIEVAL_DOCUMENT",
+			TaskType:             "RETRIEVAL_DOCUMENT",
 			OutputDimensionality: int32Ptr(int32(s.dimensions)),
 		})
 		if err != nil {
@@ -75,12 +74,22 @@ func (s *GeminiEmbeddingService) EmbedChunks(ctx context.Context, entityID uuid.
 			}
 		}
 
-		if err := s.db.Create(&embeddings).Error; err != nil {
-			return fmt.Errorf("insert embeddings batch %d: %w", i/batchSize, err)
-		}
+		allResults = append(allResults, batchResult{embeddings: embeddings})
 	}
 
-	return nil
+	// Delete old + insert new in a single transaction
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("entity_id = ? AND entity_category = ?", entityID, category).
+			Delete(&models.Embedding{}).Error; err != nil {
+			return fmt.Errorf("delete old embeddings: %w", err)
+		}
+		for i, br := range allResults {
+			if err := tx.Create(&br.embeddings).Error; err != nil {
+				return fmt.Errorf("insert embeddings batch %d: %w", i, err)
+			}
+		}
+		return nil
+	})
 }
 
 func (s *GeminiEmbeddingService) EmbedQuery(ctx context.Context, query string) (pgvector.Vector, error) {

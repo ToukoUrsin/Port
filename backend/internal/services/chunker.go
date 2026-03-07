@@ -128,14 +128,13 @@ func (s *StubChunkerService) ChunkMarkdown(markdown string, cfg ChunkConfig) []C
 			trimmed = strings.TrimPrefix(trimmed, "> ")
 		}
 
-		if strings.HasPrefix(trimmed, "#") {
+		if stripped := strings.TrimLeft(trimmed, "#"); len(stripped) < len(trimmed) && strings.HasPrefix(stripped, " ") {
 			// Flush previous section
 			if cur.heading != "" || len(cur.body) > 0 {
 				sections = append(sections, cur)
 			}
 			// Start new section — strip heading markers
-			heading := strings.TrimSpace(strings.TrimLeft(trimmed, "#"))
-			cur = section{heading: heading}
+			cur = section{heading: strings.TrimSpace(stripped)}
 			continue
 		}
 
@@ -197,7 +196,7 @@ func (s *StubChunkerService) ChunkMarkdown(markdown string, cfg ChunkConfig) []C
 			continue
 		}
 
-		// Section too large — split at paragraph boundaries
+		// Section too large — split at paragraph boundaries, then word boundaries
 		var buf strings.Builder
 		buf.WriteString(prefix)
 		for _, p := range paragraphs {
@@ -215,6 +214,19 @@ func (s *StubChunkerService) ChunkMarkdown(markdown string, cfg ChunkConfig) []C
 			}
 			buf.WriteString(p)
 			buf.WriteString(" ")
+			// Word-level split if a single paragraph exceeds the limit
+			for len(strings.Fields(strings.TrimSpace(buf.String()))) > cfg.MaxTokens {
+				words := strings.Fields(strings.TrimSpace(buf.String()))
+				chunkText := strings.Join(words[:cfg.MaxTokens], " ")
+				chunks = append(chunks, Chunk{Index: idx, Text: chunkText, Type: "section"})
+				idx++
+				buf.Reset()
+				buf.WriteString(prefix)
+				if cfg.MaxTokens < len(words) {
+					buf.WriteString(strings.Join(words[cfg.MaxTokens:], " "))
+					buf.WriteString(" ")
+				}
+			}
 		}
 		if buf.Len() > len(prefix) {
 			chunkText := strings.TrimSpace(buf.String())

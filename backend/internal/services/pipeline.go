@@ -62,18 +62,29 @@ func (p *PipelineService) Transcription() TranscriptionService {
 	return p.transcription
 }
 
+// sendEvent sends a pipeline event, returning false if the context is cancelled.
+// Prevents goroutine leaks when the SSE client disconnects and the channel fills.
+func sendEvent(ctx context.Context, events chan<- PipelineEvent, ev PipelineEvent) bool {
+	select {
+	case events <- ev:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
 func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, events chan<- PipelineEvent) {
 	defer close(events)
 
 	var sub models.Submission
 	if err := p.db.First(&sub, "id = ?", submissionID).Error; err != nil {
-		events <- PipelineEvent{Event: "error", Step: "load", Message: "Submission not found"}
+		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "load", Message: "Submission not found"})
 		return
 	}
 
 	// Validate starting state
 	if sub.Status != models.StatusDraft && sub.Status != models.StatusRefining {
-		events <- PipelineEvent{Event: "error", Step: "load", Message: "Submission is not in a valid state for pipeline processing"}
+		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "load", Message: "Submission is not in a valid state for pipeline processing"})
 		return
 	}
 
@@ -84,7 +95,12 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	if sub.Status == models.StatusRefining && sub.Meta.V.Transcript != "" {
 		// Refinement: reuse persisted transcript, skip GATHER
 		transcript = sub.Meta.V.Transcript
-		// Photo descriptions were already incorporated in previous generation
+		// Load photo URLs for placeholder replacement during refinement
+		var photoFiles []models.File
+		p.db.Where("submission_id = ? AND file_type = ?", submissionID, 2).Find(&photoFiles)
+		for _, pf := range photoFiles {
+			photoFileURLs = append(photoFileURLs, pf.Name)
+		}
 	} else {
 		// First run: full GATHER stage
 		var err error
@@ -95,7 +111,9 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	}
 
 	// GENERATE
-	events <- PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}
+	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}) {
+		return
+	}
 	p.db.Model(&sub).Update("status", models.StatusGenerating)
 
 	genInput := GenerationInput{
@@ -117,12 +135,14 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	genOutput, err := p.generation.Generate(ctx, genInput)
 	if err != nil {
 		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrGeneration})
-		events <- PipelineEvent{Event: "error", Step: "generating", Message: fmt.Sprintf("Generation failed: %v", err)}
+		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "generating", Message: fmt.Sprintf("Generation failed: %v", err)})
 		return
 	}
 
 	// REVIEW
-	events <- PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}
+	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}) {
+		return
+	}
 	p.db.Model(&sub).Update("status", models.StatusReviewing)
 
 	reviewResult, err := p.review.Review(ctx, ReviewInput{
@@ -133,7 +153,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	})
 	if err != nil {
 		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrReview})
-		events <- PipelineEvent{Event: "error", Step: "reviewing", Message: fmt.Sprintf("Review failed: %v", err)}
+		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "reviewing", Message: fmt.Sprintf("Review failed: %v", err)})
 		return
 	}
 
@@ -171,7 +191,9 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	})
 
 	// Embed for semantic search (non-fatal)
-	events <- PipelineEvent{Event: "status", Step: "embedding", Message: "Indexing for search..."}
+	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "embedding", Message: "Indexing for search..."}) {
+		return
+	}
 	chunks := p.chunker.ChunkMarkdown(article, ChunkConfig{MaxTokens: 300})
 	if len(chunks) > 0 {
 		if err := p.embedding.EmbedChunks(ctx, sub.ID, models.EntitySubmission, chunks); err != nil {
@@ -179,14 +201,14 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
-	events <- PipelineEvent{
+	sendEvent(ctx, events, PipelineEvent{
 		Event: "complete",
 		Data: map[string]any{
 			"article":  article,
 			"metadata": genOutput.Metadata,
 			"review":   reviewResult,
 		},
-	}
+	})
 }
 
 func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, submissionID uuid.UUID, events chan<- PipelineEvent) (transcript string, photoDescs []string, photoFileURLs []string, err error) {
@@ -206,7 +228,9 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			events <- PipelineEvent{Event: "status", Step: "transcribing", Message: "Transcribing audio..."}
+			if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "transcribing", Message: "Transcribing audio..."}) {
+				return
+			}
 			p.db.Model(sub).Update("status", models.StatusTranscribing)
 			transcript, transcriptErr = p.transcription.Transcribe(ctx, audioFile.Name)
 		}()
@@ -217,7 +241,9 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			events <- PipelineEvent{Event: "status", Step: "describing_photos", Message: "Analyzing photos..."}
+			if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "describing_photos", Message: "Analyzing photos..."}) {
+				return
+			}
 			photoDescs = make([]string, len(photoFiles))
 			photoFileURLs = make([]string, len(photoFiles))
 			for i, pf := range photoFiles {
@@ -236,7 +262,7 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 
 	if transcriptErr != nil {
 		p.db.Model(sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrTranscription})
-		events <- PipelineEvent{Event: "error", Step: "transcribing", Message: fmt.Sprintf("Transcription failed: %v", transcriptErr)}
+		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "transcribing", Message: fmt.Sprintf("Transcription failed: %v", transcriptErr)})
 		return "", nil, nil, transcriptErr
 	}
 	if photoErr != nil {

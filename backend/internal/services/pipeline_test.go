@@ -3,7 +3,9 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
@@ -801,5 +803,79 @@ func TestPipeline_EmbeddingFailure_NonFatal(t *testing.T) {
 	db.First(&updated, "id = ?", sub.ID)
 	if updated.Status != models.StatusReady {
 		t.Errorf("status = %d, want StatusReady (%d)", updated.Status, models.StatusReady)
+	}
+}
+
+func TestPipeline_CancelledContext_NoGoroutineLeak(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "Cancel", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGeneration{result: defaultGenOutput()}
+	rev := &mockReview{result: defaultReviewResult()}
+
+	pipeline := buildPipeline(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	// Use a tiny buffer so sends would block without sendEvent's ctx check
+	events := make(chan PipelineEvent, 1)
+	done := make(chan struct{})
+	go func() {
+		pipeline.Run(ctx, sub.ID, events)
+		close(done)
+	}()
+
+	// Drain events to unblock initial sends that fit in the buffer
+	go func() {
+		for range events {
+		}
+	}()
+
+	// Pipeline goroutine must exit promptly — not block forever
+	select {
+	case <-done:
+		// success — goroutine exited
+	case <-time.After(2 * time.Second):
+		t.Fatal("pipeline goroutine did not exit after context cancellation — potential goroutine leak")
+	}
+}
+
+func TestPipeline_Refinement_PhotoPlaceholdersReplaced(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "Refine Photos", Status: models.StatusRefining,
+		Meta: models.JSONB[models.SubmissionMeta]{V: models.SubmissionMeta{
+			Transcript:      "persisted transcript",
+			ArticleMarkdown: "# Old Article\n\n![photo](photo_1)",
+		}},
+	}
+	insertSubmission(t, db, &sub)
+	insertFile(t, db, sub.ID, 2, "/photos/img1.jpg")
+
+	gen := &mockGeneration{result: &GenerationOutput{
+		ArticleMarkdown: "# Refined\n\n![updated](photo_1)\n\nNew text.",
+		Metadata:        models.ArticleMetadata{ChosenStructure: "news_report", Confidence: 0.8, MissingContext: []string{}},
+	}}
+	rev := &mockReview{result: defaultReviewResult()}
+
+	pipeline := buildPipeline(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{})
+	events := make(chan PipelineEvent, 20)
+	pipeline.Run(context.Background(), sub.ID, events)
+	collectEvents(events)
+
+	var updated models.Submission
+	db.First(&updated, "id = ?", sub.ID)
+	article := updated.Meta.V.ArticleMarkdown
+	if strings.Contains(article, "photo_1") {
+		t.Errorf("photo_1 placeholder should be replaced, got %q", article)
+	}
+	if !strings.Contains(article, "/photos/img1.jpg") {
+		t.Errorf("article should contain actual photo URL, got %q", article)
 	}
 }
