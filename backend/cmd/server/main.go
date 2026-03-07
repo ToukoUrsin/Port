@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 	"github.com/localnews/backend/internal/middleware"
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services"
+	"google.golang.org/genai"
 )
 
 func main() {
@@ -45,13 +47,34 @@ func main() {
 	accessSvc := services.NewAccessService(db)
 	mediaSvc := services.NewMediaService(cfg.MediaStoragePath)
 
-	// Pipeline stubs
+	// AI services — use real Gemini when API key is set, stubs otherwise
 	transcription := services.NewStubTranscriptionService()
-	generation := services.NewStubGenerationService()
-	review := services.NewStubReviewService()
-	photoDesc := services.NewStubPhotoDescriptionService()
 	chunker := services.NewStubChunkerService()
 	embedding := services.NewNoOpEmbeddingService()
+
+	var generation services.GenerationService
+	var review services.ReviewService
+	var photoDesc services.PhotoDescriptionService
+
+	if cfg.GeminiAPIKey != "" {
+		geminiClient, geminiErr := genai.NewClient(context.Background(), &genai.ClientConfig{
+			APIKey:  cfg.GeminiAPIKey,
+			Backend: genai.BackendGeminiAPI,
+		})
+		if geminiErr != nil {
+			log.Fatalf("gemini client: %v", geminiErr)
+		}
+		generation = services.NewGeminiGenerationService(geminiClient, "")
+		review = services.NewGeminiReviewService(geminiClient, "")
+		photoDesc = services.NewGeminiPhotoDescriptionService(geminiClient, "", cfg.MediaStoragePath)
+		log.Println("Using real Gemini AI services")
+	} else {
+		generation = services.NewStubGenerationService()
+		review = services.NewStubReviewService()
+		photoDesc = services.NewStubPhotoDescriptionService()
+		log.Println("Using stub AI services (set GEMINI_API_KEY to enable real AI)")
+	}
+
 	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embedding)
 
 	// Handler

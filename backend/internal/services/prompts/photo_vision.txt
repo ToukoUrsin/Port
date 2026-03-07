@@ -1,0 +1,11 @@
+Describe this photo for a local news article. Be factual and specific:
+
+1. What is visible: people, objects, setting, signage, weather conditions
+2. Approximate count of people if a crowd is shown
+3. Any readable text (signs, banners, documents)
+4. The setting (indoor/outdoor, type of building or space)
+5. Any details that suggest time of day or season
+
+Do not interpret emotions, intentions, or the significance of the scene. Just describe what is visible.
+
+Output: 2-4 sentences of factual description.

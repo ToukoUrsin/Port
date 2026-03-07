@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
+	"github.com/localnews/backend/internal/services/prompts"
 	"gorm.io/gorm"
 )
 
@@ -101,7 +102,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		Transcript:        transcript,
 		Notes:             sub.Description,
 		PhotoDescriptions: photoDescs,
-		TownContext:       townContext,
+		TownContext:       prompts.TownContext,
 	}
 
 	// If refinement, add previous article + direction
@@ -268,11 +269,3 @@ func extractFirstParagraph(markdown string) string {
 	return ""
 }
 
-const townContext = `Kirkkonummi (Finnish) / Kyrkslätt (Swedish) is a municipality in southern Finland, Uusimaa region, about 30 km west of Helsinki. Population approximately 41,000. Bilingual municipality (Finnish majority, ~15% Swedish-speaking).
-
-Key landmarks: Kirkkonummi town hall, Porkkala peninsula, Meiko nature reserve, Veikkola village center, Masala train station.
-Major roads: Turku motorway (E18), Upinniementie, Munkinmäentie.
-Local governance: Municipal council with 51 seats, chaired by the council chair. Executive board (kunnanhallitus) handles daily administration.
-Schools: Finnish-language and Swedish-language school systems. Kirkkonummen lukio (upper secondary).
-Recent context: Population growth from Helsinki spillover. Housing development debates. Commuter town dynamics.
-Local media: Kirkkonummen Sanomat (local paper), Länsiväylä (regional).`
