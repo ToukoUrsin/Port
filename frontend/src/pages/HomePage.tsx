@@ -254,9 +254,6 @@ function OpinionCard({ article }: { article: Article }) {
       style={{ textDecoration: "none", color: "inherit" }}
     >
       <div className="opinion-card__body">
-        <span className={`badge ${BADGE_CLASS[article.category]}`}>
-          {article.category}
-        </span>
         <h2 className="opinion-card__title">
           <span className="title-prefix">{article.category}</span>
           <span className="title-sep"> | </span>
@@ -290,9 +287,6 @@ function EventCard({ article }: { article: Article }) {
         </div>
       )}
       <div className="event-card__body">
-        <span className={`badge ${BADGE_CLASS[article.category]}`}>
-          {article.category}
-        </span>
         <h3 className="event-card__title">
           <span className="title-prefix">{article.category}</span>
           <span className="title-sep"> | </span>
@@ -319,9 +313,6 @@ function HeadlineItem({ article }: { article: Article }) {
       style={{ textDecoration: "none", color: "inherit" }}
     >
       <div className="headline-item__content">
-        <span className={`badge ${BADGE_CLASS[article.category]}`}>
-          {article.category}
-        </span>
         <h3 className="headline-item__title">
           <span className="title-prefix">{article.category}</span>
           <span className="title-sep"> | </span>

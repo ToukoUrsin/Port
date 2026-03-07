@@ -23,5 +23,8 @@ scripts/fb_output/
 # Inspiration images (large binary files)
 1_what/article_engine/spec/inspiration/
 
+# Marketing assets
+marketing/
+
 # Node
 node_modules/
