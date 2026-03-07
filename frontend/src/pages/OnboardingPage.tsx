@@ -152,7 +152,7 @@ export default function OnboardingPage() {
 
             <button
               type="submit"
-              className="btn-primary"
+              className="btn btn-primary btn-lg"
               disabled={submitting || nameStatus !== "available"}
             >
               {submitting ? "Saving..." : "Continue"}

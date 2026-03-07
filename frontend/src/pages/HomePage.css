@@ -841,40 +841,71 @@
   box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
-.home-nav__search-btn {
+.home-nav__search {
+  flex: 1;
+  max-width: 360px;
+  margin: 0 var(--space-3);
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--color-text-tertiary);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: color var(--transition-fast), background var(--transition-fast);
-  background: none;
-  border: none;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-3);
+  gap: var(--space-2);
 }
 
-.home-nav__search-btn:hover {
-  color: var(--color-text);
-  background: var(--color-bg-tertiary);
+.home-nav__search-icon {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
 }
 
 .home-nav__search-input {
   font-family: var(--font-sans);
-  font-size: var(--text-base);
-  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
   color: var(--color-text);
   background: none;
   border: none;
   outline: none;
-  width: 100%;
-  text-align: center;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
   padding: var(--space-1) 0;
 }
 
 .home-nav__search-input::placeholder {
   color: var(--color-text-tertiary);
   font-weight: var(--font-normal);
+}
+
+.home-nav__search-clear {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.home-nav__search-clear:hover {
+  color: var(--color-text);
+}
+
+@media (max-width: 767px) {
+  .home-nav__search {
+    max-width: none;
+    margin: 0 var(--space-2);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .home-nav__search-input {
+    font-size: var(--text-xs);
+  }
 }
 
 .search-dropdown__overlay {
@@ -886,12 +917,13 @@
 
 .search-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + var(--space-1));
   left: 0;
   right: 0;
   z-index: calc(var(--z-sticky) + 2);
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   max-height: 70vh;
   overflow-y: auto;

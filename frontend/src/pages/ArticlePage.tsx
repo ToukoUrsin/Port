@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2, X } from "lucide-react";
+import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
 import type { Article } from "@/data/articles";
@@ -10,6 +10,7 @@ import { apiToArticle, timeAgo } from "@/lib/types";
 import type { ApiSubmission, ApiReply } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
+import Modal from "@/components/Modal";
 import "./ArticlePage.css";
 
 function Comments({ articleId }: { articleId: string }) {
@@ -112,82 +113,6 @@ function Comments({ articleId }: { articleId: string }) {
           Show all {allReplies.length} comments
         </button>
       )}
-    </div>
-  );
-}
-
-function ArticleModal({
-  article,
-  apiSubmission,
-  onClose,
-}: {
-  article: Article;
-  apiSubmission: ApiSubmission;
-  onClose: () => void;
-}) {
-  const [visible, setVisible] = useState(false);
-
-  const handleClose = useCallback(() => {
-    setVisible(false);
-    setTimeout(onClose, 200);
-  }, [onClose]);
-
-  useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [handleClose]);
-
-  const markdown = apiSubmission.meta?.article_markdown || article.body || "";
-  const previewParagraphs = markdown.split("\n\n").slice(0, 3).join("\n\n");
-
-  return (
-    <div className={`article-overlay ${visible ? "article-overlay--visible" : ""}`} onClick={handleClose}>
-      <div className={`article-modal ${visible ? "article-modal--visible" : ""}`} onClick={(e) => e.stopPropagation()}>
-        <button className="article-modal__close" onClick={handleClose}>
-          <X size={18} />
-        </button>
-
-        {article.image && (
-          <div className="article-modal__image">
-            <img src={article.image} alt={article.title} />
-          </div>
-        )}
-
-        <div className="article-modal__content">
-          <span className={`badge ${BADGE_CLASS[article.category] || "badge-community"}`}>
-            {article.category}
-          </span>
-
-          <h2 className="article-modal__title">{article.title}</h2>
-
-          <p className="article-modal__author">
-            By{" "}
-            <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link" onClick={handleClose}>
-              {article.author}
-            </Link>
-            <span className="article-modal__time">{article.timeAgo}</span>
-          </p>
-
-          <div className="article-modal__body">
-            <ReactMarkdown>{previewParagraphs}</ReactMarkdown>
-          </div>
-
-          <Link to={`/article/${article.id}`} className="btn btn-secondary article-modal__cta" onClick={handleClose}>
-            Read full article
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }
@@ -358,13 +283,49 @@ export default function ArticlePage() {
         )}
       </div>
 
-      {modalArticle && (
-        <ArticleModal
-          article={modalArticle.article}
-          apiSubmission={modalArticle.submission}
-          onClose={() => setModalArticle(null)}
-        />
-      )}
+      <Modal open={!!modalArticle} onClose={() => setModalArticle(null)} size="md">
+        {modalArticle && (() => {
+          const a = modalArticle.article;
+          const markdown = modalArticle.submission.meta?.article_markdown || a.body || "";
+          const previewParagraphs = markdown.split("\n\n").slice(0, 3).join("\n\n");
+          return (
+            <>
+              {a.image && (
+                <div className="article-modal__image">
+                  <img src={a.image} alt={a.title} />
+                </div>
+              )}
+              <div className="article-modal__content">
+                <span className={`badge ${BADGE_CLASS[a.category] || "badge-community"}`}>
+                  {a.category}
+                </span>
+                <h2 className="article-modal__title">{a.title}</h2>
+                <p className="article-modal__author">
+                  By{" "}
+                  <Link
+                    to={`/profile/${authorSlug(a.author)}`}
+                    className="article-author__link"
+                    onClick={() => setModalArticle(null)}
+                  >
+                    {a.author}
+                  </Link>
+                  <span className="article-modal__time">{a.timeAgo}</span>
+                </p>
+                <div className="article-modal__body">
+                  <ReactMarkdown>{previewParagraphs}</ReactMarkdown>
+                </div>
+                <Link
+                  to={`/article/${a.id}`}
+                  className="btn btn-secondary article-modal__cta"
+                  onClick={() => setModalArticle(null)}
+                >
+                  Read full article
+                </Link>
+              </div>
+            </>
+          );
+        })()}
+      </Modal>
     </>
   );
 }

@@ -16,7 +16,6 @@ interface NavbarProps {
 export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Article[]>([]);
   const [totalResults, setTotalResults] = useState(0);
@@ -24,13 +23,7 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const openSearch = useCallback(() => {
-    setIsSearchOpen(true);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  }, []);
-
-  const closeSearch = useCallback(() => {
-    setIsSearchOpen(false);
+  const clearSearch = useCallback(() => {
     setQuery("");
     setResults([]);
     setTotalResults(0);
@@ -69,132 +62,124 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
     };
   }, [query]);
 
-  // Escape key closes search
+  // Escape key clears search
   useEffect(() => {
-    if (!isSearchOpen) return;
+    if (!query.trim()) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeSearch();
+      if (e.key === "Escape") clearSearch();
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [isSearchOpen, closeSearch]);
+  }, [query, clearSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      closeSearch();
-      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+      const q = query.trim();
+      clearSearch();
+      navigate(`/search?q=${encodeURIComponent(q)}`);
     }
   };
 
-  const showDropdown = isSearchOpen && query.trim().length > 0;
+  const showDropdown = query.trim().length > 0;
 
   return (
     <>
       <nav className="home-nav">
         <div className="home-nav__left">
-          {!isSearchOpen && left}
+          {left}
         </div>
 
-        {!isSearchOpen && (
-          <Link to="/" className="home-nav__brand">Local News</Link>
-        )}
+        <Link to="/" className="home-nav__brand">Local News</Link>
 
-        {isSearchOpen && (
-          <form onSubmit={handleSubmit} style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-            <input
-              ref={inputRef}
-              className="home-nav__search-input"
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search articles..."
-            />
-          </form>
-        )}
+        <form className="home-nav__search" onSubmit={handleSubmit}>
+          <Search size={16} className="home-nav__search-icon" />
+          <input
+            ref={inputRef}
+            className="home-nav__search-input"
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search articles..."
+          />
+          {query && (
+            <button type="button" className="home-nav__search-clear" onClick={clearSearch}>
+              <X size={14} />
+            </button>
+          )}
+
+          {showDropdown && (
+            <div className="search-dropdown">
+              {isLoading ? (
+                <div className="search-dropdown__loading">
+                  <Loader2 size={20} className="animate-spin" />
+                </div>
+              ) : results.length === 0 ? (
+                <div className="search-dropdown__empty">
+                  No results for &ldquo;{query.trim()}&rdquo;
+                </div>
+              ) : (
+                <>
+                  <ul className="search-dropdown__list">
+                    {results.map((article) => (
+                      <li key={article.id}>
+                        <Link
+                          to={`/article/${article.id}`}
+                          className="search-dropdown__item"
+                          onClick={clearSearch}
+                        >
+                          <div className="search-dropdown__item-body">
+                            <div className="search-dropdown__item-title">{article.title}</div>
+                            <div className="search-dropdown__item-meta">
+                              <span className={`badge ${BADGE_CLASS[article.category] || ""}`}>
+                                {article.category}
+                              </span>
+                              <span>{article.author}</span>
+                              <span>&middot;</span>
+                              <Clock size={11} />
+                              <span>{article.timeAgo}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {totalResults > results.length && (
+                    <div className="search-dropdown__footer">
+                      <Link
+                        to={`/search?q=${encodeURIComponent(query.trim())}`}
+                        onClick={clearSearch}
+                      >
+                        View all {totalResults} results
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </form>
 
         <div className="home-nav__right">
-          {isSearchOpen ? (
-            <button className="home-nav__icon-btn" onClick={closeSearch} title="Close search">
-              <X size={18} />
-            </button>
+          <NavLink to="/post" className="home-nav__post-btn" title="Post a story">
+            <PenSquare size={16} />
+            <span>Post</span>
+          </NavLink>
+          {isAuthenticated ? (
+            <NavLink to="/profile" className="home-nav__icon-btn" title="Profile">
+              <User size={18} />
+            </NavLink>
           ) : (
-            <>
-              <NavLink to="/post" className="home-nav__post-btn" title="Post a story">
-                <PenSquare size={16} />
-                <span>Post</span>
-              </NavLink>
-              <button className="home-nav__search-btn" onClick={openSearch} title="Search">
-                <Search size={18} />
-              </button>
-              {isAuthenticated ? (
-                <NavLink to="/profile" className="home-nav__icon-btn" title="Profile">
-                  <User size={18} />
-                </NavLink>
-              ) : (
-                <NavLink to="/login" className="home-nav__login-btn" title="Log in">
-                  <LogIn size={16} />
-                  <span>Log in</span>
-                </NavLink>
-              )}
-            </>
+            <NavLink to="/login" className="home-nav__login-btn" title="Log in">
+              <LogIn size={16} />
+              <span>Log in</span>
+            </NavLink>
           )}
         </div>
-
-        {showDropdown && (
-          <div className="search-dropdown">
-            {isLoading ? (
-              <div className="search-dropdown__loading">
-                <Loader2 size={20} className="animate-spin" />
-              </div>
-            ) : results.length === 0 ? (
-              <div className="search-dropdown__empty">
-                No results for &ldquo;{query.trim()}&rdquo;
-              </div>
-            ) : (
-              <>
-                <ul className="search-dropdown__list">
-                  {results.map((article) => (
-                    <li key={article.id}>
-                      <Link
-                        to={`/article/${article.id}`}
-                        className="search-dropdown__item"
-                        onClick={closeSearch}
-                      >
-                        <div className="search-dropdown__item-body">
-                          <div className="search-dropdown__item-title">{article.title}</div>
-                          <div className="search-dropdown__item-meta">
-                            <span className={`badge ${BADGE_CLASS[article.category] || ""}`}>
-                              {article.category}
-                            </span>
-                            <span>{article.author}</span>
-                            <span>&middot;</span>
-                            <Clock size={11} />
-                            <span>{article.timeAgo}</span>
-                          </div>
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                {totalResults > results.length && (
-                  <div className="search-dropdown__footer">
-                    <Link
-                      to={`/search?q=${encodeURIComponent(query.trim())}`}
-                      onClick={closeSearch}
-                    >
-                      View all {totalResults} results
-                    </Link>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
       </nav>
 
       {showDropdown && (
-        <div className="search-dropdown__overlay" onClick={closeSearch} />
+        <div className="search-dropdown__overlay" onClick={clearSearch} />
       )}
     </>
   );

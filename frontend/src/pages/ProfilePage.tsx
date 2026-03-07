@@ -219,7 +219,6 @@ export default function ProfilePage() {
               className={`profile-tab ${tab === "settings" ? "profile-tab--active" : ""}`}
               onClick={() => setTab("settings")}
             >
-              <Settings size={14} style={{ marginRight: "var(--space-1)", verticalAlign: "-2px" }} />
               Settings
             </button>
           )}

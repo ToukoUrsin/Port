@@ -476,7 +476,7 @@ function AccountActions({ logout }: { logout: () => Promise<void> }) {
       <div className="settings-actions">
         <button
           type="button"
-          className="btn btn-secondary"
+          className="btn btn-primary"
           onClick={logout}
         >
           <LogOut size={16} />
