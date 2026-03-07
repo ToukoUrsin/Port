@@ -2,10 +2,10 @@ import { Extension } from "@tiptap/react";
 import { Plugin, PluginKey, NodeSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
-const GRIP_SVG = `<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="4" cy="2" r="1.2"/><circle cx="10" cy="2" r="1.2"/>
-  <circle cx="4" cy="7" r="1.2"/><circle cx="10" cy="7" r="1.2"/>
-  <circle cx="4" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/>
+const GRIP_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="6" cy="3.5" r="1.5"/><circle cx="12" cy="3.5" r="1.5"/>
+  <circle cx="6" cy="9" r="1.5"/><circle cx="12" cy="9" r="1.5"/>
+  <circle cx="6" cy="14.5" r="1.5"/><circle cx="12" cy="14.5" r="1.5"/>
 </svg>`;
 
 const BLOCK_NODES = new Set([
@@ -56,6 +56,26 @@ export const DragHandle = Extension.create({
   addProseMirrorPlugins() {
     let handle: HTMLDivElement | null = null;
     let currentBlockPos: number | null = null;
+    let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+    let handleHovered = false;
+
+    function showHandle() {
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+      }
+      if (handle) handle.style.display = "flex";
+    }
+
+    function scheduleHide() {
+      if (hideTimeout) clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        if (!handleHovered && handle) {
+          handle.style.display = "none";
+          currentBlockPos = null;
+        }
+      }, 300);
+    }
 
     return [
       new Plugin({
@@ -68,6 +88,16 @@ export const DragHandle = Extension.create({
             parent.style.position = "relative";
             parent.appendChild(handle);
           }
+
+          // Keep handle visible while it's being hovered
+          handle.addEventListener("mouseenter", () => {
+            handleHovered = true;
+            showHandle();
+          });
+          handle.addEventListener("mouseleave", () => {
+            handleHovered = false;
+            scheduleHide();
+          });
 
           handle.addEventListener("mousedown", (e) => {
             if (currentBlockPos == null) return;
@@ -118,6 +148,7 @@ export const DragHandle = Extension.create({
 
           return {
             destroy() {
+              if (hideTimeout) clearTimeout(hideTimeout);
               handle?.remove();
               handle = null;
             },
@@ -133,44 +164,40 @@ export const DragHandle = Extension.create({
 
               // Only show when mouse is near the left edge or over the editor
               if (
-                clientX < editorRect.left - 40 ||
+                clientX < editorRect.left - 50 ||
                 clientX > editorRect.right + 10 ||
                 clientY < editorRect.top - 10 ||
                 clientY > editorRect.bottom + 10
               ) {
-                handle.style.display = "none";
-                currentBlockPos = null;
+                scheduleHide();
                 return false;
               }
 
               const blockPos = findBlockPos(view, clientY);
               if (blockPos == null) {
-                handle.style.display = "none";
-                currentBlockPos = null;
+                scheduleHide();
                 return false;
               }
 
               currentBlockPos = blockPos;
               const dom = view.nodeDOM(blockPos);
               if (!(dom instanceof HTMLElement)) {
-                handle.style.display = "none";
+                scheduleHide();
                 return false;
               }
 
               const blockRect = dom.getBoundingClientRect();
               const parentRect = view.dom.parentElement!.getBoundingClientRect();
 
-              handle.style.display = "flex";
-              handle.style.top = `${blockRect.top - parentRect.top + 2}px`;
-              handle.style.left = "-28px";
+              showHandle();
+              // Vertically center the handle with the first line of the block
+              handle.style.top = `${blockRect.top - parentRect.top}px`;
+              handle.style.left = "-36px";
 
               return false;
             },
             mouseleave(_view, _event) {
-              if (handle) {
-                handle.style.display = "none";
-                currentBlockPos = null;
-              }
+              scheduleHide();
               return false;
             },
           },
