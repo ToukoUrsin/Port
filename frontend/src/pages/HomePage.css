@@ -35,7 +35,6 @@
 
 .home-nav__right {
   justify-content: flex-end;
-  margin-left: auto;
 }
 
 .home-nav__brand {
@@ -879,9 +878,8 @@
 }
 
 .home-nav__search {
-  flex: 1;
-  max-width: 360px;
-  margin: 0 var(--space-3);
+  width: 240px;
+  margin-left: auto;
   position: relative;
   display: flex;
   align-items: center;
@@ -935,8 +933,9 @@
 
 @media (max-width: 767px) {
   .home-nav__search {
-    max-width: none;
-    margin: 0 var(--space-2);
+    width: auto;
+    flex: 1;
+    margin-left: auto;
     padding: var(--space-1) var(--space-2);
   }
 
