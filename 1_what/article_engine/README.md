@@ -57,28 +57,33 @@ OUTPUT (professional local journalism):
 | File | What |
 |------|------|
 | **MISSION.md** | **The soul: contributor feels proud, reader feels interested, community feels represented** |
+| MISSION_QUESTIONS.md | Top questions about the mission — pride line, asking tone, time pressure |
 | JOURNALISM_CRAFT.md | Research: rules, structures, and techniques of professional journalism (the knowledge base) |
 | LANDSCAPE.md | Prior art: who else does this (nobody does all three) |
 | VOICE_TO_ARTICLE.md | Technical challenges: Whisper, quotes, Finnish, faithfulness |
 | TOP_5_CHALLENGES.md | The 5 hard problems to solve before building |
 | EDITORIAL_RULES.md | The journalistic principles encoded into the prompts |
 | PRIOR_ART_LESSONS.md | What to steal from existing tools (actionable) |
-| PIPELINE_ARCHITECTURE.md | The agentic pipeline: how many calls, what each does, data flow |
-| GENERATION.md | The article generation pipeline — how raw input becomes journalism |
-| REVIEW.md | The 6-dimension quality review — the AI editor |
-| PROMPT_TESTING.md | How to test and iterate the prompts before building UI |
+| **OUTPUT_FORMAT.md** | **Why JSON output was wrong. Markdown article + metadata sidecar. Flexible structure, not fixed.** |
+| **HOW_PROS_MAKE_NEWS.md** | **Deep research: professional journalism workflows, tools, small newsroom reality, reporter-editor relationship, citizen journalism, Finnish journalism. 60+ sources.** |
+| **HOW_PEOPLE_WANT_NEWS.md** | **Deep research: news consumption & sharing patterns, psychology of sharing, community reporting motivations, news deserts, Finnish/Nordic specifics. 70+ sources.** |
+
+**Not yet written** (need proper research first):
+- UX design — the contributor experience from "something happened" to "my article is published"
+- Pipeline architecture — how many calls, what each does, data flow
+- Generation prompt — the actual article generation (must follow OUTPUT_FORMAT decisions)
+- Review prompt — the quality review layer
+- Prompt testing — gate tests before building UI
 
 ## Read Order
 
 1. **MISSION.md** — what we're optimizing for (read this first, it drives everything)
-2. JOURNALISM_CRAFT.md — the craft of journalism itself (research, examples, rules)
-3. LANDSCAPE.md + PRIOR_ART_LESSONS.md — what exists, what to steal
-4. VOICE_TO_ARTICLE.md + TOP_5_CHALLENGES.md — the hard problems
-5. EDITORIAL_RULES.md — what good journalism actually means (the spec)
-6. PIPELINE_ARCHITECTURE.md — how the AI calls chain together
-7. GENERATION.md — how the AI produces it (the implementation)
-8. REVIEW.md — how the AI editor checks it (the verification)
-9. PROMPT_TESTING.md — how to validate it works (the gate test)
+2. **HOW_PROS_MAKE_NEWS.md** + **HOW_PEOPLE_WANT_NEWS.md** — the reality of news production and consumption
+3. JOURNALISM_CRAFT.md — the craft of journalism itself (research, examples, rules)
+4. LANDSCAPE.md + PRIOR_ART_LESSONS.md — what exists, what to steal
+5. VOICE_TO_ARTICLE.md + TOP_5_CHALLENGES.md — the hard problems
+6. EDITORIAL_RULES.md — what good journalism actually means (the spec)
+7. **OUTPUT_FORMAT.md** — the output format decision (read before writing any prompts)
 
 ## The Thesis
 
