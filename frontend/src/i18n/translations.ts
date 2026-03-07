@@ -122,6 +122,8 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "article.postComment": "Lähetä",
     "article.loadError": "Artikkelin lataus epäonnistui",
     "article.loginToComment": "Kirjaudu kommentoidaksesi",
+    "article.commentRemoved": "poistettu",
+    "article.deleteComment": "Poista",
 
     // Explore
     "explore.allAreas": "Kaikki alueet",
@@ -351,6 +353,8 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "article.postComment": "Post",
     "article.loadError": "Failed to load article",
     "article.loginToComment": "Sign in to comment",
+    "article.commentRemoved": "removed",
+    "article.deleteComment": "Delete",
 
     // Explore
     "explore.allAreas": "All Areas",

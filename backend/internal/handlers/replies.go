@@ -23,7 +23,7 @@ func (h *Handler) ListReplies(c *gin.Context) {
 	}
 
 	var replies []models.Reply
-	h.db.Where("submission_id = ? AND status = ?", subID, models.ReplyVisible).
+	h.db.Where("submission_id = ? AND status IN ?", subID, []int16{models.ReplyVisible, models.ReplyDeleted}).
 		Order("created_at ASC").Find(&replies)
 
 	h.fillReplyProfileNames(replies)
@@ -173,7 +173,10 @@ func (h *Handler) DeleteReply(c *gin.Context) {
 		return
 	}
 
-	h.db.Delete(&reply)
+	h.db.Model(&reply).Updates(map[string]interface{}{
+		"status": models.ReplyDeleted,
+		"body":   "",
+	})
 	c.Status(http.StatusNoContent)
 }
 

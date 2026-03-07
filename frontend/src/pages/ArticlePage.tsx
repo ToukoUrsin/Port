@@ -1,11 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Reply as ReplyIcon } from "lucide-react";
+import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Reply as ReplyIcon, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
-import { getArticle, getSimilarArticles, getReplies, createReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
+import { getArticle, getSimilarArticles, getReplies, createReply, deleteReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
 import { apiToArticle, timeAgo, computeOverallScore } from "@/lib/types";
 import type { ApiSubmission, ApiReply, ReactionCounts, ReplyReactionMap } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -202,16 +202,36 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
   );
 }
 
-function CommentItem({ reply, depth, replyReactions, articleId, onNewReply }: {
+function CommentItem({ reply, depth, replyReactions, articleId, onNewReply, onDelete }: {
   reply: ApiReply;
   depth: number;
   replyReactions: ReplyReactionMap;
   articleId: string;
   onNewReply: (reply: ApiReply) => void;
+  onDelete: (replyId: string) => void;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { t } = useLanguage();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const rxn = replyReactions[reply.id];
+  const isDeleted = reply.status === 2;
+  const isOwner = user?.profile_id === reply.profile_id;
+
+  if (isDeleted) {
+    return (
+      <div className={`comment comment--deleted ${depth > 0 ? "comment--nested" : ""}`}>
+        {depth > 0 && (
+          <div className="comment__thread-line" />
+        )}
+        <div className="comment__avatar">
+          <User size={depth > 0 ? 12 : 14} />
+        </div>
+        <div className="comment__body">
+          <p className="comment__text comment__text--deleted">{t("article.commentRemoved")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`comment ${depth > 0 ? "comment--nested" : ""}`}>
@@ -243,6 +263,15 @@ function CommentItem({ reply, depth, replyReactions, articleId, onNewReply }: {
               Reply
             </button>
           )}
+          {isOwner && (
+            <button
+              className="comment__reply-btn comment__delete-btn"
+              onClick={() => onDelete(reply.id)}
+            >
+              <Trash2 size={12} />
+              {t("article.deleteComment")}
+            </button>
+          )}
         </div>
         {showReplyForm && (
           <InlineReplyForm
@@ -271,13 +300,14 @@ function buildThread(replies: ApiReply[]): Map<string | null, ApiReply[]> {
   return map;
 }
 
-function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onNewReply }: {
+function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onNewReply, onDelete }: {
   parentId: string | null;
   tree: Map<string | null, ApiReply[]>;
   depth: number;
   replyReactions: ReplyReactionMap;
   articleId: string;
   onNewReply: (reply: ApiReply) => void;
+  onDelete: (replyId: string) => void;
 }) {
   const children = tree.get(parentId);
   if (!children || children.length === 0) return null;
@@ -292,6 +322,7 @@ function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onN
             replyReactions={replyReactions}
             articleId={articleId}
             onNewReply={onNewReply}
+            onDelete={onDelete}
           />
           <ThreadedReplies
             parentId={reply.id}
@@ -300,6 +331,7 @@ function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onN
             replyReactions={replyReactions}
             articleId={articleId}
             onNewReply={onNewReply}
+            onDelete={onDelete}
           />
         </div>
       ))}

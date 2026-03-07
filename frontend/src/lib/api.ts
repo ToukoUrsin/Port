@@ -396,6 +396,12 @@ export function createReply(
   });
 }
 
+export function deleteReply(replyId: string): Promise<void> {
+  return apiFetch<void>(`/api/replies/${replyId}`, {
+    method: "DELETE",
+  });
+}
+
 // --- Flagging ---
 
 export function flagArticle(id: string, reason: string): Promise<{ status: string }> {
