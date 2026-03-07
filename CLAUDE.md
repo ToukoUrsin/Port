@@ -31,6 +31,7 @@ Two frontend apps (contributor PWA + public reader site) talking to a single Fas
 ## Git Workflow
 
 - Push features frequently — commit and push small, working increments rather than large batches
+- Pull before starting work — other agents may have pushed changes
 - Keep the repo clean: no dead code, no leftover debug logs, no unrelated changes in commits
 
 ## Context
