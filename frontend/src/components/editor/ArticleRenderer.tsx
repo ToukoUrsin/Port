@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -7,7 +8,9 @@ import { Markdown } from "tiptap-markdown";
 import { AnnotationHighlight } from "./extensions/AnnotationHighlight";
 import type { RedTrigger } from "@/lib/types";
 import type { ActiveAnnotation } from "./types";
-import { X } from "lucide-react";
+import {
+  X, Bold, Italic, Strikethrough, Code, Quote, List, ListOrdered,
+} from "lucide-react";
 
 type ArticleEditorProps = {
   markdown: string;
@@ -94,7 +97,15 @@ export function ArticleEditor({
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image.configure({ inline: false }),
+      Image.configure({
+        inline: false,
+        resize: {
+          enabled: true,
+          alwaysPreserveAspectRatio: true,
+          minWidth: 100,
+          minHeight: 60,
+        },
+      }),
       Placeholder.configure({ placeholder: "Start writing..." }),
       Markdown,
       AnnotationHighlight,
@@ -196,6 +207,68 @@ export function ArticleEditor({
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div className="article-prose" onClick={handleEditorClick}>
         <EditorContent editor={editor} />
+        {editor && (
+          <BubbleMenu
+            editor={editor}
+            shouldShow={({ editor: ed }) => {
+              if (ed.isActive("image")) return false;
+              return ed.state.selection.content().size > 0;
+            }}
+          >
+            <div className="bubble-menu">
+              <button
+                className={`bubble-menu__btn ${editor.isActive("bold") ? "is-active" : ""}`}
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                type="button"
+              >
+                <Bold size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive("italic") ? "is-active" : ""}`}
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                type="button"
+              >
+                <Italic size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive("strike") ? "is-active" : ""}`}
+                onClick={() => editor.chain().focus().toggleStrike().run()}
+                type="button"
+              >
+                <Strikethrough size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive("code") ? "is-active" : ""}`}
+                onClick={() => editor.chain().focus().toggleCode().run()}
+                type="button"
+              >
+                <Code size={15} />
+              </button>
+              <div className="bubble-menu__sep" />
+              <button
+                className={`bubble-menu__btn ${editor.isActive("blockquote") ? "is-active" : ""}`}
+                onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                type="button"
+              >
+                <Quote size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive("bulletList") ? "is-active" : ""}`}
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+                type="button"
+              >
+                <List size={15} />
+              </button>
+              <button
+                className={`bubble-menu__btn ${editor.isActive("orderedList") ? "is-active" : ""}`}
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                type="button"
+              >
+                <ListOrdered size={15} />
+              </button>
+            </div>
+          </BubbleMenu>
+        )}
       </div>
       {activeAnnotation && wrapperRect && (
         <SuggestionCard

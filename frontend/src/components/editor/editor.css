@@ -707,7 +707,7 @@
 }
 
 /* ===============================================
-   TipTap editor
+   TipTap editor — WYSIWYG rich text
    =============================================== */
 .article-prose .ProseMirror {
   outline: none;
@@ -716,12 +716,213 @@
 .article-prose .ProseMirror:focus {
   outline: none;
 }
+
+/* Placeholder */
+.article-prose .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* --- Headings --- */
+.article-prose .ProseMirror h1 {
+  font-family: var(--font-serif);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  color: var(--color-secondary);
+  margin: var(--space-6) 0 var(--space-3);
+}
+.article-prose .ProseMirror h2 {
+  font-family: var(--font-serif);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-secondary);
+  margin: var(--space-5) 0 var(--space-2);
+}
+.article-prose .ProseMirror h3 {
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-secondary);
+  margin: var(--space-4) 0 var(--space-2);
+}
+.article-prose .ProseMirror h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+/* --- Paragraphs --- */
+.article-prose .ProseMirror p {
+  margin-bottom: var(--space-4);
+}
+
+/* --- Inline marks --- */
+.article-prose .ProseMirror strong {
+  font-weight: var(--font-bold);
+}
+.article-prose .ProseMirror em {
+  font-style: italic;
+}
+.article-prose .ProseMirror s {
+  text-decoration: line-through;
+  color: var(--color-text-secondary);
+}
+.article-prose .ProseMirror u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* --- Links --- */
+.article-prose .ProseMirror a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.article-prose .ProseMirror a:hover {
+  opacity: 0.8;
+}
+
+/* --- Inline code --- */
+.article-prose .ProseMirror code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 0.88em;
+  background: var(--color-gray-100);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+/* --- Code blocks --- */
+.article-prose .ProseMirror pre {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--text-sm);
+  background: var(--color-gray-100);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  margin: var(--space-4) 0;
+  overflow-x: auto;
+  line-height: var(--leading-relaxed);
+}
+.article-prose .ProseMirror pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* --- Blockquotes --- */
+.article-prose .ProseMirror blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: var(--space-4);
+  margin: var(--space-5) 0;
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+.article-prose .ProseMirror blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Horizontal rule --- */
+.article-prose .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--color-border, var(--color-gray-200));
+  margin: var(--space-6) 0;
+}
+
+/* --- Lists --- */
+.article-prose .ProseMirror ul,
+.article-prose .ProseMirror ol {
+  padding-left: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+.article-prose .ProseMirror li {
+  margin-bottom: var(--space-1);
+}
+.article-prose .ProseMirror li p {
+  margin-bottom: var(--space-1);
+}
+
+/* --- Images --- */
 .article-prose .ProseMirror img {
   max-width: 100%;
   height: auto;
   border-radius: var(--radius-md);
   margin: var(--space-4) 0;
+  display: block;
+  cursor: default;
 }
+.article-prose .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.article-prose [data-resize-handle] {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--color-primary);
+  border: 2px solid white;
+  border-radius: 2px;
+  z-index: 10;
+}
+
+/* --- Dropcursor / Gapcursor --- */
+.ProseMirror-dropcursor {
+  color: var(--color-primary);
+  border-width: 2px;
+}
+
+/* ===============================================
+   BubbleMenu (text formatting toolbar)
+   =============================================== */
+.bubble-menu {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-secondary, #1a1a1a);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+.bubble-menu__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: color 0.1s, background 0.1s;
+}
+.bubble-menu__btn:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+.bubble-menu__btn.is-active {
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+}
+.bubble-menu__sep {
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 2px;
+}
+
+/* ===============================================
+   Headline input
+   =============================================== */
 .article-headline-input {
   font-family: var(--font-serif);
   font-size: var(--text-3xl);
