@@ -146,12 +146,16 @@ PORT=8000
 CREATE TABLE locations (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name              VARCHAR(200) NOT NULL,
-    slug              VARCHAR(100) NOT NULL,
+    slug              VARCHAR(100) UNIQUE NOT NULL,
     level             SMALLINT NOT NULL,
     parent_id         UUID REFERENCES locations(id),
     path              TEXT NOT NULL,
     description       TEXT,
     is_active         BOOLEAN DEFAULT TRUE,
+
+    -- Coordinates (center point of the location)
+    lat               DOUBLE PRECISION,
+    lng               DOUBLE PRECISION,
 
     -- Aggregate counters (includes all descendants)
     article_count     INTEGER DEFAULT 0,
@@ -173,8 +177,12 @@ CREATE TABLE profiles (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_name    VARCHAR(100) UNIQUE NOT NULL,
     email           VARCHAR(320) UNIQUE NOT NULL,
-    password_hash   BYTEA NOT NULL,
+    password_hash   BYTEA,                        -- NULL for OAuth-only accounts
     location_id     UUID REFERENCES locations(id),
+    continent_id    UUID REFERENCES locations(id),
+    country_id      UUID REFERENCES locations(id),
+    region_id       UUID REFERENCES locations(id),
+    city_id         UUID REFERENCES locations(id),
     role            SMALLINT DEFAULT 0,
     permissions     BIGINT DEFAULT 0,
     tags            BIGINT DEFAULT 0,
@@ -224,9 +232,20 @@ CREATE TABLE submissions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id        UUID REFERENCES profiles(id) NOT NULL,
     location_id     UUID REFERENCES locations(id) NOT NULL,
+    continent_id    UUID REFERENCES locations(id),
+    country_id      UUID REFERENCES locations(id),
+    region_id       UUID REFERENCES locations(id),
+    city_id         UUID REFERENCES locations(id),
+    title           VARCHAR(300) NOT NULL DEFAULT '',
+    description     TEXT NOT NULL DEFAULT '',
     tags            BIGINT DEFAULT 0,
     status          SMALLINT DEFAULT 0,
     error           SMALLINT DEFAULT 0,
+    views           INTEGER DEFAULT 0,
+    share_count     INTEGER DEFAULT 0,
+    lat             DOUBLE PRECISION,
+    lng             DOUBLE PRECISION,
+    reactions       JSONB DEFAULT '{}',
     meta            JSONB DEFAULT '{}',
     search_vector   TSVECTOR,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -234,6 +253,11 @@ CREATE TABLE submissions (
 );
 
 CREATE INDEX idx_submissions_location ON submissions (location_id);
+CREATE INDEX idx_submissions_continent ON submissions (continent_id);
+CREATE INDEX idx_submissions_country ON submissions (country_id);
+CREATE INDEX idx_submissions_region ON submissions (region_id);
+CREATE INDEX idx_submissions_city ON submissions (city_id);
+CREATE INDEX idx_submissions_coords ON submissions (lat, lng) WHERE lat IS NOT NULL;
 CREATE INDEX idx_submissions_status ON submissions (status);
 CREATE INDEX idx_submissions_search ON submissions USING GIN (search_vector);
 
@@ -367,6 +391,96 @@ func (j *JSONB[T]) UnmarshalJSON(data []byte) error {
 }
 ```
 
+#### Constants (`internal/models/constants.go`)
+
+```go
+package models
+
+// --- Submission status ---
+
+const (
+    StatusDraft        int16 = 0 // just created, raw files saved
+    StatusTranscribing int16 = 1 // audio being transcribed
+    StatusGenerating   int16 = 2 // Claude generating article
+    StatusReviewing    int16 = 3 // Claude reviewing article
+    StatusReady        int16 = 4 // pipeline complete, awaiting publish decision
+    StatusPublished    int16 = 5 // publicly visible
+    StatusArchived     int16 = 6 // hidden by owner or editor
+)
+
+// --- Submission error codes (0 = no error) ---
+
+const (
+    ErrNone          int16 = 0
+    ErrTranscription int16 = 1 // ElevenLabs call failed
+    ErrGeneration    int16 = 2 // Claude generation failed
+    ErrReview        int16 = 3 // Claude review failed
+    ErrModeration    int16 = 4 // flagged by moderation
+)
+
+// --- Profile / Submission category tags (bitmask) ---
+// Each bit represents a general content category.
+// Used on both profiles.tags (interests) and submissions.tags (article category).
+
+const (
+    TagCouncil   int64 = 1 << 0  // local government, council meetings
+    TagSchools   int64 = 1 << 1  // education, school boards
+    TagBusiness  int64 = 1 << 2  // local business, economy
+    TagEvents    int64 = 1 << 3  // community events, festivals
+    TagSports    int64 = 1 << 4  // local sports
+    TagCommunity int64 = 1 << 5  // neighborhood, volunteer, civic
+    TagCulture   int64 = 1 << 6  // arts, music, heritage
+    TagSafety    int64 = 1 << 7  // police, fire, public safety
+    TagHealth    int64 = 1 << 8  // health, hospitals, public health
+    TagEnviron   int64 = 1 << 9  // environment, parks, weather
+)
+
+// --- Entity categories (polymorphic type discriminator) ---
+// Used in files.entity_category, entity_tags.entity_category, embeddings.entity_category
+
+const (
+    EntitySubmission int16 = 1
+    EntityProfile    int16 = 2
+    EntityLocation   int16 = 3
+)
+
+// --- Follow target types ---
+
+const (
+    FollowLocation int16 = 1
+    FollowProfile  int16 = 2
+)
+
+// --- Reply status ---
+
+const (
+    ReplyVisible  int16 = 0
+    ReplyHidden   int16 = 1 // hidden by moderator
+    ReplyDeleted  int16 = 2 // soft-deleted by author
+)
+
+// --- Location level ---
+
+const (
+    LevelContinent int16 = 0
+    LevelCountry   int16 = 1
+    LevelRegion    int16 = 2 // state, province, län
+    LevelCity      int16 = 3
+)
+```
+
+#### Slug Convention
+
+Slugs are URL-safe identifiers derived from the entity name. Generation rule:
+
+1. Lowercase the name
+2. Replace spaces and non-alphanumeric characters with hyphens
+3. Collapse consecutive hyphens into one
+4. Trim leading/trailing hyphens
+5. For locations, if a duplicate exists at the same level, append the parent slug: `springfield-il`, `springfield-oh`
+
+Examples: `"Port 2026"` → `port-2026`, `"Gävle kommun"` → `gavle-kommun`, `"Council & Budget"` → `council-budget`
+
 #### Location (`internal/models/location.go`)
 
 ```go
@@ -391,7 +505,7 @@ type LocationMeta struct {
 type Location struct {
     ID               uuid.UUID           `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
     Name             string              `gorm:"type:varchar(200);not null" json:"name"`
-    Slug             string              `gorm:"type:varchar(100);not null" json:"slug"`
+    Slug             string              `gorm:"type:varchar(100);uniqueIndex;not null" json:"slug"`
     Level            int16               `gorm:"not null" json:"level"`
     ParentID         *uuid.UUID          `gorm:"type:uuid" json:"parent_id,omitempty"`
     Path             string              `gorm:"type:text;not null" json:"path"`
@@ -440,8 +554,12 @@ type Profile struct {
     ID           uuid.UUID          `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
     ProfileName  string             `gorm:"type:varchar(100);uniqueIndex;not null" json:"profile_name"`
     Email        string             `gorm:"type:varchar(320);uniqueIndex;not null" json:"email"`
-    PasswordHash []byte             `gorm:"type:bytea;not null" json:"-"`
+    PasswordHash []byte             `gorm:"type:bytea" json:"-"`            // nil for OAuth-only accounts
     LocationID   *uuid.UUID         `gorm:"type:uuid;index" json:"location_id,omitempty"`
+    ContinentID  *uuid.UUID         `gorm:"type:uuid;index" json:"continent_id,omitempty"`
+    CountryID    *uuid.UUID         `gorm:"type:uuid;index" json:"country_id,omitempty"`
+    RegionID     *uuid.UUID         `gorm:"type:uuid;index" json:"region_id,omitempty"`
+    CityID       *uuid.UUID         `gorm:"type:uuid;index" json:"city_id,omitempty"`
     Role         int16              `gorm:"default:0;index" json:"role"`
     Permissions  int64              `gorm:"default:0" json:"permissions"`
     Tags         int64              `gorm:"default:0" json:"tags"`
@@ -544,11 +662,6 @@ type SubmissionMeta struct {
     PublishedBy *uuid.UUID `json:"published_by,omitempty"`
     ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
 
-    // Engagement
-    Reactions  map[string]int `json:"reactions,omitempty"`
-    Views      int            `json:"views,omitempty"`
-    ShareCount int            `json:"share_count,omitempty"`
-
     // Moderation
     Flagged    bool   `json:"flagged,omitempty"`
     FlagReason string `json:"flag_reason,omitempty"`
@@ -558,13 +671,22 @@ type SubmissionMeta struct {
 }
 
 type Submission struct {
-    ID         uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-    OwnerID    uuid.UUID              `gorm:"type:uuid;not null" json:"owner_id"`
-    LocationID uuid.UUID              `gorm:"type:uuid;not null;index" json:"location_id"`
-    Tags       int64                  `gorm:"default:0" json:"tags"`
-    Status     int16                  `gorm:"default:0;index" json:"status"`
-    Error      int16                  `gorm:"default:0" json:"error"`
-    Meta       JSONB[SubmissionMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
+    ID           uuid.UUID              `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    OwnerID      uuid.UUID              `gorm:"type:uuid;not null" json:"owner_id"`
+    LocationID   uuid.UUID              `gorm:"type:uuid;not null;index" json:"location_id"`
+    ContinentID  *uuid.UUID             `gorm:"type:uuid;index" json:"continent_id,omitempty"`
+    CountryID    *uuid.UUID             `gorm:"type:uuid;index" json:"country_id,omitempty"`
+    RegionID     *uuid.UUID             `gorm:"type:uuid;index" json:"region_id,omitempty"`
+    CityID       *uuid.UUID             `gorm:"type:uuid;index" json:"city_id,omitempty"`
+    Title        string                 `gorm:"type:varchar(300);not null;default:''" json:"title"`
+    Description  string                 `gorm:"type:text;not null;default:''" json:"description"`
+    Tags         int64                  `gorm:"default:0" json:"tags"`
+    Status       int16                  `gorm:"default:0;index" json:"status"`
+    Error        int16                  `gorm:"default:0" json:"error"`
+    Views        int                    `gorm:"default:0" json:"views"`
+    ShareCount   int                    `gorm:"default:0" json:"share_count"`
+    Reactions    JSONB[map[string]int]  `gorm:"type:jsonb;default:'{}'" json:"reactions"`
+    Meta         JSONB[SubmissionMeta]  `gorm:"type:jsonb;default:'{}'" json:"meta"`
     Timestamps
 }
 
@@ -661,7 +783,7 @@ type Embedding struct {
     EntityID       uuid.UUID       `gorm:"type:uuid;not null;index" json:"entity_id"`
     EntityCategory int16           `gorm:"not null;index" json:"entity_category"`
     ChunkText      string          `gorm:"type:text;not null" json:"chunk_text"`
-    Embedding      pgvector.Vector `gorm:"type:vector(1536);not null" json:"embedding"`
+    Vector         pgvector.Vector `gorm:"column:embedding;type:vector(1536);not null" json:"embedding"`
 }
 ```
 
@@ -686,8 +808,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- trigram fuzzy matching
 #### Triggers
 
 ```sql
--- Submissions: extract text from meta blocks and build search vector
--- heading blocks weighted A, text blocks weighted B
+-- Submissions: index title (weight A), description + heading blocks (weight B), other blocks (weight C)
 CREATE FUNCTION submissions_search_update() RETURNS trigger AS $$
 DECLARE
   headings TEXT := '';
@@ -701,14 +822,15 @@ BEGIN
   WHERE b->>'content' IS NOT NULL;
 
   NEW.search_vector :=
-    setweight(to_tsvector('english', headings), 'A') ||
-    setweight(to_tsvector('english', body_text), 'B');
+    setweight(to_tsvector('english', coalesce(NEW.title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(NEW.description, '') || ' ' || headings), 'B') ||
+    setweight(to_tsvector('english', body_text), 'C');
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_submissions_search
-  BEFORE INSERT OR UPDATE OF meta
+  BEFORE INSERT OR UPDATE OF title, description, meta
   ON submissions
   FOR EACH ROW EXECUTE FUNCTION submissions_search_update();
 
@@ -788,13 +910,14 @@ For typo-tolerant "search as you type", use trigram similarity on specific colum
 ```sql
 -- Trigram indexes for fuzzy search
 CREATE INDEX idx_profiles_name_trgm ON profiles USING GIN (profile_name gin_trgm_ops);
+CREATE INDEX idx_submissions_title_trgm ON submissions USING GIN (title gin_trgm_ops);
 ```
 
 ```go
 // Fuzzy search example (for autocomplete)
 var submissions []models.Submission
-h.db.Where("similarity(headline, ?) > 0.3", q).
-    Order("similarity(headline, ?) DESC", q).
+h.db.Where("similarity(title, ?) > 0.3", q).
+    Order("similarity(title, ?) DESC", q).
     Limit(10).
     Find(&submissions)
 ```
