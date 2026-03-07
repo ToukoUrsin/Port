@@ -11,12 +11,13 @@ import Highlight from "@tiptap/extension-highlight";
 import { Markdown } from "tiptap-markdown";
 import { AnnotationHighlight } from "./extensions/AnnotationHighlight";
 import { DragHandle } from "./extensions/DragHandle";
-import type { RedTrigger } from "@/lib/types";
+import type { RedTrigger, VerificationEntry } from "@/lib/types";
 import type { ActiveAnnotation } from "./types";
 import {
   X, Bold, Italic, Strikethrough, Code, Quote, List, ListOrdered,
   Link, Unlink, Highlighter, AlignLeft, AlignCenter, AlignRight,
   Heading2, Heading3, ListIcon, CodeSquare, Minus,
+  Sparkles, Send,
 } from "lucide-react";
 
 type ArticleEditorProps = {
@@ -24,11 +25,13 @@ type ArticleEditorProps = {
   userName: string;
   category?: string;
   redTriggers: RedTrigger[];
+  verification?: VerificationEntry[];
   activeAnnotation: ActiveAnnotation;
   onAnnotationClick: (trigger: RedTrigger, rect: DOMRect) => void;
   onAnnotationDismiss: () => void;
   highlightParagraph?: number;
   onContentChange: (markdown: string) => void;
+  onAiAction?: (instruction: string, selectedText: string, paragraphIndex: number) => void;
 };
 
 function SuggestionCard({
@@ -88,11 +91,13 @@ export function ArticleEditor({
   userName,
   category,
   redTriggers,
+  verification = [],
   activeAnnotation,
   onAnnotationClick,
   onAnnotationDismiss,
   highlightParagraph,
   onContentChange,
+  onAiAction,
 }: ArticleEditorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { headline: initHeadline, body: initBody } = splitHeadline(markdown);
@@ -103,6 +108,7 @@ export function ArticleEditor({
 
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
+  const [aiInstruction, setAiInstruction] = useState("");
 
   const editor = useEditor({
     extensions: [
@@ -135,14 +141,15 @@ export function ArticleEditor({
     },
   });
 
-  // Update annotations when redTriggers change
+  // Update annotations when redTriggers or verification change
   useEffect(() => {
     if (!editor) return;
     (editor.storage as any).annotationHighlight.triggers = redTriggers;
+    (editor.storage as any).annotationHighlight.verification = verification;
     const { tr } = editor.state;
-    tr.setMeta("annotationHighlight", { triggers: redTriggers });
+    tr.setMeta("annotationHighlight", { triggers: redTriggers, verification });
     editor.view.dispatch(tr);
-  }, [editor, redTriggers]);
+  }, [editor, redTriggers, verification]);
 
   // Handle external markdown updates (e.g. AI refinement) — skip if the change came from us
   useEffect(() => {
@@ -228,6 +235,30 @@ export function ArticleEditor({
     }
     setLinkUrl(null);
   }, [editor, linkUrl]);
+
+  const getSelectionContext = useCallback(() => {
+    if (!editor) return { text: "", paragraphIndex: 0 };
+    const { from, to } = editor.state.selection;
+    const text = editor.state.doc.textBetween(from, to, " ");
+    const paragraphIndex = editor.state.doc.resolve(from).index(0);
+    return { text, paragraphIndex };
+  }, [editor]);
+
+  const handleAiChip = useCallback(
+    (action: string) => {
+      if (!onAiAction || !editor) return;
+      const { text, paragraphIndex } = getSelectionContext();
+      onAiAction(action, text, paragraphIndex);
+    },
+    [onAiAction, editor, getSelectionContext],
+  );
+
+  const handleAiInstructionSubmit = useCallback(() => {
+    if (!onAiAction || !editor || !aiInstruction.trim()) return;
+    const { text, paragraphIndex } = getSelectionContext();
+    onAiAction(aiInstruction.trim(), text, paragraphIndex);
+    setAiInstruction("");
+  }, [onAiAction, editor, aiInstruction, getSelectionContext]);
 
   const wrapperRect = wrapperRef.current?.getBoundingClientRect();
 
@@ -433,6 +464,62 @@ export function ArticleEditor({
                 <AlignRight size={15} />
               </button>
             </div>
+            {onAiAction && (
+              <div className="bubble-menu-ai">
+                <div className="bubble-menu-ai__chips">
+                  <Sparkles size={13} className="bubble-menu-ai__icon" />
+                  <button
+                    type="button"
+                    className="bubble-menu-ai__chip"
+                    onClick={() => handleAiChip("Rephrase this")}
+                  >
+                    Rephrase
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-menu-ai__chip"
+                    onClick={() => handleAiChip("Simplify this")}
+                  >
+                    Simplify
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-menu-ai__chip"
+                    onClick={() => handleAiChip("Expand on this")}
+                  >
+                    Expand
+                  </button>
+                  <button
+                    type="button"
+                    className="bubble-menu-ai__chip"
+                    onClick={() => handleAiChip("Fix accuracy")}
+                  >
+                    Fix
+                  </button>
+                </div>
+                <div className="bubble-menu-ai__input">
+                  <input
+                    type="text"
+                    placeholder="Tell AI what to change..."
+                    value={aiInstruction}
+                    onChange={(e) => setAiInstruction(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAiInstructionSubmit();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAiInstructionSubmit}
+                    disabled={!aiInstruction.trim()}
+                  >
+                    <Send size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
             {linkUrl !== null && (
               <div className="bubble-menu-link-input">
                 <input

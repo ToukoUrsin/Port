@@ -142,6 +142,7 @@ type Submission struct {
 	Meta         JSONB[SubmissionMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
 	SearchVector string                `gorm:"type:tsvector" json:"-"`
 	LocationName string                `gorm:"-" json:"location_name,omitempty"`
+	OwnerName    string                `gorm:"-" json:"owner_name,omitempty"`
 	Timestamps
 }
 

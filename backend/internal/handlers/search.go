@@ -62,6 +62,8 @@ func (h *Handler) Search(c *gin.Context) {
 		return
 	}
 
+	h.fillOwnerNames(result.Submissions)
+
 	// Chunk submissions
 	subChunks := chunkSubmissions(result.Submissions, chunkSize)
 	profChunks := chunkProfiles(result.Profiles, chunkSize)

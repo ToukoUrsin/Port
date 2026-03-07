@@ -20,5 +20,6 @@ type Reply struct {
 	Body         string           `gorm:"type:text;not null" json:"body"`
 	Status       int16            `gorm:"default:0" json:"status"`
 	Meta         JSONB[ReplyMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
+	ProfileName  string           `gorm:"-" json:"profile_name,omitempty"`
 	CreatedAt    time.Time        `gorm:"autoCreateTime" json:"created_at"`
 }
