@@ -1,9 +1,13 @@
-import { useState, useSyncExternalStore } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Link } from "react-router-dom";
-import { Clock, ImageIcon, ArrowLeft } from "lucide-react";
-import { ARTICLES, authorSlug } from "@/data/articles";
+import { Clock, ImageIcon, ArrowLeft, Loader2 } from "lucide-react";
+import { authorSlug } from "@/data/articles";
+import { useApi } from "@/hooks/useApi";
+import { getLocations, getLocationArticles } from "@/lib/api";
+import { apiToArticle } from "@/lib/types";
+import type { Article } from "@/data/articles";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "leaflet/dist/leaflet.css";
@@ -14,18 +18,8 @@ interface Area {
   name: string;
   lat: number;
   lng: number;
-  articleIds: number[];
-}
-
-const AREAS: Area[] = [
-  { id: "downtown", name: "Downtown", lat: 61.4978, lng: 23.761, articleIds: [1, 3, 7] },
-  { id: "northside", name: "Northside", lat: 61.5013, lng: 23.774, articleIds: [2, 8] },
-  { id: "east-side", name: "East Side", lat: 61.4918, lng: 23.79, articleIds: [4, 5] },
-  { id: "westside", name: "Westside", lat: 61.4965, lng: 23.733, articleIds: [6] },
-];
-
-function getAreaArticles(area: Area) {
-  return area.articleIds.map((id) => ARTICLES.find((a) => a.id === id)!).filter(Boolean);
+  articleCount: number;
+  slug: string;
 }
 
 function createAreaIcon(area: Area, active: boolean) {
@@ -68,8 +62,29 @@ export default function ExplorePage() {
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
   const [showMap, setShowMap] = useState(false);
 
-  const displayArticles = selectedArea ? getAreaArticles(selectedArea) : ARTICLES;
-  const totalCount = ARTICLES.length;
+  const fetchLocations = useCallback(() => getLocations(), []);
+  const { data: locData, isLoading: locsLoading } = useApi(fetchLocations, []);
+
+  const areas: Area[] = (locData?.locations ?? [])
+    .filter((loc) => loc.lat != null && loc.lng != null)
+    .map((loc) => ({
+      id: loc.id,
+      name: loc.name,
+      lat: loc.lat!,
+      lng: loc.lng!,
+      articleCount: loc.article_count,
+      slug: loc.slug,
+    }));
+
+  const fetchAreaArticles = useCallback(
+    () => selectedArea ? getLocationArticles(selectedArea.slug) : Promise.resolve({ articles: [] }),
+    [selectedArea],
+  );
+  const { data: areaArticlesData, isLoading: articlesLoading } = useApi(fetchAreaArticles, [selectedArea?.slug]);
+
+  const displayArticles: Article[] = selectedArea
+    ? (areaArticlesData?.articles ?? []).map(apiToArticle)
+    : [];
 
   const center: [number, number] = [61.4978, 23.761];
 
@@ -87,18 +102,24 @@ export default function ExplorePage() {
         <div className="explore__list-header">
           {selectedArea ? (
             <p className="explore__count">
-              {getAreaArticles(selectedArea).length} {getAreaArticles(selectedArea).length === 1 ? "story" : "stories"} in {selectedArea.name}
+              {displayArticles.length} {displayArticles.length === 1 ? "story" : "stories"} in {selectedArea.name}
             </p>
           ) : (
             <p className="explore__count">
-              {totalCount} stories in your area
+              {areas.reduce((sum, a) => sum + a.articleCount, 0)} stories in your area
             </p>
           )}
         </div>
 
-        {!selectedArea && (
+        {locsLoading && (
+          <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
+            <Loader2 size={24} className="animate-spin" />
+          </div>
+        )}
+
+        {!selectedArea && !locsLoading && (
           <div className="explore__areas">
-            {AREAS.map((area) => (
+            {areas.map((area) => (
               <button
                 key={area.id}
                 className="explore-area-card"
@@ -106,14 +127,20 @@ export default function ExplorePage() {
               >
                 <span className="explore-area-card__name">{area.name}</span>
                 <span className="explore-area-card__count">
-                  {area.articleIds.length} {area.articleIds.length === 1 ? "story" : "stories"}
+                  {area.articleCount} {area.articleCount === 1 ? "story" : "stories"}
                 </span>
               </button>
             ))}
           </div>
         )}
 
-        {selectedArea && <div className="explore__grid">
+        {selectedArea && articlesLoading && (
+          <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
+            <Loader2 size={24} className="animate-spin" />
+          </div>
+        )}
+
+        {selectedArea && !articlesLoading && <div className="explore__grid">
           {displayArticles.map((article) => (
             <Link
               key={article.id}
@@ -165,7 +192,7 @@ export default function ExplorePage() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
             />
-            {AREAS.map((area) => (
+            {areas.map((area) => (
               <Marker
                 key={area.id}
                 position={[area.lat, area.lng]}

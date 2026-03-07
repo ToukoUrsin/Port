@@ -6,6 +6,7 @@ import type {
   SearchResponse,
   ApiProfile,
   ApiLocation,
+  ApiReply,
 } from "@/lib/types.ts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -22,12 +23,11 @@ export function getToken(): string | null {
 }
 
 class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
+  status: number;
+  constructor(status: number, message: string) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
   }
 }
 
@@ -136,12 +136,14 @@ export async function logout(): Promise<void> {
 export function getArticles(params?: {
   location_id?: string;
   category?: string;
+  owner_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<ArticleListResponse> {
   const qs = new URLSearchParams();
   if (params?.location_id) qs.set("location_id", params.location_id);
   if (params?.category) qs.set("category", params.category);
+  if (params?.owner_id) qs.set("owner_id", params.owner_id);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   const query = qs.toString();
@@ -220,6 +222,10 @@ export function getProfile(): Promise<ApiProfile> {
   return apiFetch<ApiProfile>("/api/profiles/me");
 }
 
+export function getProfileBySlug(slug: string): Promise<ApiProfile> {
+  return apiFetch<ApiProfile>(`/api/profiles/${encodeURIComponent(slug)}`);
+}
+
 export function updateProfile(
   id: string,
   data: Partial<ApiProfile>,
@@ -228,4 +234,31 @@ export function updateProfile(
     method: "PUT",
     body: JSON.stringify(data),
   });
+}
+
+// --- Replies ---
+
+export function getReplies(
+  articleId: string,
+): Promise<{ replies: ApiReply[] }> {
+  return apiFetch<{ replies: ApiReply[] }>(
+    `/api/articles/${articleId}/replies`,
+  );
+}
+
+export function createReply(
+  submissionId: string,
+  body: string,
+  parentId?: string,
+): Promise<ApiReply> {
+  return apiFetch<ApiReply>(`/api/submissions/${submissionId}/replies`, {
+    method: "POST",
+    body: JSON.stringify({ body, parent_id: parentId }),
+  });
+}
+
+// --- Submissions (for profile drafts) ---
+
+export function getSubmissions(): Promise<ApiSubmission[]> {
+  return apiFetch<ApiSubmission[]>("/api/submissions");
 }

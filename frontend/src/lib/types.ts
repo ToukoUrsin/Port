@@ -189,17 +189,7 @@ export const TagBits: Record<string, number> = {
 
 // --- Display helpers ---
 
-export interface DisplayArticle {
-  id: string;
-  title: string;
-  excerpt: string;
-  category: string;
-  author: string;
-  timeAgo: string;
-  image: string;
-  isLead?: boolean;
-  body?: string;
-}
+import type { Article } from "@/data/articles";
 
 function tagsToCategory(tags: number): string {
   for (const [name, bit] of Object.entries(TagBits)) {
@@ -208,7 +198,7 @@ function tagsToCategory(tags: number): string {
   return "community";
 }
 
-function timeAgo(dateStr: string): string {
+export function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 60) return `${mins}m ago`;
@@ -220,19 +210,37 @@ function timeAgo(dateStr: string): string {
   return `${weeks}w ago`;
 }
 
-export function apiSubmissionToDisplay(
-  s: ApiSubmission,
-  isLead?: boolean
-): DisplayArticle {
+export function apiToArticle(s: ApiSubmission): Article {
+  const blocks = s.meta.blocks ?? [];
+  const body = blocks
+    .map((b) => b.content)
+    .filter(Boolean)
+    .join("\n\n");
+
   return {
     id: s.id,
     title: s.title,
     excerpt: s.description || s.meta.summary || "",
+    body,
     category: s.meta.category || tagsToCategory(s.tags),
     author: s.owner_id.slice(0, 8),
+    authorId: s.owner_id,
     timeAgo: timeAgo(s.created_at),
     image: s.meta.featured_img || "",
-    isLead,
-    body: s.meta.blocks?.map((b) => b.content).join("\n\n"),
+    area: s.meta.place_name,
+    qualityScore: s.meta.review?.score,
+    qualityFlags: s.meta.review?.flags,
   };
+}
+
+// --- Reply types ---
+
+export interface ApiReply {
+  id: string;
+  submission_id: string;
+  profile_id: string;
+  parent_id?: string;
+  body: string;
+  status: number;
+  created_at: string;
 }

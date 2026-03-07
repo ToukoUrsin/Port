@@ -1,35 +1,15 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { MapPin, User, ImageIcon, FileText, ArrowLeft } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
-import { getAuthorBySlug, getArticlesByAuthor, BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
+import { BADGE_CLASS, type Article } from "@/data/articles";
+import { useAuth } from "@/contexts/AuthContext";
+import { useApi } from "@/hooks/useApi";
+import { getArticles, getProfileBySlug, getSubmissions } from "@/lib/api";
+import { apiToArticle, timeAgo, SubmissionStatus } from "@/lib/types";
+import type { ApiProfile, ApiSubmission } from "@/lib/types";
 import "./ProfilePage.css";
-
-const DRAFT_POSTS: Article[] = [
-  {
-    id: 10,
-    title: "New Bike Lane Network Proposal for Riverside District",
-    excerpt:
-      "A draft proposal for connecting the east and west bike paths through downtown, with protected lanes on three major streets.",
-    body: "",
-    category: "council",
-    author: "Maria Santos",
-    timeAgo: "1 hour ago",
-    image: "",
-  },
-  {
-    id: 11,
-    title: "Interview Notes: Fire Chief on Summer Preparedness",
-    excerpt:
-      "Key takeaways from a sit-down with Chief Rodriguez about wildfire prevention and new equipment acquisitions.",
-    body: "",
-    category: "community",
-    author: "Maria Santos",
-    timeAgo: "2 days ago",
-    image: "",
-  },
-];
 
 function PostItem({ post, isDraft }: { post: Article; isDraft?: boolean }) {
   const inner = (
@@ -70,20 +50,91 @@ function PostItem({ post, isDraft }: { post: Article; isDraft?: boolean }) {
   );
 }
 
+function submissionToArticle(s: ApiSubmission): Article {
+  return {
+    ...apiToArticle(s),
+    timeAgo: timeAgo(s.updated_at),
+  };
+}
+
 export default function ProfilePage() {
   const { slug } = useParams<{ slug: string }>();
   const [tab, setTab] = useState<"posts" | "drafts">("posts");
-
-  const author = slug ? getAuthorBySlug(slug) : null;
+  const { user } = useAuth();
   const isOwnProfile = !slug;
 
-  const name = author?.name ?? "Maria Santos";
-  const email = author?.email ?? "maria.santos@email.com";
-  const joined = author?.joined ?? "March 2026";
+  // Fetch profile for other users
+  const fetchProfile = useCallback(
+    () => slug ? getProfileBySlug(slug) : Promise.resolve(null),
+    [slug],
+  );
+  const { data: otherProfile, isLoading: profileLoading, error: profileError } = useApi<ApiProfile | null>(fetchProfile, [slug]);
 
-  const publishedPosts = getArticlesByAuthor(name);
-  const drafts = isOwnProfile ? DRAFT_POSTS : [];
+  const profile: ApiProfile | null = isOwnProfile ? user : otherProfile;
+  const profileId = profile?.id;
+
+  // Fetch published articles for this profile
+  const fetchArticles = useCallback(
+    () => profileId ? getArticles({ owner_id: profileId, limit: 100 }) : Promise.resolve({ articles: [], total: 0 }),
+    [profileId],
+  );
+  const { data: articlesData, isLoading: articlesLoading } = useApi(fetchArticles, [profileId]);
+  const publishedPosts = useMemo(
+    () => (articlesData?.articles ?? []).map(apiToArticle),
+    [articlesData],
+  );
+
+  // Fetch drafts for own profile only
+  const fetchDrafts = useCallback(
+    () => isOwnProfile ? getSubmissions() : Promise.resolve([]),
+    [isOwnProfile],
+  );
+  const { data: allSubmissions } = useApi<ApiSubmission[]>(fetchDrafts, [isOwnProfile]);
+  const drafts = useMemo(
+    () => (allSubmissions ?? [])
+      .filter((s) => s.status !== SubmissionStatus.Published)
+      .map(submissionToArticle),
+    [allSubmissions],
+  );
+
   const items = tab === "posts" ? publishedPosts : drafts;
+
+  if (!isOwnProfile && profileLoading) {
+    return (
+      <>
+        <Navbar />
+        <main className="profile-container" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
+          <Loader2 size={32} className="animate-spin" style={{ color: "var(--color-text-tertiary)" }} />
+        </main>
+        <BottomBar />
+      </>
+    );
+  }
+
+  if (!isOwnProfile && (profileError || !profile)) {
+    return (
+      <>
+        <Navbar />
+        <main className="profile-container" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
+          <User size={48} style={{ color: "var(--color-text-tertiary)", marginBottom: "var(--space-4)" }} />
+          <h1 className="profile-name">Profile not found</h1>
+          <p style={{ color: "var(--color-text-secondary)", marginTop: "var(--space-2)" }}>
+            This profile doesn't exist or is private.
+          </p>
+          <Link to="/" className="btn btn-primary" style={{ marginTop: "var(--space-6)", display: "inline-flex" }}>
+            Back to home
+          </Link>
+        </main>
+        <BottomBar />
+      </>
+    );
+  }
+
+  const name = profile?.profile_name ?? "Anonymous";
+  const email = profile?.email ?? "";
+  const joined = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    : "";
 
   return (
     <>
@@ -96,8 +147,8 @@ export default function ProfilePage() {
           </div>
           <div className="profile-info">
             <h1 className="profile-name">{name}</h1>
-            <span className="profile-email">{email}</span>
-            <span className="profile-joined">Joined {joined}</span>
+            {isOwnProfile && email && <span className="profile-email">{email}</span>}
+            {joined && <span className="profile-joined">Joined {joined}</span>}
           </div>
         </div>
 
@@ -131,7 +182,11 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {items.length > 0 ? (
+        {articlesLoading ? (
+          <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
+            <Loader2 size={24} className="animate-spin" />
+          </div>
+        ) : items.length > 0 ? (
           <div className="profile-posts">
             {items.map((post) => (
               <PostItem key={post.id} post={post} isDraft={tab === "drafts"} />

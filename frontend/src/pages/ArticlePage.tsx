@@ -1,37 +1,26 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ChevronDown, ImageIcon, Mic, MessageSquare, User, ThumbsUp, Send } from "lucide-react";
-import { getArticleById, getRelatedArticles, BADGE_CLASS, authorSlug } from "@/data/articles";
+import { ArrowLeft, Clock, ChevronDown, ImageIcon, MessageSquare, User, Send, AlertTriangle, Loader2 } from "lucide-react";
+import { BADGE_CLASS, authorSlug } from "@/data/articles";
+import { useApi } from "@/hooks/useApi";
+import { getArticle, getArticles, getReplies, createReply } from "@/lib/api";
+import { apiToArticle, timeAgo } from "@/lib/types";
+import type { ApiReply, ReviewFlag } from "@/lib/types";
+import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import "./ArticlePage.css";
 
 function QualityScore({
   score,
-  dimensions,
+  flags,
 }: {
   score: number;
-  dimensions: {
-    factualAccuracy: number;
-    quoteAttribution: number;
-    perspectives: number;
-    representation: number;
-    ethicalFraming: number;
-    completeness: number;
-  };
+  flags?: ReviewFlag[];
 }) {
   const [open, setOpen] = useState(false);
 
   const tier =
     score >= 80 ? "high" : score >= 60 ? "medium" : "low";
-
-  const dimLabels: { key: keyof typeof dimensions; label: string }[] = [
-    { key: "factualAccuracy", label: "Factual accuracy" },
-    { key: "quoteAttribution", label: "Quote attribution" },
-    { key: "perspectives", label: "Perspectives" },
-    { key: "representation", label: "Representation" },
-    { key: "ethicalFraming", label: "Ethical framing" },
-    { key: "completeness", label: "Completeness" },
-  ];
 
   return (
     <div className="quality-section">
@@ -42,26 +31,30 @@ function QualityScore({
             {score}/100
           </span>
         </div>
-        <ChevronDown
-          size={16}
-          className={`quality-toggle-icon ${open ? "quality-toggle-icon--open" : ""}`}
-        />
+        {flags && flags.length > 0 && (
+          <ChevronDown
+            size={16}
+            className={`quality-toggle-icon ${open ? "quality-toggle-icon--open" : ""}`}
+          />
+        )}
       </button>
 
-      {open && (
+      {open && flags && flags.length > 0 && (
         <div className="quality-dimensions">
-          {dimLabels.map(({ key, label }) => (
-            <div key={key} className="quality-dim">
+          {flags.map((flag, i) => (
+            <div key={i} className="quality-dim">
               <div className="quality-dim__label">
-                {label}
-                <span className="quality-dim__value"> {dimensions[key]}</span>
+                <AlertTriangle size={12} />
+                <span style={{ fontWeight: 600 }}>{flag.type}</span>
               </div>
-              <div className="quality-dim__bar">
-                <div
-                  className="quality-dim__fill"
-                  style={{ width: `${dimensions[key]}%` }}
-                />
-              </div>
+              <p style={{ margin: "var(--space-1) 0 0", color: "var(--color-text-secondary)", fontSize: "var(--text-sm)" }}>
+                {flag.text}
+              </p>
+              {flag.suggestion && (
+                <p style={{ margin: "var(--space-1) 0 0", color: "var(--color-text-tertiary)", fontSize: "var(--text-xs)", fontStyle: "italic" }}>
+                  {flag.suggestion}
+                </p>
+              )}
             </div>
           ))}
         </div>
@@ -70,128 +63,95 @@ function QualityScore({
   );
 }
 
-interface Comment {
-  id: number;
-  author: string;
-  text: string;
-  timeAgo: string;
-  likes: number;
-  liked: boolean;
-}
-
-const SEED_COMMENTS: Record<number, Comment[]> = {
-  1: [
-    { id: 1, author: "David Park", text: "Great to see the council moving forward on this. The 30% affordable housing amendment was crucial — without it this would just be another gentrification project.", timeAgo: "1 hour ago", likes: 12, liked: false },
-    { id: 2, author: "Elena M.", text: "I was at the hearing. The energy in the room was incredible. People really care about downtown.", timeAgo: "45 min ago", likes: 8, liked: false },
-    { id: 3, author: "Robert Chen", text: "Does anyone know which lots specifically? I heard the one on 2nd Ave might affect parking for nearby businesses.", timeAgo: "30 min ago", likes: 3, liked: false },
-  ],
-  2: [
-    { id: 1, author: "Coach Chen", text: "So proud of these kids. They've been working after school every day since September.", timeAgo: "3 hours ago", likes: 15, liked: false },
-    { id: 2, author: "Aisha T.", text: "Go Volt! State championship here we come!", timeAgo: "2 hours ago", likes: 7, liked: false },
-  ],
-  3: [
-    { id: 1, author: "Lisa Huang", text: "Sweet Rise has the best sourdough in town. So happy they're expanding!", timeAgo: "4 hours ago", likes: 9, liked: false },
-  ],
-  5: [
-    { id: 1, author: "Tom Nakamura", text: "Signed up for a plot! Can't wait to start growing tomatoes this spring.", timeAgo: "1 day ago", likes: 6, liked: false },
-    { id: 2, author: "Carmen D.", text: "This is exactly what the East Side needed. Thank you to all the volunteers!", timeAgo: "1 day ago", likes: 11, liked: false },
-  ],
-};
-
-function Comments({ articleId }: { articleId: number }) {
-  const [comments, setComments] = useState<Comment[]>(SEED_COMMENTS[articleId] || []);
+function Comments({ articleId }: { articleId: string }) {
+  const { isAuthenticated } = useAuth();
+  const fetchReplies = useCallback(() => getReplies(articleId), [articleId]);
+  const { data: repliesData, isLoading } = useApi(fetchReplies, [articleId]);
+  const [localReplies, setLocalReplies] = useState<ApiReply[]>([]);
   const [newComment, setNewComment] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = () => {
+  const allReplies = [...(repliesData?.replies ?? []), ...localReplies];
+
+  const handleSubmit = async () => {
     const text = newComment.trim();
-    if (!text) return;
-    setComments((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        author: "You",
-        text,
-        timeAgo: "Just now",
-        likes: 0,
-        liked: false,
-      },
-    ]);
-    setNewComment("");
-    setShowAll(true);
+    if (!text || submitting) return;
+    setSubmitting(true);
+    try {
+      const reply = await createReply(articleId, text);
+      setLocalReplies((prev) => [...prev, reply]);
+      setNewComment("");
+      setShowAll(true);
+    } catch {
+      // Could show error toast
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleLike = (commentId: number) => {
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId
-          ? { ...c, liked: !c.liked, likes: c.liked ? c.likes - 1 : c.likes + 1 }
-          : c
-      )
-    );
-  };
-
-  const visible = showAll ? comments : comments.slice(0, 3);
-  const hasMore = comments.length > 3 && !showAll;
+  const visible = showAll ? allReplies : allReplies.slice(0, 3);
+  const hasMore = allReplies.length > 3 && !showAll;
 
   return (
     <div className="comments-section">
       <h2 className="comments-section__title">
         <MessageSquare size={18} />
         Comments
-        {comments.length > 0 && (
-          <span className="comments-section__count">{comments.length}</span>
+        {allReplies.length > 0 && (
+          <span className="comments-section__count">{allReplies.length}</span>
         )}
       </h2>
 
-      <div className="comment-form">
-        <div className="comment-form__avatar">
-          <User size={16} />
+      {isAuthenticated && (
+        <div className="comment-form">
+          <div className="comment-form__avatar">
+            <User size={16} />
+          </div>
+          <div className="comment-form__input-wrapper">
+            <textarea
+              ref={inputRef}
+              className="input comment-form__input"
+              placeholder="Add a comment..."
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              rows={1}
+            />
+            {newComment.trim() && (
+              <button className="comment-form__submit" onClick={handleSubmit} disabled={submitting}>
+                <Send size={16} />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="comment-form__input-wrapper">
-          <textarea
-            ref={inputRef}
-            className="input comment-form__input"
-            placeholder="Add a comment..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            rows={1}
-          />
-          {newComment.trim() && (
-            <button className="comment-form__submit" onClick={handleSubmit}>
-              <Send size={16} />
-            </button>
-          )}
+      )}
+
+      {isLoading && (
+        <div style={{ textAlign: "center", padding: "var(--space-4)", color: "var(--color-text-tertiary)" }}>
+          <Loader2 size={20} className="animate-spin" />
         </div>
-      </div>
+      )}
 
       {visible.length > 0 && (
         <div className="comments-list">
-          {visible.map((comment) => (
-            <div key={comment.id} className="comment">
+          {visible.map((reply) => (
+            <div key={reply.id} className="comment">
               <div className="comment__avatar">
                 <User size={14} />
               </div>
               <div className="comment__body">
                 <div className="comment__header">
-                  <span className="comment__author">{comment.author}</span>
-                  <span className="comment__time">{comment.timeAgo}</span>
+                  <span className="comment__author">{reply.profile_id.slice(0, 8)}</span>
+                  <span className="comment__time">{timeAgo(reply.created_at)}</span>
                 </div>
-                <p className="comment__text">{comment.text}</p>
-                <button
-                  className={`comment__like ${comment.liked ? "comment__like--active" : ""}`}
-                  onClick={() => handleLike(comment.id)}
-                >
-                  <ThumbsUp size={12} />
-                  {comment.likes > 0 && <span>{comment.likes}</span>}
-                </button>
+                <p className="comment__text">{reply.body}</p>
               </div>
             </div>
           ))}
@@ -200,7 +160,7 @@ function Comments({ articleId }: { articleId: number }) {
 
       {hasMore && (
         <button className="comments-show-more" onClick={() => setShowAll(true)}>
-          Show all {comments.length} comments
+          Show all {allReplies.length} comments
           <ChevronDown size={14} />
         </button>
       )}
@@ -211,9 +171,37 @@ function Comments({ articleId }: { articleId: number }) {
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const article = getArticleById(Number(id));
 
-  if (!article) {
+  const fetchArticle = useCallback(() => getArticle(id!), [id]);
+  const { data: apiData, isLoading, error } = useApi(fetchArticle, [id]);
+
+  const fetchRelated = useCallback(() => getArticles({ limit: 4 }), []);
+  const { data: relatedData } = useApi(fetchRelated, []);
+
+  const article = apiData ? apiToArticle(apiData) : null;
+  const related = (relatedData?.articles ?? [])
+    .filter((a) => a.id !== id)
+    .slice(0, 3)
+    .map(apiToArticle);
+
+  if (isLoading) {
+    return (
+      <>
+        <Navbar
+          left={
+            <button className="home-nav__icon-btn" onClick={() => navigate(-1)} title="Back">
+              <ArrowLeft size={18} />
+            </button>
+          }
+        />
+        <div className="article-content" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
+          <Loader2 size={32} className="animate-spin" style={{ color: "var(--color-text-tertiary)" }} />
+        </div>
+      </>
+    );
+  }
+
+  if (error || !article) {
     return (
       <>
         <Navbar
@@ -235,8 +223,6 @@ export default function ArticlePage() {
       </>
     );
   }
-
-  const related = getRelatedArticles(article, 3);
 
   return (
     <>
@@ -274,27 +260,20 @@ export default function ArticlePage() {
           By <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link">{article.author}</Link>
         </p>
 
-        {article.sourceType && (
-          <div className="article-source">
-            <Mic size={12} />
-            Written from {article.sourceType.toLowerCase()} by <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link">{article.author}</Link>
-          </div>
-        )}
-
         <div className="article-body">
           {article.body.split("\n\n").map((paragraph, i) => (
             <p key={i}>{paragraph}</p>
           ))}
         </div>
 
-        {article.qualityScore != null && article.qualityDimensions && (
+        {article.qualityScore != null && (
           <QualityScore
             score={article.qualityScore}
-            dimensions={article.qualityDimensions}
+            flags={article.qualityFlags}
           />
         )}
 
-        <Comments articleId={article.id} />
+        <Comments articleId={id!} />
 
         {related.length > 0 && (
           <div className="more-stories">

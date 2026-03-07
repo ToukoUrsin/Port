@@ -23,22 +23,37 @@ func (h *Handler) GetMyProfile(c *gin.Context) {
 }
 
 func (h *Handler) GetProfile(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
+	param := c.Param("id")
 
 	var profile models.Profile
-	if err := h.db.First(&profile, "id = ?", id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
+	if id, err := uuid.Parse(param); err == nil {
+		if err := h.db.First(&profile, "id = ?", id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+	} else {
+		if err := h.db.First(&profile, "profile_name = ?", param).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
 	}
 
-	actor := services.ActorFromContext(c)
-	if !h.access.CanViewProfile(actor, &profile) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
+	// Check if we have auth context (optional auth)
+	profileIDRaw, hasAuth := c.Get("profile_id")
+	if hasAuth {
+		pid, _ := uuid.Parse(profileIDRaw.(string))
+		role, _ := c.Get("role")
+		perm, _ := c.Get("perm")
+		actor := services.Actor{ProfileID: pid, Role: role.(int), Perm: perm.(int64)}
+		if !h.access.CanViewProfile(actor, &profile) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+	} else {
+		if !profile.Public {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, profile)

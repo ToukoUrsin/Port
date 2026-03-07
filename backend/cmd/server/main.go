@@ -81,6 +81,13 @@ func main() {
 		public.GET("/locations", h.ListLocations)
 		public.GET("/locations/:slug", h.GetLocation)
 		public.GET("/locations/:slug/articles", h.LocationArticles)
+		public.GET("/articles/:id/replies", h.ListReplies)
+	}
+
+	// --- Optional auth routes (public but enhanced with auth context) ---
+	optAuth := r.Group("/api", middleware.OptionalAuth(jwtSecret))
+	{
+		optAuth.GET("/profiles/:id", h.GetProfile)
 	}
 
 	// --- Authenticated routes ---
@@ -101,7 +108,6 @@ func main() {
 
 		// Profiles
 		authed.GET("/profiles/me", h.GetMyProfile)
-		authed.GET("/profiles/:id", h.GetProfile)
 		authed.PUT("/profiles/:id", h.UpdateProfile)
 
 		// Replies

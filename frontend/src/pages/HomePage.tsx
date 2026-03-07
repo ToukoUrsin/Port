@@ -1,30 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Clock, ImageIcon, ChevronDown, MapPin, X } from "lucide-react";
+import { Clock, ImageIcon, ChevronDown, MapPin, X, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
-import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useApi } from "@/hooks/useApi.ts";
 import { getArticles } from "@/lib/api.ts";
+import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse } from "@/lib/types.ts";
-import { ARTICLES, BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
+import { BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
 import "./HomePage.css";
-
-const RECENT_ARTICLES = ARTICLES.filter((a) =>
-  ["2 hours ago", "4 hours ago", "5 hours ago", "8 hours ago", "10 hours ago", "12 hours ago"].includes(a.timeAgo)
-);
-const BEST_OF_WEEK = [...ARTICLES]
-  .filter((a) => a.image)
-  .sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
-  .slice(0, 5);
-const OPINION_ARTICLES = ARTICLES.filter((a) => a.category === "opinion");
-const EVENT_ARTICLES = ARTICLES.filter((a) => a.category === "events");
-const NEWS_HEADLINES = ARTICLES.filter((a) =>
-  ["council", "news", "community"].includes(a.category) && !a.image
-);
-const NEWS_WITH_IMAGES = ARTICLES.filter((a) =>
-  ["council", "news", "community"].includes(a.category) && !!a.image
-);
 
 const RADIUS_OPTIONS = [5, 10, 25, 50, 100];
 
@@ -453,6 +437,7 @@ function RecentSection({ articles }: { articles: Article[] }) {
 }
 
 function BestOfWeekSection({ articles }: { articles: Article[] }) {
+  if (articles.length === 0) return null;
   return (
     <section className="home-section">
       <h2 className="home-section__title">Best of the Week</h2>
@@ -466,6 +451,7 @@ function BestOfWeekSection({ articles }: { articles: Article[] }) {
 }
 
 function OpinionSection({ articles }: { articles: Article[] }) {
+  if (articles.length === 0) return null;
   return (
     <section className="home-section">
       <h2 className="home-section__title">Opinions</h2>
@@ -479,6 +465,7 @@ function OpinionSection({ articles }: { articles: Article[] }) {
 }
 
 function EventsSection({ articles }: { articles: Article[] }) {
+  if (articles.length === 0) return null;
   return (
     <section className="home-section">
       <h2 className="home-section__title">Events</h2>
@@ -498,6 +485,7 @@ function NewsSection({
   headlines: Article[];
   featured: Article[];
 }) {
+  if (headlines.length === 0 && featured.length === 0) return null;
   return (
     <section className="home-section">
       <h2 className="home-section__title">News</h2>
@@ -519,30 +507,6 @@ function NewsSection({
   );
 }
 
-function apiToArticle(s: import("@/lib/types.ts").ApiSubmission): Article {
-  const blocks = s.meta.blocks ?? [];
-  const body = blocks.map((b) => b.content).filter(Boolean).join("\n\n");
-  const diff = Date.now() - new Date(s.created_at).getTime();
-  const mins = Math.floor(diff / 60000);
-  let timeAgo = `${mins}m ago`;
-  if (mins >= 60) {
-    const hours = Math.floor(mins / 60);
-    timeAgo = hours < 24 ? `${hours} hours ago` : `${Math.floor(hours / 24)}d ago`;
-  }
-  return {
-    id: Math.abs(s.id.split("").reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)),
-    title: s.title,
-    excerpt: s.description || s.meta.summary || "",
-    body,
-    category: s.meta.category || "community",
-    author: "Local Contributor",
-    timeAgo,
-    image: s.meta.featured_img || "",
-    area: s.meta.place_name,
-    qualityScore: s.meta.review?.score,
-  };
-}
-
 export default function HomePage() {
   const [searchParams] = useSearchParams();
   const cities = searchParams.getAll("city");
@@ -550,12 +514,27 @@ export default function HomePage() {
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState(25);
   const [modalOpen, setModalOpen] = useState(false);
-  const { isAuthenticated } = useAuth();
 
-  const fetchArticles = useCallback(() => getArticles({ limit: 20 }), []);
-  const { data: apiData } = useApi<ArticleListResponse>(fetchArticles, []);
-  const liveArticles = (apiData?.articles ?? []).map(apiToArticle);
-  const recentWithLive = [...liveArticles, ...RECENT_ARTICLES];
+  const fetchArticles = useCallback(() => getArticles({ limit: 100 }), []);
+  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, []);
+  const allArticles = useMemo(
+    () => (apiData?.articles ?? []).map(apiToArticle),
+    [apiData],
+  );
+
+  const recentArticles = allArticles.slice(0, 10);
+  const bestOfWeek = useMemo(
+    () => [...allArticles]
+      .filter((a) => a.image)
+      .sort((a, b) => (b.qualityScore ?? 0) - (a.qualityScore ?? 0))
+      .slice(0, 5),
+    [allArticles],
+  );
+  const opinionArticles = allArticles.filter((a) => a.category === "opinion");
+  const eventArticles = allArticles.filter((a) => a.category === "events");
+  const newsCategories = ["council", "news", "community"];
+  const newsHeadlines = allArticles.filter((a) => newsCategories.includes(a.category) && !a.image);
+  const newsFeatured = allArticles.filter((a) => newsCategories.includes(a.category) && !!a.image);
 
   return (
     <>
@@ -609,13 +588,29 @@ export default function HomePage() {
       />
 
       <main className="home-container">
-        <RecentSection articles={recentWithLive} />
-        <AdBanner />
-        <BestOfWeekSection articles={BEST_OF_WEEK} />
-        <OpinionSection articles={OPINION_ARTICLES} />
-        <AdBanner />
-        <EventsSection articles={EVENT_ARTICLES} />
-        <NewsSection headlines={NEWS_HEADLINES} featured={NEWS_WITH_IMAGES} />
+        {isLoading ? (
+          <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-tertiary)" }}>
+            <Loader2 size={32} className="animate-spin" />
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-secondary)" }}>
+            <p>Failed to load articles. Please try again later.</p>
+          </div>
+        ) : allArticles.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-secondary)" }}>
+            <p>No articles yet. Be the first to contribute!</p>
+          </div>
+        ) : (
+          <>
+            <RecentSection articles={recentArticles} />
+            <AdBanner />
+            <BestOfWeekSection articles={bestOfWeek} />
+            <OpinionSection articles={opinionArticles} />
+            <AdBanner />
+            <EventsSection articles={eventArticles} />
+            <NewsSection headlines={newsHeadlines} featured={newsFeatured} />
+          </>
+        )}
       </main>
       <div className="home-fade-bottom" />
       <BottomBar />

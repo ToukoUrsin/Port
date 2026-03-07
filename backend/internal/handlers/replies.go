@@ -9,6 +9,26 @@ import (
 	"github.com/localnews/backend/internal/services"
 )
 
+func (h *Handler) ListReplies(c *gin.Context) {
+	subID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ? AND status = ?", subID, models.StatusPublished).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	var replies []models.Reply
+	h.db.Where("submission_id = ? AND status = ?", subID, models.ReplyVisible).
+		Order("created_at ASC").Find(&replies)
+
+	c.JSON(http.StatusOK, gin.H{"replies": replies})
+}
+
 func (h *Handler) CreateReply(c *gin.Context) {
 	subID, err := uuid.Parse(c.Param("id"))
 	if err != nil {

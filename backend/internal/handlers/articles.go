@@ -24,6 +24,16 @@ func (h *Handler) ListArticles(c *gin.Context) {
 		query = query.Where("location_id = ?", locationID)
 	}
 
+	category := c.Query("category")
+	if category != "" {
+		query = query.Where("meta->>'category' = ?", category)
+	}
+
+	ownerID := c.Query("owner_id")
+	if ownerID != "" {
+		query = query.Where("owner_id = ?", ownerID)
+	}
+
 	var total int64
 	query.Count(&total)
 
