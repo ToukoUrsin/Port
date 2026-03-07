@@ -13,6 +13,7 @@ import type {
   ReplyReactionMap,
   FollowStatus,
   FollowCounts,
+  FileListResponse,
 } from "@/lib/types.ts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -464,6 +465,30 @@ export function unfollowUser(followId: string): Promise<void> {
 
 export function getFollowStatus(profileId: string): Promise<FollowStatus> {
   return apiFetch<FollowStatus>(`/api/follows/status/${profileId}`);
+}
+
+// --- Files ---
+
+export function getMyFiles(params?: {
+  file_type?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<FileListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.file_type) qs.set("file_type", String(params.file_type));
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  const query = qs.toString();
+  return apiFetch<FileListResponse>(`/api/profiles/me/files${query ? `?${query}` : ""}`);
+}
+
+export function fileToMediaUrl(name: string): string {
+  // name is stored as "./uploads/<submissionID>/<filename>"
+  const parts = name.replace(/^\.\/uploads\//, "").split("/");
+  if (parts.length >= 2) {
+    return `${API_BASE}/api/media/${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+  }
+  return `${API_BASE}/api/media/${name}`;
 }
 
 export function getFollowCounts(profileId: string): Promise<FollowCounts> {

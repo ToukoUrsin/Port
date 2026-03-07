@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck, Music, FolderOpen } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import AccountSettings from "@/components/AccountSettings";
@@ -8,9 +8,9 @@ import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useApi } from "@/hooks/useApi";
-import { getArticles, getProfileBySlug, getSubmissions, getFollowStatus, getFollowCounts, followUser, unfollowUser } from "@/lib/api";
-import { apiToArticle, timeAgo, SubmissionStatus } from "@/lib/types";
-import type { ApiProfile, ApiSubmission, FollowCounts } from "@/lib/types";
+import { getArticles, getProfileBySlug, getSubmissions, getMyFiles, fileToMediaUrl, getFollowStatus, getFollowCounts, followUser, unfollowUser } from "@/lib/api";
+import { apiToArticle, timeAgo, SubmissionStatus, FileType } from "@/lib/types";
+import type { ApiProfile, ApiSubmission, FollowCounts, ApiFile } from "@/lib/types";
 import "./ProfilePage.css";
 
 const STATUS_LABEL: Record<number, string> = {
@@ -82,9 +82,47 @@ function submissionToDraft(s: ApiSubmission): DraftArticle {
   };
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function FileCard({ file }: { file: ApiFile }) {
+  const url = fileToMediaUrl(file.name);
+  const size = formatFileSize(file.size);
+  const date = new Date(file.uploaded_at).toLocaleDateString();
+
+  if (file.file_type === FileType.Photo) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="profile-file-photo">
+        <img src={url} alt={file.name.split("/").pop() ?? "photo"} loading="lazy" />
+        <div className="profile-file-photo__info">
+          <span>{size}</span>
+          <span>{date}</span>
+        </div>
+      </a>
+    );
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="profile-file-audio">
+      <Music size={20} className="profile-file-audio__icon" />
+      <div className="profile-file-audio__body">
+        <span className="profile-file-audio__name">{file.meta?.mime_type || "audio"}</span>
+        <span className="profile-file-audio__meta">
+          {size}
+          {file.meta?.duration_secs ? ` \u00b7 ${file.meta.duration_secs}s` : ""}
+          {` \u00b7 ${date}`}
+        </span>
+      </div>
+    </a>
+  );
+}
+
 export default function ProfilePage() {
   const { slug } = useParams<{ slug: string }>();
-  const [tab, setTab] = useState<"posts" | "drafts" | "settings">("posts");
+  const [tab, setTab] = useState<"posts" | "drafts" | "files" | "settings">("posts");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
@@ -162,6 +200,16 @@ export default function ProfilePage() {
       .map(submissionToDraft),
     [allSubmissions],
   );
+
+  // Fetch files for own profile only
+  const fetchFiles = useCallback(
+    () => isOwnProfile ? getMyFiles({ limit: 100 }) : Promise.resolve({ files: [], total: 0 }),
+    [isOwnProfile],
+  );
+  const { data: filesData, isLoading: filesLoading } = useApi(fetchFiles, [isOwnProfile]);
+  const allFiles = filesData?.files ?? [];
+  const photoFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Photo), [allFiles]);
+  const audioFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Audio), [allFiles]);
 
   const handleLogout = async () => {
     await logout();
@@ -255,6 +303,12 @@ export default function ProfilePage() {
               <span className="profile-stat__label">{t("profile.drafts")}</span>
             </div>
           )}
+          {isOwnProfile && (
+            <div className="profile-stat">
+              <span className="profile-stat__value">{allFiles.length}</span>
+              <span className="profile-stat__label">{t("profile.files")}</span>
+            </div>
+          )}
         </div>
 
         <div className="profile-tabs">
@@ -274,6 +328,14 @@ export default function ProfilePage() {
           )}
           {isOwnProfile && (
             <button
+              className={`profile-tab ${tab === "files" ? "profile-tab--active" : ""}`}
+              onClick={() => setTab("files")}
+            >
+              {t("profile.files")}
+            </button>
+          )}
+          {isOwnProfile && (
+            <button
               className={`profile-tab ${tab === "settings" ? "profile-tab--active" : ""}`}
               onClick={() => setTab("settings")}
             >
@@ -284,6 +346,53 @@ export default function ProfilePage() {
 
         {tab === "settings" ? (
           <AccountSettings />
+        ) : tab === "files" ? (
+          filesLoading ? (
+            <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
+              <Loader2 size={24} className="animate-spin" />
+            </div>
+          ) : allFiles.length > 0 ? (
+            <div className="profile-files">
+              {photoFiles.length > 0 && (
+                <div className="profile-files__section">
+                  <h3 className="profile-files__heading">
+                    <ImageIcon size={14} />
+                    Photos ({photoFiles.length})
+                  </h3>
+                  <div className="profile-files__grid">
+                    {photoFiles.map((f) => (
+                      <FileCard key={f.id} file={f} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {audioFiles.length > 0 && (
+                <div className="profile-files__section">
+                  <h3 className="profile-files__heading">
+                    <Music size={14} />
+                    Audio ({audioFiles.length})
+                  </h3>
+                  <div className="profile-files__list">
+                    {audioFiles.map((f) => (
+                      <FileCard key={f.id} file={f} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="profile-empty">
+              <div className="profile-empty__icon">
+                <FolderOpen size={32} />
+              </div>
+              <p className="profile-empty__text">{t("profile.noFiles")}</p>
+              {isOwnProfile && (
+                <Link to="/post" className="profile-empty__cta">
+                  Write your first story
+                </Link>
+              )}
+            </div>
+          )
         ) : articlesLoading ? (
           <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
             <Loader2 size={24} className="animate-spin" />
