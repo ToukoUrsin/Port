@@ -41,6 +41,9 @@ func (s *GeminiReviewService) Review(ctx context.Context, input ReviewInput) (*m
 			SystemInstruction: &genai.Content{
 				Parts: []*genai.Part{genai.NewPartFromText(prompts.ReviewSystem)},
 			},
+			ThinkingConfig: &genai.ThinkingConfig{
+				ThinkingLevel: genai.ThinkingLevelHigh,
+			},
 		},
 	)
 	if err != nil {

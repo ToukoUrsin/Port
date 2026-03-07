@@ -43,6 +43,9 @@ func (s *GeminiGenerationService) Generate(ctx context.Context, input Generation
 			SystemInstruction: &genai.Content{
 				Parts: []*genai.Part{genai.NewPartFromText(prompts.GenerationSystem)},
 			},
+			ThinkingConfig: &genai.ThinkingConfig{
+				ThinkingLevel: genai.ThinkingLevelHigh,
+			},
 		},
 	)
 	if err != nil {
