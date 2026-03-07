@@ -57,6 +57,7 @@ func (h *Handler) ListArticles(c *gin.Context) {
 	query.Order("updated_at DESC").Limit(limit).Offset(offset).Find(&articles)
 
 	h.fillLocationNames(articles)
+	h.fillOwnerNames(articles)
 	c.JSON(http.StatusOK, gin.H{"articles": articles, "total": total})
 }
 
@@ -84,6 +85,7 @@ func (h *Handler) GetArticle(c *gin.Context) {
 
 	articles := []models.Submission{article}
 	h.fillLocationNames(articles)
+	h.fillOwnerNames(articles)
 	h.cache.Set(c.Request.Context(), key, articles[0])
 	c.JSON(http.StatusOK, articles[0])
 }
@@ -133,6 +135,7 @@ func (h *Handler) SimilarArticles(c *gin.Context) {
 	}
 
 	h.fillLocationNames(similar)
+	h.fillOwnerNames(similar)
 	h.cache.Set(c.Request.Context(), key, similar)
 	c.JSON(http.StatusOK, gin.H{"articles": similar})
 }
@@ -203,6 +206,31 @@ func (h *Handler) fillLocationNames(articles []models.Submission) {
 	}
 	for i := range articles {
 		articles[i].LocationName = nameMap[articles[i].LocationID]
+	}
+}
+
+// fillOwnerNames populates the OwnerName field on each submission
+// by looking up profile names from the profiles table.
+func (h *Handler) fillOwnerNames(articles []models.Submission) {
+	if len(articles) == 0 {
+		return
+	}
+	seen := make(map[uuid.UUID]bool)
+	var ids []uuid.UUID
+	for _, a := range articles {
+		if !seen[a.OwnerID] {
+			seen[a.OwnerID] = true
+			ids = append(ids, a.OwnerID)
+		}
+	}
+	var profiles []models.Profile
+	h.db.Select("id, profile_name").Where("id IN ?", ids).Find(&profiles)
+	nameMap := make(map[uuid.UUID]string, len(profiles))
+	for _, p := range profiles {
+		nameMap[p.ID] = p.ProfileName
+	}
+	for i := range articles {
+		articles[i].OwnerName = nameMap[articles[i].OwnerID]
 	}
 }
 

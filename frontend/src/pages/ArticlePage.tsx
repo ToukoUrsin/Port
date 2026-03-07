@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Heart } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { BADGE_CLASS, authorSlug } from "@/data/articles";
+import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
 import { getArticle, getSimilarArticles, getReplies, createReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
@@ -220,7 +220,7 @@ function Comments({ articleId }: { articleId: string }) {
                 </div>
                 <div className="comment__body">
                   <div className="comment__header">
-                    <span className="comment__author">{reply.profile_id.slice(0, 8)}</span>
+                    <Link to={`/profile/${reply.profile_id}`} className="comment__author">{reply.profile_name || reply.profile_id.slice(0, 8)}</Link>
                     <span className="comment__time">{timeAgo(reply.created_at)}</span>
                   </div>
                   <p className="comment__text">{reply.body}</p>
@@ -331,7 +331,7 @@ export default function ArticlePage() {
 
         <h1 className="article-title">{article.title}</h1>
         <p className="article-author">
-          {t("article.by")} <Link to={`/profile/${authorSlug(article.author)}`} className="article-author__link">{article.author}</Link>
+          {t("article.by")} <Link to={`/profile/${article.authorId}`} className="article-author__link">{article.author}</Link>
         </p>
 
         <div className="article-body">
@@ -482,7 +482,7 @@ export default function ArticlePage() {
                 <p className="article-modal__author">
                   By{" "}
                   <Link
-                    to={`/profile/${authorSlug(a.author)}`}
+                    to={`/profile/${a.authorId}`}
                     className="article-author__link"
                     onClick={() => setModalArticle(null)}
                   >

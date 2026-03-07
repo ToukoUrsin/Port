@@ -203,7 +203,9 @@ func (h *Handler) GetSubmission(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, sub)
+	subs := []models.Submission{sub}
+	h.fillOwnerNames(subs)
+	c.JSON(http.StatusOK, subs[0])
 }
 
 func (h *Handler) ListSubmissions(c *gin.Context) {
@@ -231,6 +233,7 @@ func (h *Handler) ListSubmissions(c *gin.Context) {
 
 	var submissions []models.Submission
 	query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&submissions)
+	h.fillOwnerNames(submissions)
 	c.JSON(http.StatusOK, gin.H{"submissions": submissions, "total": total})
 }
 
