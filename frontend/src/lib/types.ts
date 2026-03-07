@@ -421,7 +421,8 @@ export interface ReactionCounts {
 export interface ReplyReactionMap {
   [replyId: string]: {
     likes?: number;
-    user_liked?: number;
+    dislikes?: number;
+    user_reaction?: number; // 1 = like, -1 = dislike
   };
 }
 
@@ -463,4 +464,31 @@ export interface FollowStatus {
 export interface FollowCounts {
   followers: number;
   following: number;
+}
+
+// --- Notification types ---
+
+export const NotifType = {
+  Like: 1,
+  Dislike: 2,
+  Reply: 3,
+} as const;
+
+export const NotifTargetType = {
+  Submission: 1,
+  Reply: 2,
+} as const;
+
+export interface ApiNotification {
+  id: string;
+  profile_id: string;
+  actor_id: string;
+  type: number;
+  target_id: string;
+  target_type: number;
+  article_id: string;
+  read: boolean;
+  created_at: string;
+  actor_name: string;
+  article_title: string;
 }

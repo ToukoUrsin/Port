@@ -121,6 +121,21 @@
   background: var(--color-bg-tertiary);
 }
 
+.home-nav__profile-btn {
+  position: relative;
+}
+
+.notif-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-error, #c62828);
+  border-radius: 50%;
+  border: 2px solid var(--color-bg);
+}
+
 /* Desktop-only Post button */
 .home-nav__post-btn {
   display: none;

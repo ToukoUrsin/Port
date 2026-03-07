@@ -71,6 +71,14 @@ func (h *Handler) CreateReply(c *gin.Context) {
 		return
 	}
 
+	// Notify parent comment author if this is a threaded reply
+	if req.ParentID != nil {
+		var parent models.Reply
+		if h.db.First(&parent, "id = ?", *req.ParentID).Error == nil {
+			h.createNotification(parent.ProfileID, actor.ProfileID, models.NotifReply, reply.ID, models.ReactionTargetReply, subID)
+		}
+	}
+
 	replies := []models.Reply{reply}
 	h.fillReplyProfileNames(replies)
 	c.JSON(http.StatusCreated, replies[0])

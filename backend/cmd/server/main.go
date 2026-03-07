@@ -260,6 +260,12 @@ func main() {
 		authed.POST("/replies/:id/react", h.ReactReply)
 		authed.DELETE("/replies/:id/react", h.UnreactReply)
 
+		// Notifications
+		authed.GET("/notifications", h.ListNotifications)
+		authed.GET("/notifications/unread-count", h.UnreadCount)
+		authed.PUT("/notifications/read", h.MarkAllRead)
+		authed.PUT("/notifications/:id/read", h.MarkNotificationRead)
+
 		// Flagging
 		authed.POST("/articles/:id/flag", h.FlagSubmission)
 	}

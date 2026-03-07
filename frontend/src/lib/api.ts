@@ -14,6 +14,7 @@ import type {
   FollowStatus,
   FollowCounts,
   FileListResponse,
+  ApiNotification,
 } from "@/lib/types.ts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -446,14 +447,15 @@ export function getReplyReactions(articleId: string): Promise<{ reactions: Reply
   return apiFetch<{ reactions: ReplyReactionMap }>(`/api/articles/${articleId}/replies/reactions`);
 }
 
-export function reactReply(replyId: string): Promise<{ likes: number; user_liked: number }> {
-  return apiFetch<{ likes: number; user_liked: number }>(`/api/replies/${replyId}/react`, {
+export function reactReply(replyId: string, kind: 1 | -1 = 1): Promise<ReactionCounts> {
+  return apiFetch<ReactionCounts>(`/api/replies/${replyId}/react`, {
     method: "POST",
+    body: JSON.stringify({ kind }),
   });
 }
 
-export function unreactReply(replyId: string): Promise<{ likes: number; user_liked: number }> {
-  return apiFetch<{ likes: number; user_liked: number }>(`/api/replies/${replyId}/react`, {
+export function unreactReply(replyId: string): Promise<ReactionCounts> {
+  return apiFetch<ReactionCounts>(`/api/replies/${replyId}/react`, {
     method: "DELETE",
   });
 }
@@ -503,4 +505,22 @@ export function fileToMediaUrl(name: string): string {
 
 export function getFollowCounts(profileId: string): Promise<FollowCounts> {
   return apiFetch<FollowCounts>(`/api/profiles/${profileId}/follow-counts`);
+}
+
+// --- Notifications ---
+
+export function getNotifications(limit = 30): Promise<{ notifications: ApiNotification[] }> {
+  return apiFetch<{ notifications: ApiNotification[] }>(`/api/notifications?limit=${limit}`);
+}
+
+export function getUnreadCount(): Promise<{ count: number }> {
+  return apiFetch<{ count: number }>("/api/notifications/unread-count");
+}
+
+export function markAllNotificationsRead(): Promise<void> {
+  return apiFetch<void>("/api/notifications/read", { method: "PUT" });
+}
+
+export function markNotificationRead(id: string): Promise<void> {
+  return apiFetch<void>(`/api/notifications/${id}/read`, { method: "PUT" });
 }
