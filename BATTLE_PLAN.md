@@ -1,161 +1,44 @@
 # BATTLE PLAN
 
-The moves we're actually doing. Ordered by when they happen.
+13 moves that make the win inevitable. Ordered by impact.
 
 ---
 
-## FRIDAY EVENING (5-9 PM)
+## 1. Build Everything in Finnish
+Zero extra engineering. Just configure prompts. Finnish articles for Finnish judges about Finnish towns. Every other team demos in English. Emotional distance drops to zero.
 
-**While engineers set up the codebase and start building the core pipeline:**
+## 2. Interview Mårten Mickos Friday Night
+90 seconds after his keynote. Publish it as the platform's first article. "Our first published piece features the MySQL founder. He didn't know he was using our product."
 
-- [ ] **Interview Mårten Mickos** after his keynote. 90 seconds, phone recording. "What does PORT_ mean for student entrepreneurship?" This becomes our first published article once the pipeline works. (Samu, 15 min)
+## 3. Record a Voice from a News Desert
+Call someone in a small Finnish town — librarian, shop owner. "What happened in your town recently that nobody outside knows about?" Their answer is the emotional core of the pitch AND a live demo input.
 
-- [ ] **Find 2-3 Finnish Facebook group posts** about local events — rambling, unstructured, typical community group posts. Screenshot them. These become the "before" in the before/after demo. (Anyone, 20 min)
+## 4. Journalist Email Blast (as an AI-Generated Article)
+Saturday morning, email the full Finnish journalist list. The email itself is an AI-generated article about our own launch — the medium IS the message. Include the live platform link and a signup form. Even 5 responses on a Saturday = real industry validation nobody else has.
 
-- [ ] **Identify 10-15 target municipalities** that have lost local news coverage. Bookmark their council minutes pages, event calendars, public notices. Download 1-2 PDFs per town so the data is ready when the pipeline is. (1 person, 1-2 hours)
+## 5. 10-15 Real Town Newspapers
+Pick municipalities that lost their papers. Generate articles from real public data — council minutes, event calendars, public notices. Each newspaper is live at a real URL. Judges visit on their phones.
 
-- [ ] **Find and call someone in a small Finnish town** — a librarian, community center worker, small business owner. Record them answering: "What's something important that happened in your town recently that nobody outside knows about?" This becomes both pitch audio AND a demo input. (Samu, 30-60 min)
+## 6. QR Code During the Pitch
+Audience scans it, records a 10-second voice note about PORT_, watches the article generate. Judges become users. They feel the product instead of evaluating it. Must be bulletproof — test it 10 times Saturday night.
 
-- [ ] **Draft the journalist email** — the AI-generated article format (#18). Don't send yet. Have it ready to go the moment the platform is live. (1 person, 30 min)
+## 7. Recruit Non-Team Contributors + Reporter Badges
+Get 3-5 mentors, organizers, or other participants to submit content. Give them printed "PORT_2026 Community Reporter" badges. "5 people who aren't on our team published articles using our platform."
 
-- [ ] **Draft the municipal cold email** — short, direct, ready to send Saturday morning. (Same person, 15 min)
+## 8. Cover 8-12 PORT_ Teams
+Interview other teams all Saturday. Publish articles about each. Competitors become content. They can't root against you — you gave them free publicity. Offer the full newspaper to PORT_ organizers.
 
-- [ ] **Design reporter badges** — simple, printable. "PORT_2026 Community Reporter — [Name]." Print a batch. (Anyone, 30 min)
+## 9. Municipal Cold Emails
+Saturday morning, 5-10 small Finnish municipalities. "We built a free digital newspaper for your town. Would you be interested in a pilot?" One "tell me more" = demand signal from a real buyer.
 
----
+## 10. Before/After
+Screenshot a rambling Finnish Facebook group post about a local event. Run the same info through the pipeline. Show side by side. No explanation needed.
 
-## FRIDAY NIGHT (9 PM - SLEEP)
+## 11. Council Minutes → Article Live on Stage
+Find the most boring Finnish municipal PDF. Feed it into the pipeline in front of judges. Out comes a clean, readable article. "This data was public for 3 weeks. Nobody read it. Now everyone can."
 
-**Engineers building core product in parallel:**
+## 12. Physical Sunday Edition
+Print 1-2 pages Sunday morning. Best articles from the weekend. Hand to judges before the pitch. They hold the product in their hands before you open your mouth.
 
-- [ ] Engineer A: Audio recording + Whisper transcription pipeline
-- [ ] Engineer B: Contributor web app (mobile-friendly)
-- [ ] Engineer C: Reader newspaper site template + deployment
-
----
-
-## SATURDAY MORNING (wake up - noon)
-
-**Engineers continue core product:**
-
-- [ ] Engineer A: Article generation pipeline (Claude) + quality review layer
-- [ ] Engineer B: Finish contributor app, connect to backend
-- [ ] Engineer C: Deploy first town newspaper instance, set up domain/subdomain routing
-
-**The moment the pipeline works end-to-end:**
-
-- [ ] **Publish the Mickos interview** as the first article. Verify quality. This is the smoke test. (15 min)
-
-- [ ] **Send the journalist email blast.** The email IS an AI-generated article about our own launch. Include the live platform link and a signup/waitlist form. Send to the full list. (1 hour)
-
-- [ ] **Send municipal cold emails** to 5-10 small municipalities. (30 min)
-
-- [ ] **Configure Finnish language** in all prompts. Ensure articles generate in Finnish. (0 extra hours — just prompt configuration)
-
----
-
-## SATURDAY AFTERNOON (noon - 6 PM)
-
-**Samu's reporting sprint (no engineering needed, just the working pipeline):**
-
-- [ ] Cover PORT_ workshops, teams, venue. Aim for 8-12 team interviews. Give each contributor a reporter badge. Record, snap, generate, publish. (Samu, ongoing)
-
-- [ ] **Recruit 3-5 non-team contributors.** Walk mentors, organizers, other participants through the app. "Try it — record 30 seconds about PORT_, hit submit." Badge them. (Samu, between interviews)
-
-- [ ] **Approach PORT_ organizers.** "We built a newspaper for your event — want to share it in the Telegram?" (Samu, 5 min conversation)
-
-**Engineering (post-core-product):**
-
-- [ ] **Build the QR code landing page** — simple page where anyone can record a voice note and submit. This is the pitch's most powerful moment. Must be bulletproof. (1 engineer, 1-2 hours)
-
-- [ ] **Build the signup/waitlist page** — simple form, counter, track conversions. Link from journalist email. (1 engineer, 1-2 hours)
-
-- [ ] **Generate 10-15 real town newspapers** from the municipal data collected Friday night. Template site, real council minutes and public data, real articles. Quality-check each one. (1-2 engineers, 4-6 hours across afternoon/evening)
-
----
-
-## SATURDAY EVENING (6 PM - midnight)
-
-- [ ] **Share 3-5 town newspaper links** in those towns' Facebook groups. Simple post: "Someone built a free local newspaper for [town] — check it out." Track clicks with analytics. (Anyone, 30 min)
-
-- [ ] **Collect journalist responses.** Screenshot every response. Note any journalist who tested the platform or expressed strong interest. (15 min)
-
-- [ ] **Collect municipal responses** if any. (5 min)
-
-- [ ] **Prep the council minutes PDF** for the live on-stage demo. Pick the most boring, impenetrable one. Test running it through the pipeline. Make sure the output article is clean and readable. (30 min)
-
-- [ ] **Screenshot the API billing page.** Calculate exact cost per article. Write down the real number. (5 min)
-
-- [ ] **Run the before/after.** Take the Facebook group screenshot from Friday. Run the same information through the pipeline. Save both for the pitch. (15 min)
-
-- [ ] **Test the QR code flow end-to-end.** Someone who hasn't used the app tries it. Time it. Fix any friction. This MUST work flawlessly on stage. (30 min)
-
----
-
-## SUNDAY MORNING (wake up - noon deadline)
-
-- [ ] **Print the physical Sunday edition.** 1-2 pages. Best articles from the weekend — Mickos interview, team profiles, event coverage. Clean layout. Hand copies to judges before the pitch. (1 person, 1-2 hours)
-
-- [ ] **Collect final numbers:**
-  - Total articles published
-  - Total non-team contributors
-  - Total journalist emails sent / responses received / signups
-  - Total municipalities served
-  - Total real readers from Facebook shares (analytics)
-  - Total API cost (exact euro amount)
-  - Average time from raw input to published article
-
-- [ ] **Build the pitch** around real numbers, not aspirations. Structure:
-  1. Open: voice recording from news desert resident (emotional)
-  2. Problem: the negative counterfactual — real decision nobody reported
-  3. Product: how it works (30 seconds)
-  4. Live demo: QR code — audience becomes users (the moment)
-  5. Scale: 15 town newspapers, all live, in Finnish
-  6. Validation: journalist responses, reader analytics, municipal interest
-  7. Economics: API receipt, cost per article, cost per town
-  8. Seoul framing: this is global, not just Finnish
-  9. Close: return to the news desert resident — their town has a newspaper now
-
-- [ ] **Submit by noon.**
-
----
-
-## DURING THE PITCH
-
-- [ ] Physical newspapers already in judges' hands
-- [ ] QR code on screen — audience records voice notes, watches articles generate
-- [ ] Council minutes PDF → article transformation live
-- [ ] Dual screen: contributor app on left, reader site on right
-- [ ] Stopwatch visible during the QR demo — time from start to published article
-- [ ] Show API receipt with exact weekend cost
-- [ ] Show journalist response quotes
-- [ ] Show reader analytics from town Facebook shares
-- [ ] Close with the voice from the news desert, then their town's newspaper
-
----
-
-## THE 13 MOVES THAT MATTER
-
-Everything above distilled:
-
-| # | Move | Cost | Impact |
-|---|---|---|---|
-| 1 | Finnish language | 0h | Makes everything land for Finnish judges |
-| 2 | Interview Mickos | 15min | Credibility from notable figure, first article |
-| 3 | Voice from news desert | 1h | Emotional core of the pitch |
-| 4 | 10-15 real town newspapers | 4-6h eng | The scale proof |
-| 5 | Journalist email blast (as AI article) | 1h | Industry validation + demonstrates product |
-| 6 | Municipal cold emails | 30min | Demand signal from buyers |
-| 7 | QR code audience participation | 1-2h eng | The pitch moment that wins |
-| 8 | Recruit non-team contributors + badges | Ongoing | "Users who aren't us" |
-| 9 | Cover 8-12 PORT_ teams | Samu's Saturday | Event newspaper + competitor goodwill |
-| 10 | Share in town Facebook groups | 30min | Real readers, real analytics |
-| 11 | Physical Sunday edition | 1-2h | Judges hold the product before you speak |
-| 12 | Before/after (Facebook post vs. article) | 15min | Visual proof, no explanation needed |
-| 13 | API receipt on stage | 5min | Economics proven with a real number |
-
-Total engineering cost of power moves: ~8-12 hours across team.
-Total Samu cost: his entire Saturday reporting.
-Total other cost: ~3-4 hours of emails, calls, prep.
-
-Everything else from Waves 1-4 is bonus if time allows. These 13 are the ones that move the needle.
+## 13. Show the API Receipt
+Screenshot the real billing page. "This entire newspaper — X articles, Y quality reviews — cost us €Z.XX this weekend." Real number on a real receipt kills every economics slide ever made.
