@@ -12,6 +12,7 @@
   "dependencies": {
     "@base-ui/react": "^1.2.0",
     "@fontsource-variable/geist": "^5.2.8",
+    "@mdxeditor/editor": "^3.52.4",
     "@tailwindcss/vite": "^4.2.1",
     "@types/leaflet": "^1.9.21",
     "class-variance-authority": "^0.7.1",
