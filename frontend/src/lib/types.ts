@@ -120,6 +120,7 @@ export interface ApiSubmission {
   owner_id: string;
   owner_name?: string;
   location_id: string;
+  location_name?: string;
   title: string;
   description: string;
   tags: number;
@@ -385,11 +386,16 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     authorId: s.owner_id,
     timeAgo: timeAgo(s.created_at, t),
     image: s.meta.featured_img || "",
-    area: s.meta.place_name,
+    area: s.location_name || s.meta.place_name,
   };
 }
 
 // --- Reply types ---
+
+export interface ReplyMeta {
+  reactions?: Record<string, number>;
+  edited_at?: string;
+}
 
 export interface ApiReply {
   id: string;
@@ -398,5 +404,31 @@ export interface ApiReply {
   parent_id?: string;
   body: string;
   status: number;
+  meta?: ReplyMeta;
   created_at: string;
+}
+
+// --- Reaction types ---
+
+export interface ReactionCounts {
+  likes: number;
+  dislikes: number;
+  user_reaction?: number; // 1 = like, -1 = dislike, 0 = none
+}
+
+export interface ReplyReactionMap {
+  [replyId: string]: {
+    likes?: number;
+    user_liked?: number;
+  };
+}
+
+export interface FollowStatus {
+  following: boolean;
+  follow_id?: string;
+}
+
+export interface FollowCounts {
+  followers: number;
+  following: number;
 }
