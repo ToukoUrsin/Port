@@ -195,6 +195,16 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		return
 	}
 
+	// Send generation metadata to frontend
+	wordCount := len(strings.Fields(genOutput.ArticleMarkdown))
+	sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generated", Message: "Article written", Data: map[string]any{
+		"structure":       genOutput.Metadata.ChosenStructure,
+		"category":        genOutput.Metadata.Category,
+		"confidence":      genOutput.Metadata.Confidence,
+		"missing_context": genOutput.Metadata.MissingContext,
+		"word_count":      wordCount,
+	}})
+
 	// REVIEW
 	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}) {
 		return
@@ -212,6 +222,17 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "reviewing", Message: fmt.Sprintf("Review failed: %v", err)})
 		return
 	}
+
+	// Send review summary to frontend
+	sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewed", Message: "Review complete", Data: map[string]any{
+		"gate":               reviewResult.Gate,
+		"scores":             reviewResult.Scores,
+		"verified_claims":    len(reviewResult.Verification),
+		"red_triggers":       len(reviewResult.RedTriggers),
+		"yellow_flags":       len(reviewResult.YellowFlags),
+		"coaching":           reviewResult.Coaching,
+		"web_sources":        len(reviewResult.WebSources),
+	}})
 
 	// Replace photo placeholders with actual URLs.
 	// Replace in reverse order so photo_10 is handled before photo_1 can match it.

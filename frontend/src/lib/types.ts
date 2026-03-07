@@ -230,10 +230,28 @@ export interface SSEResearchData {
   queries: string[];
 }
 
+export interface SSEGeneratedData {
+  structure: string;
+  category: string;
+  confidence: number;
+  missing_context: string[];
+  word_count: number;
+}
+
+export interface SSEReviewedData {
+  gate: "GREEN" | "YELLOW" | "RED";
+  scores: QualityScores;
+  verified_claims: number;
+  red_triggers: number;
+  yellow_flags: number;
+  coaching: Coaching;
+  web_sources: number;
+}
+
 export interface SSEStatusEvent {
   step: string;
   message: string;
-  data?: SSEGatherData | SSEResearchData;
+  data?: SSEGatherData | SSEResearchData | SSEGeneratedData | SSEReviewedData;
 }
 
 export interface SSECompleteEvent {

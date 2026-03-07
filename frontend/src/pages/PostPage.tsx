@@ -22,6 +22,8 @@ import type {
   SSEStatusEvent,
   SSEGatherData,
   SSEResearchData,
+  SSEGeneratedData,
+  SSEReviewedData,
   WebSource,
 } from "@/lib/types.ts";
 import { EditorialScreen } from "@/components/editor";
@@ -219,7 +221,7 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
 const STEP_LABELS_EN: Record<string, string> = {
   transcribing: "Listening to your recording",
   describing_photos: "Analyzing your photos",
-  researching: "Researching context",
+  researching: "Researching background",
   generating: "Writing the article",
   reviewing: "Quality review",
 };
@@ -231,6 +233,55 @@ const STEP_LABELS_FI: Record<string, string> = {
   generating: "Kirjoitetaan artikkelia",
   reviewing: "Laaduntarkistus",
 };
+
+const STRUCTURE_LABELS: Record<string, string> = {
+  news_report: "News Report",
+  feature: "Feature Story",
+  photo_essay: "Photo Essay",
+  brief: "Brief",
+  narrative: "Narrative",
+};
+
+const SCORE_LABELS: Record<string, string> = {
+  evidence: "Evidence",
+  perspectives: "Perspectives",
+  representation: "Representation",
+  ethical_framing: "Ethics",
+  cultural_context: "Cultural",
+  manipulation: "Integrity",
+};
+
+function ScoreBar({ label, value }: { label: string; value: number }) {
+  const pct = Math.round(value * 100);
+  const color = pct >= 80 ? "var(--color-success, #22c55e)" : pct >= 60 ? "var(--color-warning, #f59e0b)" : "var(--color-error, #ef4444)";
+  return (
+    <div className="pl-score">
+      <span className="pl-score-label">{label}</span>
+      <div className="pl-score-track">
+        <div className="pl-score-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="pl-score-value">{pct}</span>
+    </div>
+  );
+}
+
+function GateBadge({ gate }: { gate: string }) {
+  const colors: Record<string, string> = {
+    GREEN: "var(--color-success, #22c55e)",
+    YELLOW: "var(--color-warning, #f59e0b)",
+    RED: "var(--color-error, #ef4444)",
+  };
+  const labels: Record<string, string> = {
+    GREEN: "Ready to publish",
+    YELLOW: "Needs review",
+    RED: "Issues found",
+  };
+  return (
+    <span className="pl-gate" style={{ background: colors[gate] || colors.YELLOW }}>
+      {labels[gate] || gate}
+    </span>
+  );
+}
 
 function ProcessingStep({
   submissionId,
@@ -245,13 +296,26 @@ function ProcessingStep({
   const STEP_LABELS = language === "fi" ? STEP_LABELS_FI : STEP_LABELS_EN;
   const [stepKeys, setStepKeys] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState<string>("");
+  const [stepTimes, setStepTimes] = useState<Record<string, number>>({});
+  const stepStartRef = useRef<number>(Date.now());
+
+  // Gathered data
   const [transcript, setTranscript] = useState<string>("");
   const [photoDescs, setPhotoDescs] = useState<string[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>("");
+
+  // Research data
   const [researchContext, setResearchContext] = useState<string>("");
   const [researchSources, setResearchSources] = useState<WebSource[]>([]);
   const [researchQueries, setResearchQueries] = useState<string[]>([]);
+
+  // Generation metadata
+  const [genData, setGenData] = useState<SSEGeneratedData | null>(null);
+
+  // Review summary
+  const [reviewData, setReviewData] = useState<SSEReviewedData | null>(null);
+
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -263,12 +327,21 @@ function ProcessingStep({
 
     const controller = streamPipeline(submissionId, token, {
       onStatus(event: SSEStatusEvent) {
-        setCurrentStep(event.step);
+        // Track elapsed time for previous step
+        const now = Date.now();
+        setCurrentStep((prev) => {
+          if (prev && prev !== event.step) {
+            const elapsed = Math.round((now - stepStartRef.current) / 1000);
+            setStepTimes((t) => ({ ...t, [prev]: elapsed }));
+          }
+          stepStartRef.current = now;
+          return event.step;
+        });
         setStepKeys((prev) =>
           prev.includes(event.step) ? prev : [...prev, event.step],
         );
 
-        // Handle intermediate data
+        // Handle intermediate data payloads
         if (event.step === "gathered" && event.data) {
           const d = event.data as SSEGatherData;
           if (d.transcript) setTranscript(d.transcript);
@@ -282,6 +355,12 @@ function ProcessingStep({
           if (d.sources) setResearchSources(d.sources);
           if (d.queries) setResearchQueries(d.queries);
         }
+        if (event.step === "generated" && event.data) {
+          setGenData(event.data as SSEGeneratedData);
+        }
+        if (event.step === "reviewed" && event.data) {
+          setReviewData(event.data as SSEReviewedData);
+        }
       },
       onComplete(event) {
         onDone(event.article, event.review, event.metadata);
@@ -294,12 +373,12 @@ function ProcessingStep({
     return () => controller.abort();
   }, [submissionId, onDone, onError]);
 
-  // Auto-scroll feed as new content appears
+  // Auto-scroll feed
   useEffect(() => {
     if (feedRef.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
-  }, [stepKeys, transcript, photoDescs, researchContext, researchSources, currentStep]);
+  }, [stepKeys, transcript, photoDescs, researchContext, genData, reviewData, currentStep]);
 
   const isDone = (step: string) => stepKeys.includes(step) && currentStep !== step;
   const isActive = (step: string) => currentStep === step;
@@ -310,102 +389,156 @@ function ProcessingStep({
       <h2 className="pipeline-title">{t("post.creating")}</h2>
 
       <div className="pipeline-feed" ref={feedRef}>
-        {/* Step progress cards */}
         {STEP_ORDER.map((key) => {
           if (!hasReached(key) && !isActive(key)) return null;
           const done = isDone(key);
           const active = isActive(key);
+          const elapsed = stepTimes[key];
+
           return (
-            <div key={key} className={`pipeline-card ${done ? "done" : active ? "active" : ""}`}>
-              <div className="pipeline-card-header">
-                <span className="pipeline-card-icon">
+            <div key={key} className={`pl-step ${done ? "done" : ""} ${active ? "active" : ""}`}>
+              {/* Step header */}
+              <div className="pl-step-header">
+                <span className="pl-step-icon">
                   {done ? <CheckCircle size={16} /> : active ? <Loader2 size={16} className="spin" /> : STEP_ICONS[key]}
                 </span>
-                <span className="pipeline-card-label">{STEP_LABELS[key] || key}</span>
+                <span className="pl-step-label">{STEP_LABELS[key] || key}</span>
+                {elapsed != null && <span className="pl-step-time">{elapsed}s</span>}
               </div>
+
+              {/* Active step: show pulsing indicator */}
+              {active && (
+                <div className="pl-step-body">
+                  <div className="pl-thinking">
+                    <span /><span /><span />
+                  </div>
+                </div>
+              )}
+
+              {/* GATHER: transcript + notes + photos inline */}
+              {key === "transcribing" && done && transcript && (
+                <div className="pl-step-body">
+                  <div className="pl-data-block">
+                    <div className="pl-data-label"><Mic size={12} /> Transcript</div>
+                    <p className="pl-data-text">{transcript}</p>
+                  </div>
+                  {notes && (
+                    <div className="pl-data-block">
+                      <div className="pl-data-label"><Type size={12} /> Notes</div>
+                      <p className="pl-data-text">{notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes-only (no audio) */}
+              {key === "transcribing" && done && !transcript && notes && (
+                <div className="pl-step-body">
+                  <div className="pl-data-block">
+                    <div className="pl-data-label"><Type size={12} /> Notes</div>
+                    <p className="pl-data-text">{notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* PHOTOS inline */}
+              {key === "describing_photos" && done && photoDescs.length > 0 && (
+                <div className="pl-step-body">
+                  <div className="pl-photos">
+                    {photoUrls.map((url, i) => (
+                      <div key={i} className="pl-photo">
+                        <img src={url} alt={`Photo ${i + 1}`} className="pl-photo-img" />
+                        {photoDescs[i] && <p className="pl-photo-desc">{photoDescs[i]}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* RESEARCH inline */}
+              {key === "researching" && done && (researchContext || researchQueries.length > 0) && (
+                <div className="pl-step-body">
+                  {researchQueries.length > 0 && (
+                    <div className="pl-queries">
+                      {researchQueries.map((q, i) => (
+                        <span key={i} className="pl-query">{q}</span>
+                      ))}
+                    </div>
+                  )}
+                  {researchContext && (
+                    <div className="pl-data-block">
+                      <div className="pl-data-label"><Search size={12} /> Findings</div>
+                      <p className="pl-data-text pl-research-text">{researchContext}</p>
+                    </div>
+                  )}
+                  {researchSources.length > 0 && (
+                    <div className="pl-sources">
+                      <div className="pl-data-label">Sources ({researchSources.length})</div>
+                      <ul>
+                        {researchSources.map((s, i) => (
+                          <li key={i}>
+                            <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || s.url}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* GENERATION metadata inline */}
+              {key === "generating" && done && genData && (
+                <div className="pl-step-body">
+                  <div className="pl-gen-meta">
+                    <span className="pl-badge pl-badge--structure">{STRUCTURE_LABELS[genData.structure] || genData.structure}</span>
+                    <span className="pl-badge pl-badge--category">{genData.category}</span>
+                    <span className="pl-badge pl-badge--words">{genData.word_count} words</span>
+                    <span className="pl-badge pl-badge--confidence">{Math.round(genData.confidence * 100)}% confident</span>
+                  </div>
+                  {genData.missing_context && genData.missing_context.length > 0 && (
+                    <div className="pl-missing">
+                      <div className="pl-data-label">Questions the AI couldn't answer</div>
+                      <ul>
+                        {genData.missing_context.map((q, i) => (
+                          <li key={i}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* REVIEW summary inline */}
+              {key === "reviewing" && done && reviewData && (
+                <div className="pl-step-body">
+                  <div className="pl-review-header">
+                    <GateBadge gate={reviewData.gate} />
+                    <span className="pl-review-stat">{reviewData.verified_claims} claims verified</span>
+                    {reviewData.web_sources > 0 && (
+                      <span className="pl-review-stat">{reviewData.web_sources} web sources</span>
+                    )}
+                  </div>
+                  <div className="pl-scores">
+                    {Object.entries(SCORE_LABELS).map(([key, label]) => (
+                      <ScoreBar key={key} label={label} value={(reviewData.scores as unknown as Record<string, number>)[key] ?? 0} />
+                    ))}
+                  </div>
+                  {reviewData.coaching && reviewData.coaching.celebration && (
+                    <div className="pl-coaching">
+                      <p className="pl-coaching-text">{reviewData.coaching.celebration}</p>
+                    </div>
+                  )}
+                  {reviewData.red_triggers > 0 && (
+                    <span className="pl-badge pl-badge--red">{reviewData.red_triggers} red trigger{reviewData.red_triggers > 1 ? "s" : ""}</span>
+                  )}
+                  {reviewData.yellow_flags > 0 && (
+                    <span className="pl-badge pl-badge--yellow">{reviewData.yellow_flags} yellow flag{reviewData.yellow_flags > 1 ? "s" : ""}</span>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
-
-        {/* Transcript reveal */}
-        {transcript && (
-          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
-            <div className="pipeline-data-label">
-              <Mic size={14} /> Transcript
-            </div>
-            <p className="pipeline-data-text">{transcript}</p>
-          </div>
-        )}
-
-        {/* Notes reveal */}
-        {notes && (
-          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
-            <div className="pipeline-data-label">
-              <Type size={14} /> {t("post.notes") || "Your notes"}
-            </div>
-            <p className="pipeline-data-text">{notes}</p>
-          </div>
-        )}
-
-        {/* Photo descriptions */}
-        {photoDescs.length > 0 && (
-          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
-            <div className="pipeline-data-label">
-              <ImageIcon size={14} /> Photos analyzed
-            </div>
-            <div className="pipeline-photos">
-              {photoUrls.map((url, i) => (
-                <div key={i} className="pipeline-photo">
-                  <img src={url} alt={`Photo ${i + 1}`} className="pipeline-photo-img" />
-                  {photoDescs[i] && <p className="pipeline-photo-desc">{photoDescs[i]}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Research results */}
-        {(researchContext || researchQueries.length > 0) && (
-          <div className="pipeline-data" style={{ animation: "fadeIn 0.3s ease" }}>
-            <div className="pipeline-data-label">
-              <Search size={14} /> {t("post.research") || "Research findings"}
-            </div>
-            {researchQueries.length > 0 && (
-              <div className="pipeline-queries">
-                {researchQueries.map((q, i) => (
-                  <span key={i} className="pipeline-query">{q}</span>
-                ))}
-              </div>
-            )}
-            {researchContext && (
-              <p className="pipeline-data-text pipeline-research-context">{researchContext}</p>
-            )}
-            {researchSources.length > 0 && (
-              <ul className="pipeline-sources">
-                {researchSources.map((s, i) => (
-                  <li key={i}>
-                    <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || s.url}</a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-
-        {/* Writing / Reviewing skeleton */}
-        {(isActive("generating") || isActive("reviewing") || isActive("embedding")) && (
-          <div className="pipeline-writing" style={{ animation: "fadeIn 0.3s ease" }}>
-            <div className="pipeline-skeleton-lines">
-              {[100, 92, 85, 100, 70, 95, 55].map((w, i) => (
-                <div
-                  key={i}
-                  className="skeleton pipeline-skeleton-line"
-                  style={{ width: `${w}%`, animationDelay: `${i * 0.12}s` }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
