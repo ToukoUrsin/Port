@@ -1010,6 +1010,10 @@
 }
 
 @media (max-width: 767px) {
+  .home-nav {
+    z-index: calc(var(--z-sticky) + 3);
+  }
+
   .home-nav__search {
     flex: 1;
     width: auto;
