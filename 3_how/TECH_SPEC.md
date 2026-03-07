@@ -1,6 +1,6 @@
 # Local News Platform — Technical Specification
 
-**Stack:** Go (Gin) · PostgreSQL · Vite + React · ElevenLabs STT · Claude API
+**Stack:** Go (Gin) · PostgreSQL · Redis · Vite + React · ElevenLabs STT · Claude API
 **Target:** Hackathon MVP (48h build)
 
 ---
@@ -39,22 +39,27 @@
    │ articles   │   │  review)    │   └──────────────────┘
    │ submissions│   └─────────────┘
    │ locations  │
-   │            │          ┌──────────────┐
-   └────────────┘          │ File Storage │
-                           │ (local / S3) │
-                           └──────────────┘
+   └──────┬─────┘          ┌──────────────┐
+          │                │ File Storage │
+          │                │ (local / S3) │
+   ┌──────┴─────┐          └──────────────┘
+   │   Redis    │
+   │ (cache)    │
+   │ TTL 30min  │
+   └────────────┘
 ```
 
 ### Stateless Backend
 
-The backend holds zero in-memory state between requests. All state lives in PostgreSQL and external services:
+The backend holds zero in-memory state between requests. All state lives in PostgreSQL, Redis, and external services:
 
 - **No sessions** — no server-side user state, no login for MVP
 - **No in-process queues** — pipeline progress is driven by the SSE connection, but each step's result is persisted to the DB (submission status, transcript, article row) as it completes. If the connection drops mid-pipeline, the data written so far is not lost.
 - **No local file coupling** — media files go to a storage layer (local disk for hackathon, S3/R2 for production). The backend only stores paths/keys, never holds files in memory.
-- **Any instance can serve any request** — since all state is external, multiple backend instances can run behind a load balancer with no sticky sessions or shared memory.
+- **No local caching** — Redis is the shared cache. Every instance reads/writes the same Redis, so cache hits are consistent across instances.
+- **Any instance can serve any request** — since all state is external (PostgreSQL + Redis), multiple backend instances can run behind a load balancer with no sticky sessions or shared memory.
 
-This means the backend is a pure function layer: request comes in → read/write DB + call external APIs → response goes out.
+This means the backend is a pure function layer: request comes in → check Redis → read/write DB + call external APIs → update Redis → response goes out.
 
 ---
 
@@ -91,6 +96,8 @@ backend/
 │   │   ├── generation.go        # Claude API — article generation
 │   │   ├── review.go            # Claude API — editorial quality review
 │   │   └── media.go             # File upload handling
+│   ├── cache/
+│   │   └── cache.go             # Redis client, get/set/invalidate helpers
 │   └── middleware/
 │       └── cors.go              # CORS configuration
 ├── go.mod
@@ -111,6 +118,7 @@ require (
     gorm.io/gorm                       v1.25+
     gorm.io/driver/postgres            v1.5+
     github.com/anthropics/anthropic-sdk-go  latest
+    github.com/redis/go-redis/v9       v9.7+
     github.com/joho/godotenv           v1.5+
     github.com/google/uuid             v1.6+
 )
@@ -123,6 +131,7 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/localnews
 ANTHROPIC_API_KEY=sk-ant-...
 ELEVENLABS_API_KEY=...          # Speech-to-Text
 MEDIA_STORAGE_PATH=./uploads    # local for hackathon, S3 later
+REDIS_URL=redis://localhost:6379/0
 ALLOWED_ORIGINS=http://localhost:5173
 PORT=8000
 ```
@@ -433,6 +442,142 @@ h.db.Where("similarity(headline, ?) > 0.3", q).
     Order("similarity(headline, ?) DESC", q).
     Limit(10).
     Find(&submissions)
+```
+
+---
+
+## Cache Layer — Redis
+
+All GET endpoints check Redis before hitting PostgreSQL. Cache hits return immediately. TTL is 30 minutes. Writes invalidate affected cache keys so subsequent reads see fresh data.
+
+### Cache Keys
+
+```
+articles:{id}                          → single article
+articles:list:{location_id}:{offset}   → paginated article list for a location
+locations:{slug}                       → location data
+search:{sha256(query_params)}          → search results
+submissions:{id}                       → single submission
+```
+
+### Read Path
+
+```
+GET request → Redis GET key
+  → hit:  return cached JSON
+  → miss: query PostgreSQL → Redis SET key (TTL 30min) → return
+```
+
+### Write Path (Invalidation)
+
+```
+Write to PostgreSQL → Redis DEL affected keys
+```
+
+| Trigger | Invalidated Keys |
+|---------|-----------------|
+| Pipeline completes (article generated) | `articles:list:{location_id}:*`, `submissions:{id}` |
+| Article published | `articles:{id}`, `articles:list:{location_id}:*` |
+| Article updated | `articles:{id}`, `articles:list:{location_id}:*` |
+| Location updated | `locations:{slug}` |
+
+### Implementation (`internal/cache/cache.go`)
+
+```go
+package cache
+
+import (
+    "context"
+    "encoding/json"
+    "time"
+
+    "github.com/redis/go-redis/v9"
+)
+
+const DefaultTTL = 30 * time.Minute
+
+type Cache struct {
+    client *redis.Client
+    ttl    time.Duration
+}
+
+func New(redisURL string) (*Cache, error) {
+    opt, err := redis.ParseURL(redisURL)
+    if err != nil {
+        return nil, err
+    }
+    client := redis.NewClient(opt)
+    if err := client.Ping(context.Background()).Err(); err != nil {
+        return nil, err
+    }
+    return &Cache{client: client, ttl: DefaultTTL}, nil
+}
+
+// Get retrieves a cached value. Returns false on miss.
+func (c *Cache) Get(ctx context.Context, key string, dest any) bool {
+    val, err := c.client.Get(ctx, key).Bytes()
+    if err != nil {
+        return false
+    }
+    return json.Unmarshal(val, dest) == nil
+}
+
+// Set stores a value with the default TTL.
+func (c *Cache) Set(ctx context.Context, key string, value any) error {
+    data, err := json.Marshal(value)
+    if err != nil {
+        return err
+    }
+    return c.client.Set(ctx, key, data, c.ttl).Err()
+}
+
+// Delete removes one or more exact keys.
+func (c *Cache) Delete(ctx context.Context, keys ...string) error {
+    return c.client.Del(ctx, keys...).Err()
+}
+
+// DeletePattern removes all keys matching a glob pattern (e.g. "articles:list:uuid:*").
+func (c *Cache) DeletePattern(ctx context.Context, pattern string) error {
+    iter := c.client.Scan(ctx, 0, pattern, 0).Iterator()
+    for iter.Next(ctx) {
+        c.client.Del(ctx, iter.Val())
+    }
+    return iter.Err()
+}
+```
+
+### Handler Usage Pattern
+
+```go
+func (h *Handler) GetArticle(c *gin.Context) {
+    id := c.Param("id")
+    key := "articles:" + id
+
+    // Cache hit → return immediately
+    var article models.Submission
+    if h.cache.Get(c, key, &article) {
+        c.JSON(http.StatusOK, article)
+        return
+    }
+
+    // Cache miss → query DB → cache → return
+    if err := h.db.First(&article, "id = ?", id).Error; err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+        return
+    }
+    h.cache.Set(c, key, article)
+    c.JSON(http.StatusOK, article)
+}
+
+func (h *Handler) PublishArticle(c *gin.Context) {
+    id := c.Param("id")
+
+    // ... update DB ...
+
+    // Invalidate cache
+    h.cache.Delete(c, "articles:"+id)
+    h.cache.DeletePattern(c, "articles:list:"+article.LocationID.String()+":*")
+}
 ```
 
 ---
@@ -803,12 +948,14 @@ export async function getArticles(locationSlug: string) {
 - Go 1.22+
 - Node.js 20+
 - PostgreSQL 16+
+- Redis 7+
 
 ### Quick Start
 
 ```bash
-# 1. Database
+# 1. Database + Redis
 createdb localnews
+redis-server                   # or brew services start redis
 
 # 2. Backend
 cd backend

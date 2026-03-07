@@ -19,7 +19,7 @@ The `backend/` and `frontend/` directories don't exist yet — they need to be c
 
 ## Tech Stack
 
-- **Backend:** Go 1.22+, Gin, PostgreSQL, GORM + GORM migrations
+- **Backend:** Go 1.22+, Gin, PostgreSQL, GORM, Redis (cache, 30min TTL)
 - **Frontend:** Vite + React (TypeScript, PWA), CSS custom properties (design tokens)
 - **AI:** ElevenLabs STT (transcription), Claude API via Anthropic Go SDK (article generation + review)
 
@@ -66,6 +66,7 @@ Backend requires a `.env` file (see `TECH_SPEC.md` for full list):
 - `ANTHROPIC_API_KEY` — for Claude article generation + review
 - `ELEVENLABS_API_KEY` — for speech-to-text transcription
 - `MEDIA_STORAGE_PATH` — local file uploads (default `./uploads`)
+- `REDIS_URL` — Redis connection (default `redis://localhost:6379/0`)
 - `ALLOWED_ORIGINS` — CORS origins (default `http://localhost:5173`)
 
 ## Git Workflow
