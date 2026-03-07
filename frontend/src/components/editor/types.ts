@@ -44,6 +44,7 @@ export type EditorialScreenProps = {
   metadata: ArticleMetadata;
   userName: string;
   currentRound?: number;
+  isRefining?: boolean;
 
   onRefineGeneral: (r: GeneralRefinement) => Promise<void>;
   onPublish: () => Promise<void>;

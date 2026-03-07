@@ -1,12 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ArticleEditor } from "./ArticleRenderer";
 import { CoachingPanel } from "./CoachingPanel";
 import { RefinementInput } from "./RefinementInput";
+import { InstructionBar } from "./InstructionBar";
 import { GateBadge } from "./GateBadge";
 import { PublishButton } from "./PublishButton";
 import { VersionInfo } from "./VersionInfo";
+import { useTextSelection } from "./hooks/useTextSelection";
+import { useParagraphTap } from "./hooks/useParagraphTap";
 import type { EditorialScreenProps, ActiveAnnotation } from "./types";
 import type { RedTrigger } from "@/lib/types";
 import "./editor.css";
@@ -17,6 +20,7 @@ export function EditorialScreen({
   metadata,
   userName,
   currentRound = 0,
+  isRefining = false,
   onRefineGeneral,
   onPublish,
   onAppeal,
@@ -28,6 +32,12 @@ export function EditorialScreen({
   const [activeAnnotation, setActiveAnnotation] = useState<ActiveAnnotation>(null);
   const [highlightParagraph, setHighlightParagraph] = useState<number | undefined>();
   const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const articleRef = useRef<HTMLDivElement>(null);
+
+  // Interactive hooks for targeted refinement
+  const textSelection = useTextSelection(articleRef);
+  const paragraphTap = useParagraphTap(articleRef);
+  const instructionTarget = textSelection || paragraphTap;
 
   // Click-outside to dismiss suggestion card
   useEffect(() => {
@@ -68,6 +78,40 @@ export function EditorialScreen({
     [onContentChange],
   );
 
+  // InstructionBar handlers — compose targeted input into general refinement
+  const handleInstructionSubmit = useCallback(
+    (r: { selected_text?: string; instruction: string; paragraph_index: number }) => {
+      const prefix = r.selected_text
+        ? `Regarding "${r.selected_text}" in paragraph ${r.paragraph_index + 1}: `
+        : `In paragraph ${r.paragraph_index + 1}: `;
+      onRefineGeneral({ text_note: prefix + r.instruction });
+    },
+    [onRefineGeneral],
+  );
+
+  const handleInstructionRephrase = useCallback(
+    (r: { selected_text: string; paragraph_index: number }) => {
+      onRefineGeneral({ text_note: `Rephrase "${r.selected_text}" in paragraph ${r.paragraph_index + 1}` });
+    },
+    [onRefineGeneral],
+  );
+
+  const handleInstructionRemove = useCallback(
+    (paragraphIndex: number, selectedText: string) => {
+      const target = selectedText
+        ? `Remove "${selectedText}" from paragraph ${paragraphIndex + 1}`
+        : `Remove paragraph ${paragraphIndex + 1}`;
+      onRefineGeneral({ text_note: target });
+    },
+    [onRefineGeneral],
+  );
+
+  // no-op dismiss (hooks manage their own state via selection change)
+  const handleInstructionDismiss = useCallback(() => {
+    // Deselect text to hide the bar
+    window.getSelection()?.removeAllRanges();
+  }, []);
+
   useEffect(() => {
     return () => clearTimeout(highlightTimer.current);
   }, []);
@@ -96,7 +140,10 @@ export function EditorialScreen({
       {/* Two-column body */}
       <div className="editorial-body">
         {/* Left: Editable article with annotations */}
-        <div className="editorial-article-wrapper">
+        <div
+          ref={articleRef}
+          className={`editorial-article-wrapper ${isRefining ? "editorial-article-wrapper--refining" : ""}`}
+        >
           <ArticleEditor
             markdown={articleMarkdown}
             userName={userName}
@@ -108,6 +155,23 @@ export function EditorialScreen({
             highlightParagraph={highlightParagraph}
             onContentChange={handleContentChange}
           />
+          {isRefining && (
+            <div className="editorial-refining-indicator">
+              <Loader2 size={20} className="spin" />
+              <span>{t("editor.updating")}</span>
+            </div>
+          )}
+          {/* Floating instruction bar for targeted refinement */}
+          {!isRefining && instructionTarget && (
+            <InstructionBar
+              selection={instructionTarget}
+              articleRef={articleRef}
+              onSubmit={handleInstructionSubmit}
+              onRephrase={handleInstructionRephrase}
+              onRemove={handleInstructionRemove}
+              onDismiss={handleInstructionDismiss}
+            />
+          )}
         </div>
 
         {/* Right: Coaching sidebar */}
@@ -117,7 +181,7 @@ export function EditorialScreen({
             onAppeal={onAppeal}
             onSuggestionClick={handleSuggestionClick}
           />
-          <RefinementInput onRefine={onRefineGeneral} />
+          <RefinementInput onRefine={onRefineGeneral} disabled={isRefining} />
           <VersionInfo round={currentRound} />
         </aside>
       </div>

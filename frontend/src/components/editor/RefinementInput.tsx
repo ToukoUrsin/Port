@@ -5,9 +5,10 @@ import type { GeneralRefinement } from "./types";
 
 type RefinementInputProps = {
   onRefine: (r: GeneralRefinement) => void;
+  disabled?: boolean;
 };
 
-export function RefinementInput({ onRefine }: RefinementInputProps) {
+export function RefinementInput({ onRefine, disabled }: RefinementInputProps) {
   const { t } = useLanguage();
   const [text, setText] = useState("");
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
@@ -39,7 +40,7 @@ export function RefinementInput({ onRefine }: RefinementInputProps) {
       <button
         className="btn btn-primary refinement-submit"
         onClick={handleSubmit}
-        disabled={!canSubmit}
+        disabled={!canSubmit || disabled}
       >
         {t("editor.updateArticle")}
       </button>

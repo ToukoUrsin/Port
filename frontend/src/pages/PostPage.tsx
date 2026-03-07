@@ -545,8 +545,10 @@ export default function PostPage() {
   const [metadata, setMetadata] = useState<ArticleMetadata | null>(null);
   const [currentRound, setCurrentRound] = useState(0);
   const [processingError, setProcessingError] = useState<string>("");
+  const [isRefining, setIsRefining] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const refineAbortRef = useRef<AbortController | null>(null);
 
   const handleSubmissionCreated = useCallback((id: string) => {
     setSubmissionId(id);
@@ -593,9 +595,12 @@ export default function PostPage() {
     [submissionId],
   );
 
-  // Flush pending save on unmount
+  // Flush pending save + abort refine stream on unmount
   useEffect(() => {
-    return () => clearTimeout(saveTimerRef.current);
+    return () => {
+      clearTimeout(saveTimerRef.current);
+      refineAbortRef.current?.abort();
+    };
   }, []);
 
   // --- Editorial screen callback wiring ---
@@ -610,7 +615,7 @@ export default function PostPage() {
           await updateSubmissionMarkdown(submissionId, articleMarkdown);
         }
       }
-      setStep("processing");
+      setIsRefining(true);
       try {
         if (r.voice_clip) {
           const fd = new FormData();
@@ -624,10 +629,26 @@ export default function PostPage() {
           });
         }
         setCurrentRound((n) => n + 1);
+        // Stream the pipeline in background — stay on editorial screen
+        const token = getToken();
+        if (!token) throw new Error("Not authenticated");
+        refineAbortRef.current = streamPipeline(submissionId, token, {
+          onStatus: () => {},
+          onComplete: (data) => {
+            setArticleMarkdown(data.article);
+            setReviewData(data.review);
+            setMetadata(data.metadata);
+            setIsRefining(false);
+          },
+          onError: (err) => {
+            toast(err.message || "Refinement failed", "error");
+            setIsRefining(false);
+          },
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Refinement failed";
         toast(msg, "error");
-        setStep("preview");
+        setIsRefining(false);
       }
     },
     [submissionId, articleMarkdown, toast],
@@ -700,6 +721,7 @@ export default function PostPage() {
             metadata={metadata}
             userName={user?.profile_name || "Anonymous"}
             currentRound={currentRound}
+            isRefining={isRefining}
             onRefineGeneral={handleRefineGeneral}
             onPublish={handlePublish}
             onAppeal={handleAppeal}
