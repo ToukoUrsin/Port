@@ -397,7 +397,6 @@
    ======================================== */
 .ad-banner {
   padding: var(--space-6) 0;
-  border-bottom: 1px solid var(--color-border);
 }
 
 .ad-banner__inner {
@@ -457,7 +456,6 @@
 }
 
 .home-section + .home-section {
-  border-top: 1px solid var(--color-border);
   margin-top: var(--space-8);
 }
 
@@ -569,6 +567,15 @@
   grid-column: 1 / -1;
   border: none;
   border-top: 1px solid var(--color-border);
+}
+
+/* SVG line divider between sections */
+.line-divider {
+  width: 100%;
+  display: block;
+  margin: var(--space-8) 0 0;
+  pointer-events: none;
+  opacity: 0.6;
 }
 
 /* ========================================

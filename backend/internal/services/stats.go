@@ -100,6 +100,15 @@ func (s *StatsService) RecordRequest(ctx context.Context, mwEvent middleware.Sta
 }
 
 func (s *StatsService) TrackActiveUser(ctx context.Context, profileID, displayName string) {
+	// If display name wasn't provided, try to get it from the cached profile
+	if displayName == "" {
+		if cp, err := s.cache.GetProfile(ctx, profileID); err == nil {
+			displayName = cp.DisplayName
+		}
+	}
+	if displayName == "" {
+		displayName = profileID[:8]
+	}
 	rdb := s.cache.Client()
 	key := "stats:active:" + profileID
 	rdb.Set(ctx, key, displayName, 5*time.Minute)

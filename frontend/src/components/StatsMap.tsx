@@ -23,7 +23,6 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
   const mapRef = useRef<L.Map | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  // Initialize map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
@@ -48,17 +47,11 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
     });
     L.marker(OTANIEMI, { icon: pulseIcon }).addTo(map);
 
-    // SVG overlay for arcs
+    // SVG overlay — append to map container (NOT leaflet-map-pane)
+    // so we can use container-relative coordinates
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.classList.add("stats-map__svg-overlay");
-    svg.style.position = "absolute";
-    svg.style.top = "0";
-    svg.style.left = "0";
-    svg.style.width = "100%";
-    svg.style.height = "100%";
-    svg.style.pointerEvents = "none";
-    svg.style.zIndex = "500";
-    map.getContainer().querySelector(".leaflet-map-pane")?.appendChild(svg);
+    map.getContainer().appendChild(svg);
 
     mapRef.current = map;
     svgRef.current = svg;
@@ -70,79 +63,123 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
     };
   }, []);
 
-  const drawArc = useCallback((fromLat: number, fromLng: number, cityName: string) => {
-    const map = mapRef.current;
-    const svg = svgRef.current;
-    if (!map || !svg) return;
+  const drawArc = useCallback(
+    (fromLat: number, fromLng: number, cityName: string) => {
+      const map = mapRef.current;
+      const svg = svgRef.current;
+      if (!map || !svg) return;
 
-    const from = map.latLngToContainerPoint([fromLat, fromLng]);
-    const to = map.latLngToContainerPoint(OTANIEMI);
+      const from = map.latLngToContainerPoint([fromLat, fromLng]);
+      const to = map.latLngToContainerPoint(OTANIEMI);
 
-    // Quadratic bezier control point (arc upward)
-    const midX = (from.x + to.x) / 2;
-    const midY = (from.y + to.y) / 2;
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const curveHeight = Math.min(dist * 0.3, 150);
+      // If origin is the same point as destination (local), skip
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 5) return;
 
-    // Perpendicular offset for the control point
-    const nx = -dy / dist;
-    const ny = dx / dist;
-    const cx = midX + nx * curveHeight;
-    const cy = midY + ny * curveHeight;
+      // Quadratic bezier - arc curves upward
+      const midX = (from.x + to.x) / 2;
+      const midY = (from.y + to.y) / 2;
+      const curveHeight = Math.min(dist * 0.35, 180);
+      const nx = -dy / dist;
+      const ny = dx / dist;
+      const cx = midX + nx * curveHeight;
+      const cy = midY + ny * curveHeight;
 
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    const d = `M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}`;
-    path.setAttribute("d", d);
-    path.classList.add("stats-map__arc");
+      // Group for easy cleanup
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.classList.add("stats-map__arc-group");
 
-    const length = path.getTotalLength();
-    path.style.strokeDasharray = `${length}`;
-    path.style.strokeDashoffset = `${length}`;
+      // Pick a vibrant color
+      const hue = Math.floor(Math.random() * 360);
+      const color = `hsl(${hue}, 100%, 65%)`;
+      g.style.setProperty("--arc-color", color);
 
-    svg.appendChild(path);
+      // Arc path
+      const path = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path",
+      );
+      path.setAttribute(
+        "d",
+        `M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}`,
+      );
+      path.classList.add("stats-map__arc");
+      // Must be in DOM to measure length
+      g.appendChild(path);
+      svg.appendChild(g);
 
-    // City label
-    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("x", String(from.x));
-    text.setAttribute("y", String(from.y - 8));
-    text.classList.add("stats-map__city-label");
-    text.textContent = cityName;
-    svg.appendChild(text);
+      const length = path.getTotalLength();
+      path.style.strokeDasharray = `${length}`;
+      path.style.strokeDashoffset = `${length}`;
 
-    // Origin dot
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("cx", String(from.x));
-    circle.setAttribute("cy", String(from.y));
-    circle.setAttribute("r", "3");
-    circle.classList.add("stats-map__origin-dot");
-    svg.appendChild(circle);
+      // Origin dot
+      const circle = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle",
+      );
+      circle.setAttribute("cx", String(from.x));
+      circle.setAttribute("cy", String(from.y));
+      circle.setAttribute("r", "4");
+      circle.classList.add("stats-map__origin-dot");
+      g.appendChild(circle);
 
-    // Trigger animation
-    requestAnimationFrame(() => {
-      path.style.strokeDashoffset = "0";
-    });
+      // City label
+      const text = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "text",
+      );
+      text.setAttribute("x", String(from.x));
+      text.setAttribute("y", String(from.y - 10));
+      text.classList.add("stats-map__city-label");
+      text.textContent = cityName;
+      g.appendChild(text);
 
-    // Cleanup after animation
-    setTimeout(() => {
-      path.classList.add("stats-map__arc--fade");
-      text.classList.add("stats-map__city-label--fade");
-      circle.classList.add("stats-map__origin-dot--fade");
-    }, 1500);
+      // Impact dot at destination
+      const impact = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "circle",
+      );
+      impact.setAttribute("cx", String(to.x));
+      impact.setAttribute("cy", String(to.y));
+      impact.setAttribute("r", "0");
+      impact.classList.add("stats-map__impact-dot");
+      g.appendChild(impact);
 
-    setTimeout(() => {
-      path.remove();
-      text.remove();
-      circle.remove();
-    }, 3500);
-  }, []);
+      // Animate: draw line over 2s
+      requestAnimationFrame(() => {
+        path.style.strokeDashoffset = "0";
+      });
 
-  useImperativeHandle(ref, () => ({
-    addArc(event: RequestEvent) {
-      drawArc(event.lat, event.lng, event.city_name);
+      // Impact ripple after line arrives
+      setTimeout(() => {
+        impact.setAttribute("r", "6");
+        impact.classList.add("stats-map__impact-dot--ripple");
+      }, 2000);
+
+      // Start fading at 3.5s
+      setTimeout(() => {
+        g.classList.add("stats-map__arc-group--fade");
+      }, 3500);
+
+      // Remove from DOM at 5.5s
+      setTimeout(() => {
+        g.remove();
+      }, 5500);
     },
-  }), [drawArc]);
+    [],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      addArc(event: RequestEvent) {
+        drawArc(event.lat, event.lng, event.city_name);
+      },
+    }),
+    [drawArc],
+  );
 
   return <div ref={containerRef} className="stats-map__container" />;
 });
