@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/localnews/backend/internal/middleware"
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services"
 )
@@ -118,6 +119,7 @@ func (h *Handler) StreamPipeline(c *gin.Context) {
 		return
 	}
 
+	middleware.EnablePassthrough(c)
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")

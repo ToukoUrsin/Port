@@ -44,10 +44,13 @@ func (h *Handler) GetProfile(c *gin.Context) {
 	// Check if we have auth context (optional auth)
 	profileIDRaw, hasAuth := c.Get("profile_id")
 	if hasAuth {
-		pid, _ := uuid.Parse(profileIDRaw.(string))
+		idStr, _ := profileIDRaw.(string)
+		pid, _ := uuid.Parse(idStr)
 		role, _ := c.Get("role")
 		perm, _ := c.Get("perm")
-		actor := services.Actor{ProfileID: pid, Role: role.(int), Perm: perm.(int64)}
+		roleVal, _ := role.(int)
+		permVal, _ := perm.(int64)
+		actor := services.Actor{ProfileID: pid, Role: roleVal, Perm: permVal}
 		if !h.access.CanViewProfile(actor, &profile) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 			return

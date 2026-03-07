@@ -61,8 +61,8 @@ type RefreshToken struct {
 }
 
 type OAuthAccountMeta struct {
-	AccessToken  string     `json:"access_token,omitempty"`
-	RefreshToken string     `json:"refresh_token,omitempty"`
+	AccessToken  string     `json:"-"`
+	RefreshToken string     `json:"-"`
 	Scopes       string     `json:"scopes,omitempty"`
 	ExpiresAt    *time.Time `json:"expires_at,omitempty"`
 	DisplayName  string     `json:"display_name,omitempty"`

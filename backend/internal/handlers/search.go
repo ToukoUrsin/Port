@@ -58,7 +58,7 @@ func (h *Handler) Search(c *gin.Context) {
 
 	result, err := h.search.Search(c.Request.Context(), params)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
 		return
 	}
 

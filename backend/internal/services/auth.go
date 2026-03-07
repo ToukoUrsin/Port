@@ -195,11 +195,27 @@ func (s *AuthService) RevokeAllForProfile(profileID uuid.UUID) {
 }
 
 func (s *AuthService) SetRefreshCookie(c *gin.Context, tokenStr string) {
-	c.SetCookie("refresh", tokenStr, int(s.refreshTTL.Seconds()), "/api/auth", "", s.secureCookies, true)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh",
+		Value:    tokenStr,
+		Path:     "/api/auth",
+		MaxAge:   int(s.refreshTTL.Seconds()),
+		Secure:   s.secureCookies,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 func (s *AuthService) ClearRefreshCookie(c *gin.Context) {
-	c.SetCookie("refresh", "", -1, "/api/auth", "", s.secureCookies, true)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "refresh",
+		Value:    "",
+		Path:     "/api/auth",
+		MaxAge:   -1,
+		Secure:   s.secureCookies,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 func (s *AuthService) GetRefreshCookie(r *http.Request) (string, error) {

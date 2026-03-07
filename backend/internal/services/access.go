@@ -26,11 +26,14 @@ func ActorFromContext(c *gin.Context) Actor {
 	id, _ := c.Get("profile_id")
 	role, _ := c.Get("role")
 	perm, _ := c.Get("perm")
-	pid, _ := uuid.Parse(id.(string))
+	idStr, _ := id.(string)
+	pid, _ := uuid.Parse(idStr)
+	roleVal, _ := role.(int)
+	permVal, _ := perm.(int64)
 	return Actor{
 		ProfileID: pid,
-		Role:      role.(int),
-		Perm:      perm.(int64),
+		Role:      roleVal,
+		Perm:      permVal,
 	}
 }
 

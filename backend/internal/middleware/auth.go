@@ -60,7 +60,8 @@ func OptionalAuth(jwtSecret []byte) gin.HandlerFunc {
 func RequireRole(minRole int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, _ := c.Get("role")
-		if role.(int) < minRole {
+		r, ok := role.(int)
+		if !ok || r < minRole {
 			c.AbortWithStatusJSON(403, gin.H{"error": "insufficient permissions"})
 			return
 		}
@@ -71,7 +72,8 @@ func RequireRole(minRole int) gin.HandlerFunc {
 func RequirePerm(flag int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		perm, _ := c.Get("perm")
-		if perm.(int64)&flag == 0 {
+		p, ok := perm.(int64)
+		if !ok || p&flag == 0 {
 			c.AbortWithStatusJSON(403, gin.H{"error": "insufficient permissions"})
 			return
 		}

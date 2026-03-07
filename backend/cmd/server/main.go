@@ -132,7 +132,10 @@ func main() {
 	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc)
 
 	// Router
-	r := gin.Default()
+	r := gin.New()
+	r.Use(middleware.ErrorSanitizer())
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
 	r.SetTrustedProxies(cfg.TrustedProxies)
 	middleware.SetupCORS(r, cfg.AllowedOrigins)
 
