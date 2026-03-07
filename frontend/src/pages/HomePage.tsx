@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
+import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import { useApi } from "@/hooks/useApi.ts";
 import { getArticles, getLocations } from "@/lib/api.ts";
@@ -399,6 +400,7 @@ export default function HomePage() {
           </>
         )}
       </main>
+      <Footer />
       <div className="home-fade-bottom" />
       <BottomBar />
     </>
