@@ -650,6 +650,19 @@
   color: var(--color-text-secondary);
 }
 
+.comment__delete-btn:hover {
+  color: var(--color-danger, #dc2626);
+}
+
+.comment--deleted {
+  opacity: 0.6;
+}
+
+.comment__text--deleted {
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
 /* Nested / threaded comments */
 .comment--nested {
   position: relative;

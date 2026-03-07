@@ -215,7 +215,7 @@ function CommentItem({ reply, depth, replyReactions, articleId, onNewReply, onDe
   const [showReplyForm, setShowReplyForm] = useState(false);
   const rxn = replyReactions[reply.id];
   const isDeleted = reply.status === 2;
-  const isOwner = user?.profile_id === reply.profile_id;
+  const isOwner = user?.id === reply.profile_id;
 
   if (isDeleted) {
     return (
@@ -349,6 +349,7 @@ function Comments({ articleId }: { articleId: string }) {
   const [showAll, setShowAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [replyReactions, setReplyReactions] = useState<ReplyReactionMap>({});
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -358,7 +359,9 @@ function Comments({ articleId }: { articleId: string }) {
     }).catch(() => {});
   }, [articleId, authLoading]);
 
-  const allReplies = [...(repliesData?.replies ?? []), ...localReplies];
+  const allReplies = [...(repliesData?.replies ?? []), ...localReplies].map((r) =>
+    deletedIds.has(r.id) ? { ...r, status: 2, body: "" } : r
+  );
   const tree = buildThread(allReplies);
   const topLevel = tree.get(null) ?? [];
 
@@ -381,6 +384,15 @@ function Comments({ articleId }: { articleId: string }) {
   const handleNewReply = (reply: ApiReply) => {
     setLocalReplies((prev) => [...prev, reply]);
     setShowAll(true);
+  };
+
+  const handleDelete = async (replyId: string) => {
+    try {
+      await deleteReply(replyId);
+      setDeletedIds((prev) => new Set(prev).add(replyId));
+    } catch {
+      // Could show error toast
+    }
   };
 
   const visibleTop = showAll ? topLevel : topLevel.slice(0, 3);
@@ -441,6 +453,7 @@ function Comments({ articleId }: { articleId: string }) {
                 replyReactions={replyReactions}
                 articleId={articleId}
                 onNewReply={handleNewReply}
+                onDelete={handleDelete}
               />
               <ThreadedReplies
                 parentId={reply.id}
@@ -449,6 +462,7 @@ function Comments({ articleId }: { articleId: string }) {
                 replyReactions={replyReactions}
                 articleId={articleId}
                 onNewReply={handleNewReply}
+                onDelete={handleDelete}
               />
             </div>
           ))}
