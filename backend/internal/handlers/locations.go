@@ -72,9 +72,9 @@ func (h *Handler) LocationArticles(c *gin.Context) {
 	}
 
 	var articles []models.Submission
-	h.db.Where(
-		"location_id IN (SELECT id FROM locations WHERE id = ? OR path LIKE ?) AND status = ?",
-		loc.ID, loc.Path+"/%", models.StatusPublished,
+	h.db.Where("location_id IN (?) AND status = ?",
+		h.db.Model(&models.Location{}).Select("id").Where("id = ? OR path LIKE ?", loc.ID, loc.Path+"/%"),
+		models.StatusPublished,
 	).Order("updated_at DESC").Limit(limit).Offset(offset).Find(&articles)
 
 	c.JSON(http.StatusOK, gin.H{"articles": articles})
