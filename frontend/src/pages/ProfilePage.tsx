@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, Settings } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
+import AccountSettings from "@/components/AccountSettings";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
@@ -82,7 +83,7 @@ function submissionToDraft(s: ApiSubmission): DraftArticle {
 
 export default function ProfilePage() {
   const { slug } = useParams<{ slug: string }>();
-  const [tab, setTab] = useState<"posts" | "drafts">("posts");
+  const [tab, setTab] = useState<"posts" | "drafts" | "settings">("posts");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isOwnProfile = !slug;
@@ -213,9 +214,20 @@ export default function ProfilePage() {
               Drafts
             </button>
           )}
+          {isOwnProfile && (
+            <button
+              className={`profile-tab ${tab === "settings" ? "profile-tab--active" : ""}`}
+              onClick={() => setTab("settings")}
+            >
+              <Settings size={14} style={{ marginRight: "var(--space-1)", verticalAlign: "-2px" }} />
+              Settings
+            </button>
+          )}
         </div>
 
-        {articlesLoading ? (
+        {tab === "settings" ? (
+          <AccountSettings />
+        ) : articlesLoading ? (
           <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
             <Loader2 size={24} className="animate-spin" />
           </div>

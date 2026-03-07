@@ -306,6 +306,18 @@ export function searchSessionChunk(sessionId: string, chunk: number): Promise<Se
   return apiFetch<SearchResponse>(`/api/search/sessions/${sessionId}?chunk=${chunk}`);
 }
 
+// --- Change password ---
+
+export function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ message: string; access_token: string }> {
+  return apiFetch<{ message: string; access_token: string }>("/api/auth/password", {
+    method: "PUT",
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+}
+
 // --- Profile name check (public) ---
 
 export function checkProfileName(name: string): Promise<{ available: boolean }> {

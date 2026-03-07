@@ -189,6 +189,7 @@ export interface ApiProfile {
   meta: ProfileMeta;
   created_at: string;
   updated_at: string;
+  has_password?: boolean;
 }
 
 export interface AuthResponse {

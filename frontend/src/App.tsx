@@ -59,7 +59,14 @@ function App() {
               }
             />
             {/* <Route path="/pitch" element={<PitchDeck />} /> */}
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/profile/:slug" element={<ProfilePage />} />
           </Routes>
         </ToastProvider>

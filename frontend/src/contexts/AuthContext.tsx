@@ -27,6 +27,8 @@ interface AuthContextValue {
   ) => Promise<void>;
   logout: () => Promise<void>;
   handleOAuthCallback: (accessToken: string) => Promise<void>;
+  updateUser: (updates: Partial<ApiProfile>) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -95,6 +97,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(profile);
   }, []);
 
+  const updateUser = useCallback((updates: Partial<ApiProfile>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : prev));
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const profile = await apiGetProfile();
+      setUser(profile);
+    } catch {
+      // ignore refresh errors
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -105,6 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signup,
         logout,
         handleOAuthCallback,
+        updateUser,
+        refreshUser,
       }}
     >
       {children}

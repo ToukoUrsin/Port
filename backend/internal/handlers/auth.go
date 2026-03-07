@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -171,6 +172,68 @@ func (h *Handler) Logout(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=8"`
+}
+
+func (h *Handler) ChangePassword(c *gin.Context) {
+	var req changePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: current_password and new_password (min 8 chars) required"})
+		return
+	}
+
+	profileIDRaw, _ := c.Get("profile_id")
+	profileID, err := uuid.Parse(profileIDRaw.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid profile"})
+		return
+	}
+
+	if err := h.auth.ChangePassword(profileID, req.CurrentPassword, req.NewPassword); err != nil {
+		switch err.Error() {
+		case "invalid current password":
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid current password"})
+		case "no password set":
+			c.JSON(http.StatusBadRequest, gin.H{"error": "no password set for this account"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		}
+		return
+	}
+
+	// Re-fetch profile for token generation
+	var profile models.Profile
+	if err := h.db.First(&profile, "id = ?", profileID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+
+	// Clear old cookie and issue new tokens
+	h.auth.ClearRefreshCookie(c)
+
+	accessToken, err := h.auth.GenerateAccessToken(&profile)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	refreshToken, _, err := h.auth.GenerateRefreshToken(profile.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate refresh token"})
+		return
+	}
+
+	h.auth.SetRefreshCookie(c, refreshToken)
+	h.auth.CacheProfile(&profile)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "password changed successfully",
+		"access_token": accessToken,
+	})
 }
 
 func (h *Handler) googleOAuthConfig() *oauth2.Config {
