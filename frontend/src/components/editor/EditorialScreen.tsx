@@ -149,6 +149,7 @@ export function EditorialScreen({
             userName={userName}
             category={metadata.category}
             redTriggers={review.red_triggers}
+            verification={review.verification}
             activeAnnotation={activeAnnotation}
             onAnnotationClick={handleAnnotationClick}
             onAnnotationDismiss={handleAnnotationDismiss}
@@ -180,6 +181,7 @@ export function EditorialScreen({
             review={review}
             onAppeal={onAppeal}
             onSuggestionClick={handleSuggestionClick}
+            onRefine={isRefining ? undefined : onRefineGeneral}
           />
           <RefinementInput onRefine={onRefineGeneral} disabled={isRefining} />
           <VersionInfo round={currentRound} />

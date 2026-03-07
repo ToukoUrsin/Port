@@ -523,6 +523,66 @@ function ProcessingStep({
   );
 }
 
+// --- Mock data for UI testing (skip pipeline) ---
+const MOCK_ARTICLE = `# Kirkkonummen valtuusto hyväksyi budjetin äänin 5-2
+
+Kirkkonummen kunnanvaltuusto äänesti tiistai-iltana budjetista, joka leikkaa koulujen rahoitusta merkittävästi. Päätös syntyi äänin 5-2.
+
+"Lapsemme ansaitsevat parempaa", sanoi valtuutettu Korhonen, yksi kahdesta vastaan äänestäneestä.
+
+## Leikkaukset herättävät huolta
+
+Arviolta 40 asukasta täytti valtuustosalin, monet heistä kouluikäisten lasten vanhempia. Useat puhujat ilmaisivat huolensa leikkausten vaikutuksista paikallisiin kouluihin.
+
+Budjetti sisältää 2,3 miljoonan euron leikkaukset koulutukseen, mikä vaikuttaa erityisesti iltapäiväkerhotoimintaan ja erityisopetuksen resursseihin.
+
+> "Olemme joutuneet tekemään vaikeita valintoja, mutta kunnan taloustilanne ei anna muita vaihtoehtoja", totesi kunnanjohtaja Virtanen.
+
+Seuraava valtuuston kokous pidetään 15. maaliskuuta, jolloin käsitellään leikkausten toimeenpanosuunnitelma.`;
+
+const MOCK_REVIEW: ReviewResult = {
+  verification: [
+    { claim: "Kirkkonummen kunnanvaltuusto äänesti tiistai-iltana budjetista", evidence: "Contributor notes: 'valtuuston budjettikokous tiistaina'", status: "SUPPORTED" },
+    { claim: "Päätös syntyi äänin 5-2", evidence: "Contributor notes: 'äänestys 5-2'", status: "SUPPORTED" },
+    { claim: "Lapsemme ansaitsevat parempaa, sanoi valtuutettu Korhonen", evidence: "Contributor audio transcript: 'Korhonen sanoi että lapsemme ansaitsevat parempaa'", status: "SUPPORTED" },
+    { claim: "Arviolta 40 asukasta täytti valtuustosalin", evidence: "Contributor notes: 'paljon väkeä'", status: "NOT_IN_SOURCE" },
+    { claim: "Budjetti sisältää 2,3 miljoonan euron leikkaukset koulutukseen", evidence: "none found in source", status: "POSSIBLE_HALLUCINATION" },
+    { claim: "vaikuttaa erityisesti iltapäiväkerhotoimintaan ja erityisopetuksen resursseihin", evidence: "none found in source", status: "POSSIBLE_HALLUCINATION" },
+    { claim: "kunnanjohtaja Virtanen totesi", evidence: "Contributor notes mention 'Virtanen puhui' but no direct quote provided", status: "NOT_IN_SOURCE" },
+  ],
+  scores: {
+    evidence: 0.6,
+    perspectives: 0.4,
+    representation: 0.5,
+    ethical_framing: 0.8,
+    cultural_context: 0.7,
+    manipulation: 0.9,
+  },
+  gate: "YELLOW",
+  red_triggers: [],
+  yellow_flags: [
+    { dimension: "PERSPECTIVES", description: "Single-source story on a multi-stakeholder topic", suggestion: "A quote from a parent or teacher who attended would make this story even richer." },
+    { dimension: "EVIDENCE", description: "Some details added beyond source material", suggestion: "The specific budget figure and affected programs aren't in your notes — do you have a source for those?" },
+  ],
+  coaching: {
+    celebration: "The Korhonen quote really captures the tension of the vote. Strong opening that gets right to the news.",
+    suggestions: [
+      "Do you remember roughly how many people were at the meeting? You mentioned it was packed — even an estimate like 'about 30-40' would strengthen the story.",
+      "Did any parents speak during the public comment period? A quote from someone in the audience would bring this to life.",
+    ],
+  },
+  web_sources: [
+    { title: "Kirkkonummen kunta", url: "https://kirkkonummi.fi" },
+  ],
+};
+
+const MOCK_METADATA: ArticleMetadata = {
+  chosen_structure: "news_report",
+  category: "council",
+  confidence: 0.7,
+  missing_context: ["Approximate attendance count", "Names of parents who spoke"],
+};
+
 // --- Main: Thin Orchestrator ---
 type FlowStep = "input" | "processing" | "preview";
 
@@ -542,6 +602,14 @@ export default function PostPage() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const refineAbortRef = useRef<AbortController | null>(null);
+
+  const handleDemo = useCallback(() => {
+    setSubmissionId("demo");
+    setArticleMarkdown(MOCK_ARTICLE);
+    setReviewData(MOCK_REVIEW);
+    setMetadata(MOCK_METADATA);
+    setStep("preview");
+  }, []);
 
   const handleSubmissionCreated = useCallback((id: string) => {
     setSubmissionId(id);
@@ -698,6 +766,23 @@ export default function PostPage() {
               </div>
             )}
             <InputStep onSubmit={handleSubmissionCreated} />
+            <button
+              type="button"
+              onClick={handleDemo}
+              style={{
+                margin: "var(--space-4) auto",
+                display: "block",
+                background: "none",
+                border: "1px dashed var(--color-gray-300)",
+                borderRadius: "var(--radius-md)",
+                padding: "var(--space-2) var(--space-4)",
+                color: "var(--color-text-tertiary)",
+                fontSize: "var(--text-sm)",
+                cursor: "pointer",
+              }}
+            >
+              Demo (skip pipeline)
+            </button>
           </>
         )}
         {step === "processing" && (

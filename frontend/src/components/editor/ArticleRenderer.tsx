@@ -11,7 +11,7 @@ import Highlight from "@tiptap/extension-highlight";
 import { Markdown } from "tiptap-markdown";
 import { AnnotationHighlight } from "./extensions/AnnotationHighlight";
 import { DragHandle } from "./extensions/DragHandle";
-import type { RedTrigger } from "@/lib/types";
+import type { RedTrigger, VerificationEntry } from "@/lib/types";
 import type { ActiveAnnotation } from "./types";
 import {
   X, Bold, Italic, Strikethrough, Code, Quote, List, ListOrdered,
@@ -24,6 +24,7 @@ type ArticleEditorProps = {
   userName: string;
   category?: string;
   redTriggers: RedTrigger[];
+  verification?: VerificationEntry[];
   activeAnnotation: ActiveAnnotation;
   onAnnotationClick: (trigger: RedTrigger, rect: DOMRect) => void;
   onAnnotationDismiss: () => void;
@@ -88,6 +89,7 @@ export function ArticleEditor({
   userName,
   category,
   redTriggers,
+  verification = [],
   activeAnnotation,
   onAnnotationClick,
   onAnnotationDismiss,
@@ -135,14 +137,15 @@ export function ArticleEditor({
     },
   });
 
-  // Update annotations when redTriggers change
+  // Update annotations when redTriggers or verification change
   useEffect(() => {
     if (!editor) return;
     (editor.storage as any).annotationHighlight.triggers = redTriggers;
+    (editor.storage as any).annotationHighlight.verification = verification;
     const { tr } = editor.state;
-    tr.setMeta("annotationHighlight", { triggers: redTriggers });
+    tr.setMeta("annotationHighlight", { triggers: redTriggers, verification });
     editor.view.dispatch(tr);
-  }, [editor, redTriggers]);
+  }, [editor, redTriggers, verification]);
 
   // Handle external markdown updates (e.g. AI refinement) — skip if the change came from us
   useEffect(() => {
