@@ -370,16 +370,32 @@ export default function HomePage() {
             <RecentSection articles={recentArticles} t={t} />
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <BestOfWeekSection articles={bestOfWeek} t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <OpinionSection articles={opinionArticles} t={t} />
+            {bestOfWeek.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <BestOfWeekSection articles={bestOfWeek} t={t} />
+              </>
+            )}
+            {opinionArticles.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <OpinionSection articles={opinionArticles} t={t} />
+              </>
+            )}
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <EventsSection articles={eventArticles} t={t} />
-            <img src="/Line 1.svg" alt="" className="line-divider" />
-            <NewsSection headlines={newsHeadlines} featured={newsFeatured} t={t} />
+            {eventArticles.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <EventsSection articles={eventArticles} t={t} />
+              </>
+            )}
+            {(newsHeadlines.length > 0 || newsFeatured.length > 0) && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <NewsSection headlines={newsHeadlines} featured={newsFeatured} t={t} />
+              </>
+            )}
           </>
         )}
       </main>
