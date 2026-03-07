@@ -8,7 +8,6 @@ import { InstructionBar } from "./InstructionBar";
 import { GateBadge } from "./GateBadge";
 import { PublishButton } from "./PublishButton";
 import { VersionInfo } from "./VersionInfo";
-import { useTextSelection } from "./hooks/useTextSelection";
 import { useParagraphTap } from "./hooks/useParagraphTap";
 import type { EditorialScreenProps, ActiveAnnotation } from "./types";
 import type { RedTrigger } from "@/lib/types";
@@ -34,10 +33,9 @@ export function EditorialScreen({
   const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const articleRef = useRef<HTMLDivElement>(null);
 
-  // Interactive hooks for targeted refinement
-  const textSelection = useTextSelection(articleRef);
+  // Mobile paragraph tap for InstructionBar — desktop text selection uses BubbleMenu AI section
   const paragraphTap = useParagraphTap(articleRef);
-  const instructionTarget = textSelection || paragraphTap;
+  const instructionTarget = paragraphTap;
 
   // Click-outside to dismiss suggestion card
   useEffect(() => {
@@ -76,6 +74,17 @@ export function EditorialScreen({
       onContentChange?.(md);
     },
     [onContentChange],
+  );
+
+  // BubbleMenu AI action — triggered from text selection popup
+  const handleAiAction = useCallback(
+    (instruction: string, selectedText: string, paragraphIndex: number) => {
+      const prefix = selectedText
+        ? `Regarding "${selectedText}" in paragraph ${paragraphIndex + 1}: `
+        : `In paragraph ${paragraphIndex + 1}: `;
+      onRefineGeneral({ text_note: prefix + instruction });
+    },
+    [onRefineGeneral],
   );
 
   // InstructionBar handlers — compose targeted input into general refinement
@@ -155,6 +164,7 @@ export function EditorialScreen({
             onAnnotationDismiss={handleAnnotationDismiss}
             highlightParagraph={highlightParagraph}
             onContentChange={handleContentChange}
+            onAiAction={isRefining ? undefined : handleAiAction}
           />
           {isRefining && (
             <div className="editorial-refining-indicator">

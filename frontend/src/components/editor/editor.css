@@ -1064,6 +1064,90 @@
   margin: 0 2px;
 }
 
+/* AI actions row inside BubbleMenu */
+.bubble-menu-ai {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 2px;
+}
+.bubble-menu-ai__chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.bubble-menu-ai__icon {
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+.bubble-menu-ai__chip {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.bubble-menu-ai__chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.bubble-menu-ai__input {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bubble-menu-ai__input input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: white;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.bubble-menu-ai__input input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+.bubble-menu-ai__input input:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.bubble-menu-ai__input button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+.bubble-menu-ai__input button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+.bubble-menu-ai__input button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* ===============================================
    Headline input
    =============================================== */
