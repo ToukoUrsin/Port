@@ -13,8 +13,6 @@ import ArticlePage from "./pages/ArticlePage";
 import SearchPage from "./pages/SearchPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
-import PitchDeck from "./pages/PitchDeck";
-
 
 function App() {
   return (
@@ -60,7 +58,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/pitch" element={<PitchDeck />} />
+            {/* <Route path="/pitch" element={<PitchDeck />} /> */}
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/profile/:slug" element={<ProfilePage />} />
           </Routes>

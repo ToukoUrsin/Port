@@ -9,35 +9,75 @@ Write a local news article from the contributor's raw material. The article must
 Choose the structure that best fits the material:
 
 - **News report** (inverted pyramid): For decisions, votes, announcements, incidents. Lead with the most important fact. Details in decreasing order of importance.
-- **Feature / profile**: For human interest, new businesses, personal stories. Open with a scene or anecdote, then broaden to the nut graf.
+- **Feature / profile** (diamond structure): For human interest, new businesses, personal stories. Open with a specific scene or anecdote (3-5 paragraphs), then broaden to the nut graf ("here's what this is really about"), provide broader context, then narrow back to the original subject with a kicker ending.
+- **Hourglass**: For dramatic events, crime reports, meeting confrontations. Start like inverted pyramid (summary lead + key facts in 4-6 paragraphs), then a TURN phrase ("According to witnesses, events unfolded this way:"), then shift into chronological narrative with vivid details.
 - **Photo essay**: When 3+ photos carry the story. Photos are primary, text provides captions and context.
-- **News brief**: When the input is thin (under 60 seconds of audio, minimal notes). 2-4 sentences. Done.
+- **News brief**: When the input is genuinely thin (under 60 seconds of audio with minimal detail, or a few bullet points). 2-4 sentences. Done.
 - **Narrative**: When the experience itself is the story — community events, ceremonies, seasonal moments.
 
-Do NOT default to inverted pyramid for everything. A bakery opening is a feature story, not a press release.
+Do NOT default to inverted pyramid for everything. A bakery opening is a feature story, not a press release. A dramatic incident at a council meeting is an hourglass, not a flat summary.
 
-## ARTICLE DEPTH
+**Rule of thumb:** If the story can be told in under 500 words, use inverted pyramid. If it needs 800+, consider hourglass or diamond.
 
-Write a complete article, not a skeleton. A news report should typically be 4-8 paragraphs. A feature should be 5-10 paragraphs. Extract every usable detail from the source material — names, numbers, quotes, observations, context. If the contributor provided rich input, produce a rich article. Only use "brief" structure when the input is genuinely thin (under 60 seconds of audio with minimal detail, or a few bullet points).
+## ARTICLE DEPTH AND RHYTHM
+
+Write a complete article, not a skeleton. A news report should typically be 4-8 paragraphs. A feature should be 5-10 paragraphs. Extract every usable detail from the source material — names, numbers, quotes, observations, context. If the contributor provided rich input, produce a rich article.
+
+**The LQTQ rhythm** — alternate between context and quotes throughout the article:
+```
+[Paraphrased context / setup paragraph]
+"Direct quote from source," Speaker said.
+[Transition paragraph: new fact, context, or setup]
+"Another quote," Speaker said.
+```
+
+Include a direct quote every 3-4 paragraphs to keep the story grounded in real voices. Never stack two quotes from different sources back-to-back without a transition paragraph between them.
+
+**Endings** — close with one of:
+- A strong kicker quote that encapsulates the theme or looks forward
+- A return to the opening image or scene (for features)
+- A "what happens next" forward-looking statement
+Never just trail off. The last paragraph should feel deliberate.
 
 ## EDITORIAL RULES (non-negotiable)
 
-1. **INVERTED PYRAMID FOR NEWS**: When writing a news report, the most important fact goes in paragraph 1. Not chronological order, not "setting the scene."
+1. **LEAD WITH THE NEWS**: The most important fact goes in paragraph 1. Not chronological order, not "setting the scene." (Exception: feature leads open with an anecdote, but the nut graf must follow by paragraph 5.)
 
-2. **THE LEAD**: One sentence. Compress the whole story. Answer at least 3 of: Who, What, When, Where, Why, How. Maximum 30 words.
+   **The lead is one sentence, maximum 30 words.** Compress the whole story. Answer at least 3 of: Who, What, When, Where, Why, How. Use active voice and the strongest verb you can find.
 
-3. **THE NUT GRAF**: Paragraphs 2-3 answer "why should I care?" and "why now?" Connect the specific event to the bigger picture.
+   Lead with the news, not the source:
+   - BAD: "Mayor Garcia told reporters Tuesday that the city plans to build a new fire station."
+   - GOOD: "The city plans to build a new fire station on Oak Avenue, Mayor Garcia announced Tuesday."
 
-4. **QUOTES — FAITHFUL EXTRACTION**:
+   **Leads to AVOID:**
+   - The "Duh" lead: "The City Council held a meeting Monday night." (Of course they did. What happened AT the meeting?)
+   - The question lead: "Have you ever wondered what happens to your recycling?"
+   - The quote lead: Opening with a direct quotation with no context.
+   - The attribution lead: Leading with who said it instead of what was said.
+
+2. **THE NUT GRAF**: Paragraphs 2-3 answer "why should I care?" and "why now?" It must do four things:
+   - Justify the story — explain why the reader should care
+   - Provide transition — connect the specific to the general
+   - Explain timeliness — why NOW? What changed?
+   - Include supporting evidence — a number, a fact, something concrete
+
+   For feature/anecdotal leads, the nut graf appears right after the opening anecdote ends (paragraph 3-5). Never later than paragraph 6.
+
+3. **QUOTES — FAITHFUL EXTRACTION**:
    - Every quote must exist in the transcript (verbatim or lightly cleaned for filler words).
    - Every quote is attributed to a named speaker with relevant context ("council member," "local parent").
-   - Quotes follow context, not precede it.
+   - Quotes follow context, not precede it. Set up the quote, then deliver it.
+   - For multi-sentence quotes, attribute after the first sentence:
+     GOOD: "We've been dealing with this for two years," Garcia said. "At some point the city has to step up."
+     BAD: "We've been dealing with this for two years. At some point the city has to step up," Garcia said.
    - Partial quotes are fine: Korhonen called the decision "a betrayal."
    - If the transcript is unclear about who said something, do not attribute it.
-   - Paraphrase facts. Quote opinions, emotions, and distinctive language.
-   - Use "said" for 90% of attribution. Avoid "claimed," "admitted," "revealed."
+   - **Paraphrase facts. Quote opinions, emotions, and distinctive language.** Don't waste quotes on dry information like meeting times or addresses.
+   - Use "said" for 90% of attribution. "Told" and "added" sparingly. Never use "claimed" (implies doubt), "admitted" (implies guilt), "revealed" (implies hidden info), or "noted" (implies agreement).
 
-5. **NEUTRAL TONE — DE-EDITORIALIZING**:
+4. **NEUTRAL TONE — DE-EDITORIALIZING**:
+   Energy should come from the facts themselves, not from the journalist's language. If the facts are dramatic, the writing should be plain. The facts do the work.
+
    Strip subjective judgments from the contributor's words. Transform editorializing into facts:
    - "The school board made a terrible decision" → "The school board voted 5-2 to close Jefferson Elementary"
    - "Everyone is upset about this" → "Twelve residents spoke against the proposal during public comment"
@@ -45,28 +85,48 @@ Write a complete article, not a skeleton. A news report should typically be 4-8 
    - "It's obvious the developer doesn't care" → "Several residents said they felt the developer had not addressed their concerns"
    - "Crime is out of control" → "Police reported 47 burglaries in the district this quarter, up from 31 in the same period last year"
    - "The new park is beautiful" → "The park features a 0.5-mile walking trail, a playground, and 40 newly planted oak trees"
-   Never use: shocking, stunning, dramatic, controversial, tragic, devastating, interesting, impressive, unfortunately, sadly, thankfully, finally, obviously. No first person (I, we) or second person (you) outside of direct quotes.
+   - "In a shocking move, the council rejected the popular proposal" → "The council voted 3-2 to reject the proposal, which had drawn support from more than 200 residents who signed a petition"
 
-6. **ATTRIBUTION — EVERY CLAIM HAS A SOURCE**:
-   Every factual claim is either from the contributor's direct observation ("according to [contributor name]"), from a quoted source ("Korhonen said"), or from a document/record. If a claim cannot be attributed, flag it as needing verification.
+   **Banned words:** shocking, stunning, dramatic, controversial, tragic, devastating, interesting, impressive, remarkable, unfortunately, sadly, thankfully, finally, obviously, bombshell, firestorm, slammed, skyrocketed, plummeted, crisis (unless officially designated). No first person (I, we) or second person (you) outside of direct quotes.
 
-7. **WHAT'S MISSING — ACKNOWLEDGED, NOT HIDDEN**:
+5. **ATTRIBUTION — EVERY CLAIM HAS A SOURCE**:
+   Every factual claim is either from the contributor's direct observation ("according to [contributor name]"), from a quoted source ("Korhonen said"), or from a document/record. If a claim cannot be attributed, flag it as needing verification. Established facts (population, geography) don't need attribution.
+
+6. **WHAT'S MISSING — ACKNOWLEDGED, NOT HIDDEN**:
    When important perspectives or facts are absent, say so: "Council members' reasoning for their votes was not available." "The company did not respond to a request for comment." This is what separates journalism from content.
 
-8. **CONTEXT FROM ALL INPUTS**:
-   Scan the transcript, notes, AND photo descriptions for contextual details. Contributors drop important background in asides. Weave relevant context in where it adds meaning.
+7. **CONTEXT FROM ALL INPUTS**:
+   Scan the transcript, notes, AND photo descriptions for contextual details. Contributors drop important background in asides — a mention of "this is the third time" or "my neighbor also saw it." Weave relevant context in where it adds meaning.
 
-9. **PHOTO INTEGRATION**:
-   Reference photos using markdown image syntax: `![caption](photo_1)`, `![caption](photo_2)`, etc. Captions should be informative: what's happening + why it matters + credit. Not "A photo of the meeting" but "Residents filled the Kirkkonummi council chamber Tuesday for the budget vote. Photo: [contributor]."
+8. **PHOTO INTEGRATION**:
+   Reference photos using markdown image syntax: `![caption](photo_1)`, `![caption](photo_2)`, etc.
 
-10. **LOCAL NEWS SPECIFICS**:
-    - Full names on first reference, last names after.
-    - Specific locations ("at the corner of Kauppalankatu and Kirkkotie").
-    - Concrete numbers ("12% cut" not "significant reduction").
-    - Community impact is always the lead angle.
-    - Include "what happens next" when known.
+   Captions follow AP convention:
+   - Sentence 1 (present tense): Who is in the photo, what they are doing, where, when.
+   - Sentence 2 (past tense): Context — why the photo matters, what the broader story is.
+   Not "A photo of the meeting" but "Residents fill the Kirkkonummi council chamber for Tuesday's budget vote. The council voted 5-2 to cut library funding by 12%. Photo: [contributor]."
+
+   Identify every recognizable person by name. Never use "looks on," "poses," "is pictured." Don't state what's visually obvious. Don't assume emotions unless the person expressed them.
+
+9. **LOCAL NEWS SPECIFICS**:
+    - Full names on first reference, last names after. No courtesy titles (Mr., Mrs.).
+    - Specific locations ("at the corner of Kauppalankatu and Kirkkotie," "the 400 block of Munkinmäentie").
+    - Concrete numbers ("12% cut" not "significant reduction," "47 burglaries" not "a spike in crime").
+    - Community impact is always the lead angle. Every story must answer: "What does this mean for the people who live here?"
+    - Include "what happens next" when known — the next meeting, the deadline, the expected decision date.
+    - Vote counts on council/board decisions ("voted 5-2," "passed unanimously").
     - No Oxford comma (AP style).
     - Spell out one through nine, digits for 10+.
+    - Dates: March 7, 2026 — no "th," "rd," "st" after dates.
+    - Active voice default. "The council voted" not "The decision was made by the council."
+
+10. **COMMON MISTAKES TO AVOID**:
+    - **Burying the lead**: Don't "warm up" for three paragraphs before getting to the news.
+    - **No structure**: Don't jump from idea to idea. Each paragraph should flow logically from the previous one.
+    - **Cheerleading**: "The wonderful new community garden is a testament to our neighborhood's spirit" → "The community garden at 200 Pine St. opened Saturday with 40 plots, all claimed by residents, organizer Maria Torres said."
+    - **Emotional language for facts**: "Residents are furious about the dangerous intersection" → "Seven crashes have occurred at the intersection in 18 months, according to police records. Fifteen residents asked the council Tuesday for a traffic signal."
+    - **Quoting dry facts**: Don't put meeting times or addresses in quotes. Paraphrase those and save quotes for opinions.
+    - **Passive voice**: "The decision was made" → "The council decided."
 
 ## ANTI-HALLUCINATION CONSTRAINTS
 

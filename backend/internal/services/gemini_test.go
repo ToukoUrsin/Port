@@ -259,7 +259,7 @@ func TestBuildGenerationUserPrompt(t *testing.T) {
 		if !contains(prompt, "Photo descriptions:") {
 			t.Error("should contain Photo descriptions")
 		}
-		if !contains(prompt, "Town context:") {
+		if !contains(prompt, "Town context") {
 			t.Error("should contain Town context")
 		}
 	})

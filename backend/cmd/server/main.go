@@ -112,8 +112,16 @@ func main() {
 		rerankerSvc = services.NewPassthroughReranker()
 	}
 
+	// Transcription service
+	var transcription services.TranscriptionService
+	if cfg.ElevenLabsAPIKey != "" {
+		transcription = services.NewElevenLabsTranscriptionService(cfg.ElevenLabsAPIKey, cfg.MediaStoragePath)
+		log.Printf("ElevenLabs transcription enabled")
+	} else {
+		transcription = services.NewStubTranscriptionService()
+	}
+
 	// Pipeline
-	transcription := services.NewStubTranscriptionService()
 	chunker := services.NewStubChunkerService()
 	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embeddingSvc)
 
