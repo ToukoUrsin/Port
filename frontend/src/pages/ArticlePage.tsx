@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Heart, Reply as ReplyIcon } from "lucide-react";
+import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Reply as ReplyIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
@@ -16,17 +16,18 @@ import Modal from "@/components/Modal";
 import "./ArticlePage.css";
 
 function ArticleReactions({ articleId }: { articleId: string }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [counts, setCounts] = useState<ReactionCounts>({ likes: 0, dislikes: 0 });
   const [userReaction, setUserReaction] = useState<number>(0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     getArticleReactions(articleId).then((data) => {
       setCounts({ likes: data.likes, dislikes: data.dislikes });
       if (data.user_reaction !== undefined) setUserReaction(data.user_reaction);
     }).catch(() => {});
-  }, [articleId]);
+  }, [articleId, authLoading]);
 
   const total = counts.likes + counts.dislikes;
   const likePercent = total > 0 ? Math.round((counts.likes / total) * 100) : 0;
@@ -83,28 +84,32 @@ function ArticleReactions({ articleId }: { articleId: string }) {
   );
 }
 
-function CommentLikeButton({ replyId, initialLikes, initialLiked }: {
+function CommentReactions({ replyId, initialLikes, initialDislikes, initialReaction }: {
   replyId: string;
   initialLikes: number;
-  initialLiked: boolean;
+  initialDislikes: number;
+  initialReaction: number; // 1 = like, -1 = dislike, 0 = none
 }) {
   const { isAuthenticated } = useAuth();
   const [likes, setLikes] = useState(initialLikes);
-  const [liked, setLiked] = useState(initialLiked);
+  const [dislikes, setDislikes] = useState(initialDislikes);
+  const [userReaction, setUserReaction] = useState(initialReaction);
   const [busy, setBusy] = useState(false);
 
-  const handleToggle = async () => {
+  const handleReact = async (kind: 1 | -1) => {
     if (busy || !isAuthenticated) return;
     setBusy(true);
     try {
-      if (liked) {
+      if (userReaction === kind) {
         const data = await unreactReply(replyId);
         setLikes(data.likes);
-        setLiked(false);
+        setDislikes(data.dislikes);
+        setUserReaction(0);
       } else {
-        const data = await reactReply(replyId);
+        const data = await reactReply(replyId, kind);
         setLikes(data.likes);
-        setLiked(true);
+        setDislikes(data.dislikes);
+        setUserReaction(kind);
       }
     } catch {
       // ignore
@@ -114,14 +119,24 @@ function CommentLikeButton({ replyId, initialLikes, initialLiked }: {
   };
 
   return (
-    <button
-      className={`comment__like ${liked ? "comment__like--active" : ""}`}
-      onClick={handleToggle}
-      disabled={!isAuthenticated || busy}
-    >
-      <Heart size={12} fill={liked ? "currentColor" : "none"} />
-      {likes > 0 && <span>{likes}</span>}
-    </button>
+    <div className="comment__reactions">
+      <button
+        className={`comment__react-btn ${userReaction === 1 ? "comment__react-btn--active" : ""}`}
+        onClick={() => handleReact(1)}
+        disabled={!isAuthenticated || busy}
+      >
+        <ThumbsUp size={12} />
+        {likes > 0 && <span>{likes}</span>}
+      </button>
+      <button
+        className={`comment__react-btn comment__react-btn--dislike ${userReaction === -1 ? "comment__react-btn--active" : ""}`}
+        onClick={() => handleReact(-1)}
+        disabled={!isAuthenticated || busy}
+      >
+        <ThumbsDown size={12} />
+        {dislikes > 0 && <span>{dislikes}</span>}
+      </button>
+    </div>
   );
 }
 
@@ -213,10 +228,11 @@ function CommentItem({ reply, depth, replyReactions, articleId, onNewReply }: {
         </div>
         <p className="comment__text">{reply.body}</p>
         <div className="comment__actions">
-          <CommentLikeButton
+          <CommentReactions
             replyId={reply.id}
             initialLikes={rxn?.likes ?? reply.meta?.reactions?.like ?? 0}
-            initialLiked={!!rxn?.user_liked}
+            initialDislikes={rxn?.dislikes ?? reply.meta?.reactions?.dislike ?? 0}
+            initialReaction={rxn?.user_reaction ?? 0}
           />
           {isAuthenticated && depth < 3 && (
             <button
@@ -293,7 +309,7 @@ function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onN
 
 function Comments({ articleId }: { articleId: string }) {
   const { t } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const fetchReplies = useCallback(() => getReplies(articleId), [articleId]);
   const { data: repliesData, isLoading } = useApi(fetchReplies, [articleId]);
   const [localReplies, setLocalReplies] = useState<ApiReply[]>([]);
@@ -304,10 +320,11 @@ function Comments({ articleId }: { articleId: string }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     getReplyReactions(articleId).then((data) => {
       setReplyReactions(data.reactions || {});
     }).catch(() => {});
-  }, [articleId]);
+  }, [articleId, authLoading]);
 
   const allReplies = [...(repliesData?.replies ?? []), ...localReplies];
   const tree = buildThread(allReplies);
