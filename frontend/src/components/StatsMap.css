@@ -14,22 +14,23 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 8px;
-  height: 8px;
-  margin: -4px 0 0 -4px;
-  background: var(--color-primary);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  background: #00ff88;
   border-radius: 50%;
   z-index: 2;
+  box-shadow: 0 0 8px #00ff88;
 }
 
 .stats-map__pulse-ring {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border: 2px solid var(--color-primary);
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border: 2px solid #00ff88;
   border-radius: 50%;
   animation: pulse-ring 2s ease-out infinite;
   z-index: 1;
@@ -41,52 +42,12 @@
     opacity: 1;
   }
   100% {
-    transform: scale(2);
+    transform: scale(2.5);
     opacity: 0;
   }
 }
 
-/* Arc paths */
-.stats-map__arc {
-  fill: none;
-  stroke: var(--color-primary);
-  stroke-width: 2;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1.5s ease-out;
-  opacity: 0.85;
-}
-
-.stats-map__arc--fade {
-  opacity: 0;
-  transition: opacity 2s ease-out;
-}
-
-/* City labels */
-.stats-map__city-label {
-  fill: #e0e0e0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-anchor: middle;
-  opacity: 1;
-  transition: opacity 2s ease-out;
-}
-
-.stats-map__city-label--fade {
-  opacity: 0;
-}
-
-/* Origin dots */
-.stats-map__origin-dot {
-  fill: var(--color-primary);
-  opacity: 0.9;
-  transition: opacity 2s ease-out;
-}
-
-.stats-map__origin-dot--fade {
-  opacity: 0;
-}
-
-/* SVG overlay */
+/* SVG overlay — sits on top of the map container */
 .stats-map__svg-overlay {
   position: absolute;
   top: 0;
@@ -95,4 +56,72 @@
   height: 100%;
   pointer-events: none;
   z-index: 500;
+  overflow: visible;
+}
+
+/* Arc group — fades out together */
+.stats-map__arc-group {
+  opacity: 1;
+  transition: opacity 2s ease-out;
+}
+
+.stats-map__arc-group--fade {
+  opacity: 0;
+}
+
+/* Arc group default color */
+.stats-map__arc-group {
+  --arc-color: #00ff88;
+}
+
+/* Arc paths — rainbow colored lines */
+.stats-map__arc {
+  fill: none;
+  stroke: var(--arc-color);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 2s ease-out;
+  filter: drop-shadow(0 0 6px var(--arc-color));
+}
+
+/* City labels */
+.stats-map__city-label {
+  fill: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+/* Origin dots */
+.stats-map__origin-dot {
+  fill: var(--arc-color);
+  filter: drop-shadow(0 0 4px var(--arc-color));
+}
+
+/* Impact dot at Otaniemi */
+.stats-map__impact-dot {
+  fill: none;
+  stroke: var(--arc-color);
+  stroke-width: 2;
+  opacity: 0;
+  transition: r 0.3s ease-out;
+}
+
+.stats-map__impact-dot--ripple {
+  opacity: 1;
+  animation: impact-ripple 0.8s ease-out forwards;
+}
+
+@keyframes impact-ripple {
+  0% {
+    r: 3;
+    opacity: 1;
+    stroke-width: 2;
+  }
+  100% {
+    r: 20;
+    opacity: 0;
+    stroke-width: 0.5;
+  }
 }
