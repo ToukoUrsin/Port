@@ -77,7 +77,7 @@ func NewRateLimiter(client *redis.Client, cfg *config.Config) *RateLimiter {
 	routes := map[string]Tier{
 		"POST /api/auth/register":        authTier,
 		"POST /api/auth/login":           authTier,
-		"POST /api/auth/refresh":         authTier,
+		"POST /api/auth/refresh":         readTier,
 		"GET /api/auth/google":           authTier,
 		"GET /api/auth/google/callback":  authTier,
 		"PUT /api/auth/password":         authTier,

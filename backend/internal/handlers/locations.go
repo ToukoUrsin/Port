@@ -24,6 +24,16 @@ func (h *Handler) ListLocations(c *gin.Context) {
 	}
 
 	q.Order("level ASC, name ASC").Find(&locations)
+
+	// Compute article counts dynamically
+	for i := range locations {
+		var count int64
+		h.db.Model(&models.Submission{}).
+			Where("location_id = ? AND status = ?", locations[i].ID, models.StatusPublished).
+			Count(&count)
+		locations[i].ArticleCount = int(count)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"locations": locations})
 }
 
