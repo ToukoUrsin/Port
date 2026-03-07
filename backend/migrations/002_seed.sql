@@ -273,3 +273,9 @@ VALUES (
   }'
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- Update location article counts from actual published submissions
+UPDATE locations SET article_count = (
+  SELECT COUNT(*) FROM submissions
+  WHERE submissions.location_id = locations.id AND submissions.status = 5
+);
