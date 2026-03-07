@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown } from "lucide-react";
+import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
 import type { Article } from "@/data/articles";
@@ -146,13 +146,7 @@ export default function ArticlePage() {
   if (isLoading) {
     return (
       <>
-        <Navbar
-          left={
-            <button className="home-nav__icon-btn" onClick={() => navigate(-1)} title="Back">
-              <ArrowLeft size={18} />
-            </button>
-          }
-        />
+        <Navbar />
         <div className="article-content" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
           <Loader2 size={32} className="animate-spin" style={{ color: "var(--color-text-tertiary)" }} />
         </div>
@@ -163,13 +157,7 @@ export default function ArticlePage() {
   if (error || !article) {
     return (
       <>
-        <Navbar
-          left={
-            <Link to="/" className="home-nav__icon-btn" title="Back">
-              <ArrowLeft size={18} />
-            </Link>
-          }
-        />
+        <Navbar />
         <div className="article-content" style={{ textAlign: "center", paddingTop: "var(--space-16)" }}>
           <h1 className="article-title">{t("article.notFound")}</h1>
           <p style={{ color: "var(--color-text-secondary)", marginTop: "var(--space-4)" }}>
@@ -188,13 +176,7 @@ export default function ArticlePage() {
 
   return (
     <>
-      <Navbar
-        left={
-          <button className="home-nav__icon-btn" onClick={() => navigate(-1)} title="Back">
-            <ArrowLeft size={18} />
-          </button>
-        }
-      />
+      <Navbar />
 
       <div className="article-hero">
         {article.image ? (

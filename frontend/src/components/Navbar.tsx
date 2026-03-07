@@ -1,6 +1,6 @@
-import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { User, LogIn, Search, X, Clock, Loader2, PenSquare } from "lucide-react";
+import { User, LogIn, Search, X, Clock, Loader2, PenSquare, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { search } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
@@ -10,13 +10,12 @@ import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 
 interface NavbarProps {
-  left?: ReactNode;
   initialQuery?: string;
 }
 
-export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
+export default function Navbar({ initialQuery = "" }: NavbarProps) {
   const { isAuthenticated } = useAuth();
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const navigate = useNavigate();
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<Article[]>([]);
@@ -89,7 +88,23 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
     <>
       <nav className="home-nav">
         <div className="home-nav__left">
-          {left}
+          <div className="lang-toggle">
+            <button
+              className={`lang-toggle__btn ${language === "fi" ? "lang-toggle__btn--active" : ""}`}
+              onClick={() => setLanguage("fi")}
+            >
+              FI
+            </button>
+            <button
+              className={`lang-toggle__btn ${language === "en" ? "lang-toggle__btn--active" : ""}`}
+              onClick={() => setLanguage("en")}
+            >
+              EN
+            </button>
+          </div>
+          <Link to="/explore" className="home-nav__icon-btn" title={t("navbar.selectCities")}>
+            <MapPin size={18} />
+          </Link>
         </div>
 
         <Link to="/" className="home-nav__brand">Local News</Link>
@@ -163,14 +178,16 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
         </form>
 
         <div className="home-nav__right">
-          <NavLink to="/post" className="home-nav__post-btn" title={t("navbar.post")}>
-            <PenSquare size={16} />
-            <span>{t("navbar.post")}</span>
-          </NavLink>
           {isAuthenticated ? (
-            <NavLink to="/profile" className="home-nav__icon-btn" title={t("navbar.profile")}>
-              <User size={18} />
-            </NavLink>
+            <>
+              <NavLink to="/post" className="home-nav__post-btn" title={t("navbar.post")}>
+                <PenSquare size={16} />
+                <span>{t("navbar.post")}</span>
+              </NavLink>
+              <NavLink to="/profile" className="home-nav__icon-btn" title={t("navbar.profile")}>
+                <User size={18} />
+              </NavLink>
+            </>
           ) : (
             <NavLink to="/login" className="home-nav__login-btn" title="Log in">
               <LogIn size={16} />
@@ -179,6 +196,23 @@ export default function Navbar({ left, initialQuery = "" }: NavbarProps) {
           )}
         </div>
       </nav>
+
+      {/* Mobile-only second row: location + logo + profile/login */}
+      <div className="home-nav-topbar">
+        <Link to="/explore" className="home-nav-topbar__icon" title={t("navbar.selectCities")}>
+          <MapPin size={18} />
+        </Link>
+        <Link to="/" className="home-nav-topbar__brand">Local News</Link>
+        {isAuthenticated ? (
+          <NavLink to="/profile" className="home-nav-topbar__icon" title={t("navbar.profile")}>
+            <User size={18} />
+          </NavLink>
+        ) : (
+          <NavLink to="/login" className="home-nav-topbar__icon" title="Log in">
+            <LogIn size={18} />
+          </NavLink>
+        )}
+      </div>
 
       {showDropdown && (
         <div className="search-dropdown__overlay" onClick={clearSearch} />

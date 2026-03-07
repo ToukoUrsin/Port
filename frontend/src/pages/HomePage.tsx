@@ -327,36 +327,10 @@ export default function HomePage() {
 
   return (
     <>
-      <Navbar
-        left={
-          <Link to="/explore" className="home-nav__city-btn">
-            <MapPin size={16} />
-            <span>
-              {selectedLocation?.name
-                ?? (savedLocationIds.length > 0
-                  ? locations.filter((l) => savedLocationIds.includes(l.id)).map((l) => l.name).join(", ") || t("navbar.selectCities")
-                  : t("navbar.selectCities"))}
-            </span>
-          </Link>
-        }
-      />
+      <Navbar />
 
       <nav className="city-bar">
         <div className="city-bar__scroll">
-          <div className="lang-toggle">
-            <button
-              className={`lang-toggle__btn ${language === "fi" ? "lang-toggle__btn--active" : ""}`}
-              onClick={() => setLanguage("fi")}
-            >
-              FI
-            </button>
-            <button
-              className={`lang-toggle__btn ${language === "en" ? "lang-toggle__btn--active" : ""}`}
-              onClick={() => setLanguage("en")}
-            >
-              EN
-            </button>
-          </div>
           <Link
             to="/"
             className={`city-bar__item ${!locationSlug ? "city-bar__item--active" : ""}`}

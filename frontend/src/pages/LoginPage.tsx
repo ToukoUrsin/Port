@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useToast } from "@/components/Toast.tsx";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -50,13 +49,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <Navbar
-        left={
-          <Link to="/" className="home-nav__icon-btn" title="Back">
-            <ArrowLeft size={18} />
-          </Link>
-        }
-      />
+      <Navbar />
       <div className="auth-page">
         <div className="auth-card">
           <div className="auth-header">
