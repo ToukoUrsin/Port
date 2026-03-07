@@ -19,21 +19,22 @@ function parseSuggestions(raw: string[] | CoachingSuggestion[]): CoachingSuggest
   return raw as CoachingSuggestion[];
 }
 
-const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle; className: string; label: string }> = {
-  SUPPORTED: { icon: CheckCircle, className: "verification--supported", label: "Supported" },
-  NOT_IN_SOURCE: { icon: AlertTriangle, className: "verification--warning", label: "Not in source" },
-  POSSIBLE_HALLUCINATION: { icon: XCircle, className: "verification--error", label: "Possible hallucination" },
-  FABRICATED_QUOTE: { icon: XCircle, className: "verification--error", label: "Fabricated quote" },
+const STATUS_CONFIG: Record<string, { icon: typeof CheckCircle; className: string; labelKey: string }> = {
+  SUPPORTED: { icon: CheckCircle, className: "verification--supported", labelKey: "coaching.supported" },
+  NOT_IN_SOURCE: { icon: AlertTriangle, className: "verification--warning", labelKey: "coaching.notInSource" },
+  POSSIBLE_HALLUCINATION: { icon: XCircle, className: "verification--error", labelKey: "coaching.possibleHallucination" },
+  FABRICATED_QUOTE: { icon: XCircle, className: "verification--error", labelKey: "coaching.fabricatedQuote" },
 };
 
 function VerificationItem({ entry }: { entry: VerificationEntry }) {
-  const config = STATUS_CONFIG[entry.status] || { icon: HelpCircle, className: "verification--warning", label: entry.status };
+  const { t } = useLanguage();
+  const config = STATUS_CONFIG[entry.status] || { icon: HelpCircle, className: "verification--warning", labelKey: entry.status };
   const Icon = config.icon;
   return (
     <div className={`verification-entry ${config.className}`}>
       <div className="verification-entry__header">
         <Icon size={14} />
-        <span className="verification-entry__status">{config.label}</span>
+        <span className="verification-entry__status">{t(config.labelKey)}</span>
       </div>
       <p className="verification-entry__claim">{entry.claim}</p>
       {entry.evidence && <p className="verification-entry__evidence">{entry.evidence}</p>}
@@ -52,6 +53,7 @@ function QuestionCard({
   onReply?: (questionText: string, answer: string) => void;
   onSuggestionClick?: (paragraphRef: number) => void;
 }) {
+  const { t } = useLanguage();
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +96,7 @@ function QuestionCard({
           }}
         >
           <MessageCircle size={14} />
-          Reply
+          {t("coaching.reply")}
         </button>
       )}
       {isReplying && (
@@ -103,7 +105,7 @@ function QuestionCard({
             ref={inputRef}
             type="text"
             className="coaching-question__reply-input"
-            placeholder="Type your answer..."
+            placeholder={t("coaching.typeAnswer")}
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -163,16 +165,16 @@ export function CoachingPanel({
       {total > 0 && (
         <div className="verification-summary">
           <div className="verification-summary__counts">
-            {verified > 0 && <span className="verification-summary__verified">{verified} verified</span>}
+            {verified > 0 && <span className="verification-summary__verified">{verified} {t("coaching.verified")}</span>}
             {verified > 0 && problematic.length > 0 && <span className="verification-summary__sep"> · </span>}
-            {problematic.length > 0 && <span className="verification-summary__flagged">{problematic.length} need your input</span>}
+            {problematic.length > 0 && <span className="verification-summary__flagged">{problematic.length} {t("coaching.needInput")}</span>}
           </div>
           {problematic.length > 0 && (
             <button
               className="verification-summary__toggle"
               onClick={() => setShowVerificationDetail(!showVerificationDetail)}
             >
-              {showVerificationDetail ? "Hide" : "Show"} details
+              {showVerificationDetail ? t("coaching.hide") : t("coaching.show")} {t("coaching.details")}
               {showVerificationDetail ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
           )}
@@ -189,7 +191,7 @@ export function CoachingPanel({
       {/* 3. Web sources */}
       {review.web_sources && review.web_sources.length > 0 && (
         <div className="web-sources">
-          <p className="web-sources__label">Verified against:</p>
+          <p className="web-sources__label">{t("coaching.verifiedAgainst")}</p>
           <ul className="web-sources__list">
             {review.web_sources.map((s, i) => (
               <li key={i}>
@@ -203,7 +205,7 @@ export function CoachingPanel({
       {/* 4. Yellow flags — gentle notes */}
       {review.yellow_flags.length > 0 && (
         <div className="yellow-flags">
-          <h4 className="coaching-section-title">Notes</h4>
+          <h4 className="coaching-section-title">{t("coaching.notes")}</h4>
           {review.yellow_flags.map((flag, i) => (
             <p key={i} className="yellow-flag">
               <span className="yellow-flag__dimension">{flag.dimension}</span>
@@ -216,7 +218,7 @@ export function CoachingPanel({
       {/* 5. Red triggers — warm framing */}
       {review.red_triggers.length > 0 && (
         <div className="red-gate-coaching">
-          <h4 className="coaching-section-title">To make this bulletproof</h4>
+          <h4 className="coaching-section-title">{t("coaching.toBulletproof")}</h4>
           {review.red_triggers.map((trigger, i) => (
             <div key={i} className="red-trigger">
               <p className="trigger-context">&ldquo;{trigger.sentence}&rdquo;</p>
