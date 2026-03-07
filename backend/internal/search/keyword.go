@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/localnews/backend/internal/models"
+	"gorm.io/gorm/clause"
 )
 
 func (s *Service) Keyword(ctx context.Context, p Params) (*Result, error) {
@@ -13,7 +14,7 @@ func (s *Service) Keyword(ctx context.Context, p Params) (*Result, error) {
 		var submissions []models.Submission
 		stmt := s.db.WithContext(ctx).
 			Where("status = ? AND title % ?", models.StatusPublished, p.Query).
-			Order("similarity(title, ?) DESC").
+			Clauses(clause.OrderBy{Expression: clause.Expr{SQL: "similarity(title, ?) DESC", Vars: []interface{}{p.Query}}}).
 			Limit(p.Limit).Offset(p.Offset)
 		if p.LocationID != "" {
 			stmt = stmt.Where("location_id = ?", p.LocationID)
@@ -28,7 +29,7 @@ func (s *Service) Keyword(ctx context.Context, p Params) (*Result, error) {
 		var profiles []models.Profile
 		if err := s.db.WithContext(ctx).
 			Where("profile_name % ?", p.Query).
-			Order("similarity(profile_name, ?) DESC").
+			Clauses(clause.OrderBy{Expression: clause.Expr{SQL: "similarity(profile_name, ?) DESC", Vars: []interface{}{p.Query}}}).
 			Limit(p.Limit).Offset(p.Offset).
 			Find(&profiles).Error; err != nil {
 			return nil, err
