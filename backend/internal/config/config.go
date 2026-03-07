@@ -32,9 +32,18 @@ type Config struct {
 	RerankerVocabPath string
 	ONNXLibPath       string
 
+	// Upload limits
+	MaxUploadSizeMB int
+	MaxPhotos       int
+
 	// Security
 	SecureCookies  bool
 	TrustedProxies []string
+
+	// Admin batch API
+	AdminAPIToken string
+	BatchDelay    time.Duration
+	BatchWorkers  int
 
 	// Rate limiting
 	RateLimitEnabled      bool
@@ -74,6 +83,9 @@ func Load() *Config {
 		ONNXLibPath:       env("ONNX_LIB_PATH", ""),
 	}
 
+	cfg.MaxUploadSizeMB = envInt("MAX_UPLOAD_SIZE_MB", 25)
+	cfg.MaxPhotos = envInt("MAX_PHOTOS", 10)
+
 	cfg.JWTAccessTTL = parseDuration(env("JWT_ACCESS_TTL", "15m"), 15*time.Minute)
 	cfg.JWTRefreshTTL = parseDuration(env("JWT_REFRESH_TTL", "720h"), 720*time.Hour)
 
@@ -86,6 +98,11 @@ func Load() *Config {
 			}
 		}
 	}
+
+	// Admin batch API
+	cfg.AdminAPIToken = env("ADMIN_API_TOKEN", "")
+	cfg.BatchDelay = parseDuration(env("BATCH_DELAY", "5s"), 5*time.Second)
+	cfg.BatchWorkers = envInt("BATCH_WORKERS", 1)
 
 	// Rate limiting
 	cfg.RateLimitEnabled = envBool("RATE_LIMIT_ENABLED", true)

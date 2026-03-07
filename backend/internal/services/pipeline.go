@@ -102,7 +102,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		var photoFiles []models.File
 		p.db.Where("submission_id = ? AND file_type = ?", submissionID, 2).Find(&photoFiles)
 		for _, pf := range photoFiles {
-			photoFileURLs = append(photoFileURLs, pf.Name)
+			photoFileURLs = append(photoFileURLs, fmt.Sprintf("/api/media/%s/%s", submissionID, filepath.Base(pf.Name)))
 		}
 	} else {
 		// First run: full GATHER stage
@@ -168,7 +168,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	}
 
 	// Extract headline from markdown
-	headline := extractHeadline(article)
+	headline := ExtractHeadline(article)
 
 	// Persist transcript on first run
 	meta := sub.Meta.V
@@ -182,7 +182,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	meta.ArticleMetadata = &genOutput.Metadata
 	meta.Review = reviewResult
 	meta.Category = genOutput.Metadata.Category
-	meta.Summary = extractFirstParagraph(article)
+	meta.Summary = ExtractFirstParagraph(article)
 	meta.GeneratedAt = &now
 	meta.Model = p.generation.ModelName()
 
@@ -263,7 +263,7 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 			photoDescs = make([]string, len(photoFiles))
 			photoFileURLs = make([]string, len(photoFiles))
 			for i, pf := range photoFiles {
-				photoFileURLs[i] = fmt.Sprintf("/uploads/%s/%s", submissionID, filepath.Base(pf.Name))
+				photoFileURLs[i] = fmt.Sprintf("/api/media/%s/%s", submissionID, filepath.Base(pf.Name))
 				desc, descErr := p.photoDescription.Describe(ctx, pf.Name)
 				if descErr != nil {
 					photoErr = descErr
@@ -295,7 +295,7 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 	return transcript, photoDescs, photoFileURLs, nil
 }
 
-func extractHeadline(markdown string) string {
+func ExtractHeadline(markdown string) string {
 	for _, line := range strings.Split(markdown, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "# ") {
@@ -305,7 +305,7 @@ func extractHeadline(markdown string) string {
 	return ""
 }
 
-func extractFirstParagraph(markdown string) string {
+func ExtractFirstParagraph(markdown string) string {
 	lines := strings.Split(markdown, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)

@@ -23,9 +23,9 @@ func TestExtractHeadline(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractHeadline(tt.markdown)
+			got := ExtractHeadline(tt.markdown)
 			if got != tt.want {
-				t.Errorf("extractHeadline() = %q, want %q", got, tt.want)
+				t.Errorf("ExtractHeadline() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -66,9 +66,9 @@ func TestExtractFirstParagraph(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := extractFirstParagraph(tt.markdown)
+			got := ExtractFirstParagraph(tt.markdown)
 			if got != tt.want {
-				t.Errorf("extractFirstParagraph() = %q, want %q", got, tt.want)
+				t.Errorf("ExtractFirstParagraph() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -84,14 +84,14 @@ func TestReplacePhotoPlaceholders(t *testing.T) {
 		{
 			"single photo",
 			"![caption](photo_1)",
-			[]string{"/uploads/abc/img1.jpg"},
-			"![caption](/uploads/abc/img1.jpg)",
+			[]string{"/api/media/abc/img1.jpg"},
+			"![caption](/api/media/abc/img1.jpg)",
 		},
 		{
 			"two photos",
 			"![a](photo_1)\n![b](photo_2)",
-			[]string{"/uploads/abc/img1.jpg", "/uploads/abc/img2.jpg"},
-			"![a](/uploads/abc/img1.jpg)\n![b](/uploads/abc/img2.jpg)",
+			[]string{"/api/media/abc/img1.jpg", "/api/media/abc/img2.jpg"},
+			"![a](/api/media/abc/img1.jpg)\n![b](/api/media/abc/img2.jpg)",
 		},
 		{
 			"no photos unchanged",
@@ -102,8 +102,8 @@ func TestReplacePhotoPlaceholders(t *testing.T) {
 		{
 			"more placeholders than URLs",
 			"![a](photo_1)\n![b](photo_2)\n![c](photo_3)",
-			[]string{"/uploads/abc/img1.jpg"},
-			"![a](/uploads/abc/img1.jpg)\n![b](photo_2)\n![c](photo_3)",
+			[]string{"/api/media/abc/img1.jpg"},
+			"![a](/api/media/abc/img1.jpg)\n![b](photo_2)\n![c](photo_3)",
 		},
 	}
 
