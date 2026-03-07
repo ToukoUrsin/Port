@@ -232,8 +232,9 @@ func (h *Handler) UpdateSubmission(c *gin.Context) {
 	}
 
 	var req struct {
-		Title       *string `json:"title"`
-		Description *string `json:"description"`
+		Title           *string `json:"title"`
+		Description     *string `json:"description"`
+		ArticleMarkdown *string `json:"article_markdown"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -246,6 +247,17 @@ func (h *Handler) UpdateSubmission(c *gin.Context) {
 	}
 	if req.Description != nil {
 		updates["description"] = *req.Description
+	}
+
+	// Update article markdown in meta (only when submission is in ready state)
+	if req.ArticleMarkdown != nil {
+		if sub.Status != models.StatusReady {
+			c.JSON(http.StatusConflict, gin.H{"error": "can only edit article in ready state"})
+			return
+		}
+		meta := sub.Meta.V
+		meta.ArticleMarkdown = *req.ArticleMarkdown
+		updates["meta"] = models.JSONB[models.SubmissionMeta]{V: meta}
 	}
 
 	if len(updates) > 0 {

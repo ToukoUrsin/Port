@@ -470,6 +470,46 @@
 }
 
 /* ===============================================
+   TipTap editor
+   =============================================== */
+.article-prose .ProseMirror {
+  outline: none;
+  min-height: 200px;
+}
+.article-prose .ProseMirror:focus {
+  outline: none;
+}
+.article-prose .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: var(--space-4) 0;
+}
+.article-headline-input {
+  font-family: var(--font-serif);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  color: var(--color-secondary);
+  margin-bottom: var(--space-3);
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+}
+.article-headline-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+.save-status {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ===============================================
    Utility
    =============================================== */
 .spin { animation: editor-spin 1s linear infinite; }

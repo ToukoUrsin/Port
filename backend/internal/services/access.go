@@ -84,16 +84,18 @@ func (s *AccessService) CanStreamSubmission(actor Actor, sub *models.Submission)
 }
 
 func (s *AccessService) CanPublishSubmission(actor Actor, sub *models.Submission) bool {
-	if !actor.HasPerm(models.PermPublish) {
-		return false
-	}
 	if sub.Status != models.StatusReady {
 		return false
 	}
-	if actor.IsEditor() {
+	// Owners can always publish their own submissions
+	if sub.OwnerID == actor.ProfileID {
 		return true
 	}
-	return sub.OwnerID == actor.ProfileID
+	// Editors/admins with PermPublish can publish anyone's
+	if actor.HasPerm(models.PermPublish) && actor.IsEditor() {
+		return true
+	}
+	return false
 }
 
 func (s *AccessService) CanRefineSubmission(actor Actor, sub *models.Submission) bool {

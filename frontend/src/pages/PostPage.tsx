@@ -11,6 +11,7 @@ import {
   publishArticle,
   refineSubmission,
   appealSubmission,
+  updateSubmissionMarkdown,
   getToken,
 } from "@/lib/api.ts";
 import { streamPipeline } from "@/lib/sse.ts";
@@ -339,6 +340,8 @@ export default function PostPage() {
   const [metadata, setMetadata] = useState<ArticleMetadata | null>(null);
   const [currentRound, setCurrentRound] = useState(0);
   const [processingError, setProcessingError] = useState<string>("");
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleSubmissionCreated = useCallback((id: string) => {
     setSubmissionId(id);
@@ -364,10 +367,44 @@ export default function PostPage() {
     [toast],
   );
 
+  // --- Auto-save on content change (debounced 2s) ---
+
+  const handleContentChange = useCallback(
+    (markdown: string) => {
+      setArticleMarkdown(markdown);
+      setSaveStatus("unsaved");
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(async () => {
+        if (!submissionId) return;
+        setSaveStatus("saving");
+        try {
+          await updateSubmissionMarkdown(submissionId, markdown);
+          setSaveStatus("saved");
+        } catch {
+          setSaveStatus("unsaved");
+        }
+      }, 2000);
+    },
+    [submissionId],
+  );
+
+  // Flush pending save on unmount
+  useEffect(() => {
+    return () => clearTimeout(saveTimerRef.current);
+  }, []);
+
   // --- Editorial screen callback wiring ---
 
   const handleRefineGeneral = useCallback(
     async (r: GeneralRefinement) => {
+      // Flush pending save before AI refinement
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = undefined;
+        if (submissionId && articleMarkdown) {
+          await updateSubmissionMarkdown(submissionId, articleMarkdown);
+        }
+      }
       setStep("processing");
       try {
         if (r.voice_clip) {
@@ -388,11 +425,19 @@ export default function PostPage() {
         setStep("preview");
       }
     },
-    [submissionId, toast],
+    [submissionId, articleMarkdown, toast],
   );
 
   const handlePublish = useCallback(async () => {
     try {
+      // Flush pending save before publishing
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = undefined;
+        if (submissionId && articleMarkdown) {
+          await updateSubmissionMarkdown(submissionId, articleMarkdown);
+        }
+      }
       const result = await publishArticle(submissionId);
       if ("error" in result && result.error === "gate_red") {
         toast(pt("post.gateRedError"), "error");
@@ -403,7 +448,7 @@ export default function PostPage() {
     } catch (err) {
       toast(err instanceof Error ? err.message : "Publish failed.", "error");
     }
-  }, [submissionId, toast, navigate]);
+  }, [submissionId, articleMarkdown, toast, navigate, pt]);
 
   const handleAppeal = useCallback(async () => {
     try {
@@ -412,7 +457,7 @@ export default function PostPage() {
     } catch {
       toast(pt("post.appealFailed"), "error");
     }
-  }, [submissionId, toast]);
+  }, [submissionId, toast, pt]);
 
   const handleBack = useCallback(() => {
     navigate(-1);
@@ -458,6 +503,8 @@ export default function PostPage() {
             onPublish={handlePublish}
             onAppeal={handleAppeal}
             onBack={handleBack}
+            onContentChange={handleContentChange}
+            saveStatus={saveStatus}
           />
         )}
       </div>

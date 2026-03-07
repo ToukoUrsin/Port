@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { ArticlePreview } from "./ArticleRenderer";
+import { ArticleEditor } from "./ArticleRenderer";
 import { CoachingPanel } from "./CoachingPanel";
 import { RefinementInput } from "./RefinementInput";
 import { GateBadge } from "./GateBadge";
@@ -21,6 +21,8 @@ export function EditorialScreen({
   onPublish,
   onAppeal,
   onBack,
+  onContentChange,
+  saveStatus,
 }: EditorialScreenProps) {
   const { t } = useLanguage();
   const [activeAnnotation, setActiveAnnotation] = useState<ActiveAnnotation>(null);
@@ -36,7 +38,6 @@ export function EditorialScreen({
         setActiveAnnotation(null);
       }
     }
-    // Delay listener to avoid catching the click that opened the card
     const id = setTimeout(() => document.addEventListener("click", handleClick), 0);
     return () => {
       clearTimeout(id);
@@ -54,17 +55,29 @@ export function EditorialScreen({
 
   const handleSuggestionClick = useCallback((paragraphRef: number) => {
     setHighlightParagraph(paragraphRef);
-    // Scroll paragraph into view
     const el = document.querySelector(`[data-paragraph="${paragraphRef}"]`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    // Auto-clear highlight after 3s
     clearTimeout(highlightTimer.current);
     highlightTimer.current = setTimeout(() => setHighlightParagraph(undefined), 3000);
   }, []);
 
+  const handleContentChange = useCallback(
+    (md: string) => {
+      onContentChange?.(md);
+    },
+    [onContentChange],
+  );
+
   useEffect(() => {
     return () => clearTimeout(highlightTimer.current);
   }, []);
+
+  const statusLabel =
+    saveStatus === "saving"
+      ? "Saving..."
+      : saveStatus === "saved"
+        ? "Saved"
+        : null;
 
   return (
     <div className="editorial" style={{ animation: "fadeIn 0.4s ease" }}>
@@ -74,6 +87,7 @@ export function EditorialScreen({
           <ArrowLeft size={16} /> {t("editor.back")}
         </button>
         <div className="editorial-header-right">
+          {statusLabel && <span className="save-status">{statusLabel}</span>}
           <GateBadge gate={review.gate} />
           <PublishButton gate={review.gate} onPublish={onPublish} />
         </div>
@@ -81,9 +95,9 @@ export function EditorialScreen({
 
       {/* Two-column body */}
       <div className="editorial-body">
-        {/* Left: Read-only article with annotations */}
+        {/* Left: Editable article with annotations */}
         <div className="editorial-article-wrapper">
-          <ArticlePreview
+          <ArticleEditor
             markdown={articleMarkdown}
             userName={userName}
             category={metadata.category}
@@ -92,6 +106,7 @@ export function EditorialScreen({
             onAnnotationClick={handleAnnotationClick}
             onAnnotationDismiss={handleAnnotationDismiss}
             highlightParagraph={highlightParagraph}
+            onContentChange={handleContentChange}
           />
         </div>
 

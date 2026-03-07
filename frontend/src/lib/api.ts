@@ -143,15 +143,13 @@ export function getAuthConfig(): Promise<{ google_enabled: boolean }> {
 
 export function getArticles(params?: {
   location_id?: string;
-  location_ids?: string[];
   category?: string;
   owner_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<ArticleListResponse> {
   const qs = new URLSearchParams();
-  if (params?.location_ids?.length) qs.set("location_ids", params.location_ids.join(","));
-  else if (params?.location_id) qs.set("location_id", params.location_id);
+  if (params?.location_id) qs.set("location_id", params.location_id);
   if (params?.category) qs.set("category", params.category);
   if (params?.owner_id) qs.set("owner_id", params.owner_id);
   if (params?.limit) qs.set("limit", String(params.limit));
@@ -384,6 +382,18 @@ export function flagArticle(id: string, reason: string): Promise<{ status: strin
   return apiFetch<{ status: string }>(`/api/articles/${id}/flag`, {
     method: "POST",
     body: JSON.stringify({ reason }),
+  });
+}
+
+// --- Submission markdown update (editorial edits) ---
+
+export function updateSubmissionMarkdown(
+  id: string,
+  articleMarkdown: string,
+): Promise<ApiSubmission> {
+  return apiFetch<ApiSubmission>(`/api/submissions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ article_markdown: articleMarkdown }),
   });
 }
 

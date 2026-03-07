@@ -49,4 +49,6 @@ export type EditorialScreenProps = {
   onPublish: () => Promise<void>;
   onAppeal: () => Promise<void>;
   onBack: () => void;
+  onContentChange?: (markdown: string) => void;
+  saveStatus?: "saved" | "saving" | "unsaved";
 };
