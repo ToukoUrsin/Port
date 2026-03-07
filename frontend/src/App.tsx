@@ -3,7 +3,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext.tsx";
 import { AuthProvider } from "@/contexts/AuthContext.tsx";
 import { ToastProvider } from "@/components/Toast.tsx";
 import { ConfirmProvider } from "@/components/ConfirmDialog.tsx";
-import { ProtectedRoute, PublicOnlyRoute } from "@/components/ProtectedRoute.tsx";
+import { ProtectedRoute, PublicOnlyRoute, AdminProtectedRoute } from "@/components/ProtectedRoute.tsx";
 import HomePage from "./pages/HomePage";
 import DesignSystem from "./pages/DesignSystem";
 import ExplorePage from "./pages/ExplorePage";
@@ -15,6 +15,7 @@ import ArticlePage from "./pages/ArticlePage";
 import SearchPage from "./pages/SearchPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 
 function App() {
   return (
@@ -72,6 +73,14 @@ function App() {
               }
             />
             <Route path="/profile/:slug" element={<ProfilePage />} />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboardPage />
+                </AdminProtectedRoute>
+              }
+            />
           </Routes>
           </ConfirmProvider>
         </ToastProvider>

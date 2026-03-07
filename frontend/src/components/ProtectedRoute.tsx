@@ -14,3 +14,17 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   if (isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
+
+export function AdminProtectedRoute({
+  children,
+  minRole = 2,
+}: {
+  children: React.ReactNode;
+  minRole?: number;
+}) {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user || user.role < minRole) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}

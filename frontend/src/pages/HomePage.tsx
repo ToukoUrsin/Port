@@ -277,7 +277,7 @@ function NewsSection({
 
 export default function HomePage() {
   const [searchParams] = useSearchParams();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
   const locationSlug = searchParams.get("location");
 
   // Fetch locations from API, filtered by language/country

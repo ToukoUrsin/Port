@@ -145,8 +145,12 @@ func main() {
 	// Search service
 	searchSvc := search.NewService(db, embeddingSvc, rerankerSvc)
 
+	// Stats service
+	geoResolver := services.NewGeoIPResolver()
+	statsSvc := services.NewStatsService(c)
+
 	// Handler
-	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc, batchSvc)
+	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc, batchSvc, statsSvc)
 
 	// Router
 	r := gin.New()
@@ -169,6 +173,9 @@ func main() {
 	// Rate limiting
 	rl := middleware.NewRateLimiter(c.Client(), cfg)
 	r.Use(rl.Middleware())
+
+	// Stats tracking (after rate limiter so only allowed requests are tracked)
+	r.Use(middleware.StatsTracker(statsSvc, geoResolver))
 
 	jwtSecret := []byte(cfg.JWTSecret)
 
@@ -258,6 +265,8 @@ func main() {
 		admin.PUT("/profiles/:id/role", h.ChangeUserRole)
 		admin.POST("/locations", h.CreateLocation)
 		admin.PUT("/locations/:id", h.UpdateLocation)
+		admin.GET("/admin/stats", h.GetAdminStats)
+		admin.GET("/admin/stats/stream", h.StreamAdminStats)
 	}
 
 	// --- Moderation routes ---
