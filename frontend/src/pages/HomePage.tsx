@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import { Clock, ImageIcon, ChevronDown, MapPin } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Clock, ImageIcon, ChevronDown, MapPin, X, User } from "lucide-react";
 import "./HomePage.css";
 
 interface Article {
@@ -11,6 +10,7 @@ interface Article {
   category: string;
   author: string;
   timeAgo: string;
+  image: string;
   isLead?: boolean;
 }
 
@@ -23,6 +23,7 @@ const TODAY_ARTICLES: Article[] = [
     category: "council",
     author: "Maria Santos",
     timeAgo: "2 hours ago",
+    image: "https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800&h=500&fit=crop",
     isLead: true,
   },
   {
@@ -33,6 +34,7 @@ const TODAY_ARTICLES: Article[] = [
     category: "schools",
     author: "James Liu",
     timeAgo: "4 hours ago",
+    image: "https://images.unsplash.com/photo-1561557944-6e7860d1a7eb?w=600&h=400&fit=crop",
   },
   {
     id: 3,
@@ -42,6 +44,7 @@ const TODAY_ARTICLES: Article[] = [
     category: "business",
     author: "Ana Gutierrez",
     timeAgo: "5 hours ago",
+    image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop",
   },
   {
     id: 4,
@@ -51,6 +54,7 @@ const TODAY_ARTICLES: Article[] = [
     category: "events",
     author: "Tom Bradley",
     timeAgo: "6 hours ago",
+    image: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=600&h=400&fit=crop",
   },
 ];
 
@@ -63,6 +67,7 @@ const WEEK_ARTICLES: Article[] = [
     category: "community",
     author: "Priya Sharma",
     timeAgo: "2 days ago",
+    image: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=600&h=400&fit=crop",
   },
   {
     id: 6,
@@ -72,6 +77,7 @@ const WEEK_ARTICLES: Article[] = [
     category: "sports",
     author: "Marcus Johnson",
     timeAgo: "3 days ago",
+    image: "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=600&h=400&fit=crop",
   },
   {
     id: 7,
@@ -81,6 +87,7 @@ const WEEK_ARTICLES: Article[] = [
     category: "council",
     author: "Sarah Chen",
     timeAgo: "4 days ago",
+    image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&h=400&fit=crop",
   },
   {
     id: 8,
@@ -90,6 +97,7 @@ const WEEK_ARTICLES: Article[] = [
     category: "schools",
     author: "James Liu",
     timeAgo: "5 days ago",
+    image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&h=400&fit=crop",
   },
 ];
 
@@ -104,45 +112,191 @@ const BADGE_CLASS: Record<string, string> = {
 
 const RADIUS_OPTIONS = [5, 10, 25, 50, 100];
 
-function LocationFilter({
+const LOCATION_SUGGESTIONS = [
+  "City Hall, Main Street",
+  "Central Park",
+  "Downtown District",
+  "Riverside Community Center",
+  "Elm Street Elementary School",
+  "Lincoln High School",
+  "Public Library, Oak Avenue",
+  "Farmers Market, Town Square",
+  "Fire Station #3, Cedar Road",
+  "Memorial Hospital",
+  "Lakewood Shopping Center",
+  "Maple Street Playground",
+  "Westside Sports Complex",
+  "Heritage Museum, Bridge Street",
+  "Police Station, 5th Avenue",
+];
+
+function LocationSuggestInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const [isFocused, setIsFocused] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const filtered = value.trim()
+    ? LOCATION_SUGGESTIONS.filter((s) =>
+        s.toLowerCase().includes(value.toLowerCase())
+      ).slice(0, 5)
+    : LOCATION_SUGGESTIONS.slice(0, 5);
+
+  const showDropdown = isFocused && filtered.length > 0;
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setIsFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="loc-location-wrapper" ref={wrapperRef}>
+      <input
+        id="loc-input"
+        placeholder="Enter your city or address"
+        className="input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setIsFocused(true)}
+        autoComplete="off"
+      />
+      {showDropdown && (
+        <ul className="loc-location-dropdown">
+          {filtered.map((suggestion) => (
+            <li key={suggestion}>
+              <button
+                type="button"
+                className="loc-location-option"
+                onMouseDown={() => {
+                  onChange(suggestion);
+                  setIsFocused(false);
+                }}
+              >
+                {suggestion}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function RadiusSuggestInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (val: number) => void;
+}) {
+  const [isFocused, setIsFocused] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setIsFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="loc-location-wrapper" ref={wrapperRef}>
+      <input
+        id="loc-radius"
+        readOnly
+        value={`${value} km`}
+        className="input"
+        onFocus={() => setIsFocused(true)}
+      />
+      {isFocused && (
+        <ul className="loc-location-dropdown">
+          {RADIUS_OPTIONS.map((km) => (
+            <li key={km}>
+              <button
+                type="button"
+                className={`loc-location-option ${km === value ? "loc-location-option--active" : ""}`}
+                onMouseDown={() => {
+                  onChange(km);
+                  setIsFocused(false);
+                }}
+              >
+                {km} km
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function LocationModal({
+  open,
   location,
   radius,
   onLocationChange,
   onRadiusChange,
+  onClose,
 }: {
+  open: boolean;
   location: string;
   radius: number;
   onLocationChange: (v: string) => void;
   onRadiusChange: (v: number) => void;
+  onClose: () => void;
 }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => setVisible(true));
+    } else {
+      setVisible(false);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleClose = () => {
+    setVisible(false);
+    setTimeout(onClose, 250);
+  };
+
   return (
-    <div className="location-filter">
-      <div className="location-filter__inner">
-        <div className="location-filter__field">
-          <MapPin size={16} className="location-filter__icon" />
-          <Input
-            type="text"
-            placeholder="Enter your city or address"
-            value={location}
-            onChange={(e) => onLocationChange(e.target.value)}
-            className="location-filter__input"
-          />
+    <div className={`loc-overlay ${visible ? "loc-overlay--visible" : ""}`} onClick={handleClose}>
+      <div className={`loc-modal ${visible ? "loc-modal--visible" : ""}`} onClick={(e) => e.stopPropagation()}>
+        <button className="loc-modal__close" onClick={handleClose}>
+          <X size={18} />
+        </button>
+        <h2 className="loc-modal__title">Set your location</h2>
+        <p className="loc-modal__desc">Get news from your area</p>
+
+        <div className="loc-modal__fields">
+          <div className="loc-modal__field">
+            <label htmlFor="loc-input">Location</label>
+            <LocationSuggestInput value={location} onChange={onLocationChange} />
+          </div>
+          <div className="loc-modal__field">
+            <label htmlFor="loc-radius">Radius</label>
+            <RadiusSuggestInput value={radius} onChange={onRadiusChange} />
+          </div>
         </div>
-        <div className="location-filter__divider" />
-        <div className="location-filter__field">
-          <span className="location-filter__label">Radius</span>
-          <select
-            className="location-filter__select"
-            value={radius}
-            onChange={(e) => onRadiusChange(Number(e.target.value))}
-          >
-            {RADIUS_OPTIONS.map((km) => (
-              <option key={km} value={km}>
-                {km} km
-              </option>
-            ))}
-          </select>
-        </div>
+
+        <button className="btn btn-primary loc-modal__confirm" onClick={handleClose}>
+          Show local news
+        </button>
       </div>
     </div>
   );
@@ -150,13 +304,17 @@ function LocationFilter({
 
 const INITIAL_COUNT = 2;
 
-function ArticleCard({ article }: { article: Article }) {
+function ArticleCard({ article, featured }: { article: Article; featured?: boolean }) {
   return (
-    <article className={`card article-card ${article.isLead ? "article-card--lead" : ""}`}>
+    <article className={`card article-card ${article.isLead ? "article-card--lead" : ""} ${featured ? "article-card--featured" : ""}`}>
       <div className="article-card__img">
-        <div className="article-card__img-placeholder">
-          <ImageIcon size={32} />
-        </div>
+        {article.image ? (
+          <img src={article.image} alt={article.title} />
+        ) : (
+          <div className="article-card__img-placeholder">
+            <ImageIcon size={32} />
+          </div>
+        )}
       </div>
       <div className="article-card__body">
         <div className="article-card__meta">
@@ -196,8 +354,8 @@ function ArticleSection({
       <div className="article-grid">
         {lead && <ArticleCard article={lead} />}
         {lead && visible.length > 0 && <hr className="home-divider" />}
-        {visible.map((article) => (
-          <ArticleCard key={article.id} article={article} />
+        {visible.map((article, i) => (
+          <ArticleCard key={article.id} article={article} featured={i === 0} />
         ))}
       </div>
       {hasMore && !expanded && (
@@ -215,6 +373,7 @@ function ArticleSection({
 export default function HomePage() {
   const [location, setLocation] = useState("");
   const [radius, setRadius] = useState(25);
+  const [modalOpen, setModalOpen] = useState(true);
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -225,28 +384,38 @@ export default function HomePage() {
 
   return (
     <>
-      <header className="home-header">
-        <h1 className="home-masthead">The Local Herald</h1>
-        <p className="home-date">{today}</p>
-      </header>
-
       <nav className="home-nav">
-        <NavLink to="/" className={({ isActive }) => isActive ? "home-nav__link active" : "home-nav__link"} end>
-          Home
+        <div className="home-nav__left">
+          <button
+            className="home-nav__icon-btn"
+            onClick={() => setModalOpen(true)}
+            title={location ? `${location} · ${radius} km` : "Set location"}
+          >
+            <MapPin size={18} />
+          </button>
+        </div>
+
+        <NavLink to="/" className="home-nav__brand" end>
+          The Local Herald
         </NavLink>
-        <NavLink to="/explore" className={({ isActive }) => isActive ? "home-nav__link active" : "home-nav__link"}>
-          Explore
-        </NavLink>
-        <NavLink to="/login" className={({ isActive }) => isActive ? "home-nav__link active" : "home-nav__link"}>
-          Login
-        </NavLink>
+
+        <div className="home-nav__right">
+          <NavLink to="/explore" className="home-nav__icon-btn" title="Explore">
+            <Clock size={18} />
+          </NavLink>
+          <NavLink to="/login" className="home-nav__icon-btn" title="Profile">
+            <User size={18} />
+          </NavLink>
+        </div>
       </nav>
 
-      <LocationFilter
+      <LocationModal
+        open={modalOpen}
         location={location}
         radius={radius}
         onLocationChange={setLocation}
         onRadiusChange={setRadius}
+        onClose={() => setModalOpen(false)}
       />
 
       <main className="home-container">

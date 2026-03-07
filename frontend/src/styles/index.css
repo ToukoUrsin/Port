@@ -1,8 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Lora:wght@400;700&display=swap');
+@import './tokens.css';
+@import './reset.css';
+@import './components.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -30,7 +33,7 @@
     --chart-3: oklch(0.546 0.245 262.881);
     --chart-4: oklch(0.488 0.243 264.376);
     --chart-5: oklch(0.424 0.199 265.638);
-    --radius: 0.625rem;
+    --radius: 0;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -125,8 +128,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-/* Our design tokens and component styles load after shadcn base */
-@import './tokens.css';
-@import './reset.css';
-@import './components.css';

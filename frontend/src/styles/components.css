@@ -63,10 +63,9 @@
   border-radius: var(--radius-lg);
   padding: var(--space-6);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--transition-normal);
 }
-.card:hover {
-  box-shadow: var(--shadow-md);
+.card:hover .article-card__title {
+  text-decoration: underline;
 }
 
 .card-sm {
