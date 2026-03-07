@@ -21,6 +21,23 @@ export type ActiveAnnotation = {
   rect: DOMRect;
 } | null;
 
+export type TextSelection = {
+  text: string;
+  paragraphIndex: number;
+  rect: DOMRect;
+};
+
+export type ParagraphTap = {
+  index: number;
+  element: HTMLElement;
+  rect: DOMRect;
+};
+
+export type RephraseRequest = {
+  selected_text: string;
+  paragraph_index: number;
+};
+
 export type EditorialScreenProps = {
   articleMarkdown: string;
   review: ReviewResult;

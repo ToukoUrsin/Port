@@ -48,7 +48,7 @@ services:
       JWT_SECRET: ${NEWS_JWT_SECRET}
       GEMINI_API_KEY: ${NEWS_GEMINI_API_KEY}
       ELEVENLABS_API_KEY: ${NEWS_ELEVENLABS_API_KEY}
-      GENERATION_MODEL: gemini-3.1-pro
+      GENERATION_MODEL: gemini-3.1-pro-preview
       GOOGLE_CLIENT_ID: 537452979916-q7l3jf1mnfjm9ked1ad30qr76rinob9l.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: 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
       GOOGLE_REDIRECT_URL: https://news.minir.ai/api/auth/google/callback
@@ -74,6 +74,11 @@ services:
       timeout: 10s
       start_period: 40s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "6"
+          memory: 12g
     restart: unless-stopped
     networks:
       - news-network
@@ -96,6 +101,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
+          memory: 2g
     restart: unless-stopped
     networks:
       - news-network

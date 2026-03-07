@@ -66,7 +66,7 @@ export default function AccountSettings() {
 
 function ProfileSettings({
   user,
-  updateUser,
+  updateUser: _updateUser,
   refreshUser,
   toast,
 }: {

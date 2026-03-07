@@ -23,7 +23,7 @@ export function EditorialScreen({
 }: EditorialScreenProps) {
   const [activeAnnotation, setActiveAnnotation] = useState<ActiveAnnotation>(null);
   const [highlightParagraph, setHighlightParagraph] = useState<number | undefined>();
-  const highlightTimer = useRef<ReturnType<typeof setTimeout>>();
+  const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Click-outside to dismiss suggestion card
   useEffect(() => {
