@@ -2,12 +2,6 @@ import { Extension } from "@tiptap/react";
 import { Plugin, PluginKey, NodeSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
-const GRIP_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="6" cy="3.5" r="1.5"/><circle cx="12" cy="3.5" r="1.5"/>
-  <circle cx="6" cy="9" r="1.5"/><circle cx="12" cy="9" r="1.5"/>
-  <circle cx="6" cy="14.5" r="1.5"/><circle cx="12" cy="14.5" r="1.5"/>
-</svg>`;
-
 const BLOCK_NODES = new Set([
   "paragraph",
   "heading",
@@ -22,14 +16,24 @@ const BLOCK_NODES = new Set([
 function createHandle(): HTMLDivElement {
   const el = document.createElement("div");
   el.className = "drag-handle";
-  el.innerHTML = GRIP_SVG;
-  el.draggable = true;
+  el.setAttribute("role", "button");
+  el.setAttribute("aria-label", "Drag to reorder");
+  el.setAttribute("draggable", "true");
+  // 6-dot grip icon
+  el.innerHTML = `<svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor">
+    <circle cx="5" cy="4" r="1.8"/><circle cx="11" cy="4" r="1.8"/>
+    <circle cx="5" cy="10" r="1.8"/><circle cx="11" cy="10" r="1.8"/>
+    <circle cx="5" cy="16" r="1.8"/><circle cx="11" cy="16" r="1.8"/>
+  </svg>`;
   el.style.display = "none";
   return el;
 }
 
-function findBlockPos(view: EditorView, y: number): number | null {
-  // Walk top-level nodes and find the one whose DOM element contains the y coordinate
+/** Find top-level block node index + position at a given y coordinate */
+function findBlockAtY(
+  view: EditorView,
+  y: number,
+): { pos: number; index: number; dom: HTMLElement } | null {
   const { doc } = view.state;
   let pos = 0;
   for (let i = 0; i < doc.childCount; i++) {
@@ -39,12 +43,12 @@ function findBlockPos(view: EditorView, y: number): number | null {
 
     if (!BLOCK_NODES.has(child.type.name)) continue;
 
-    const dom = view.nodeDOM(nodePos + 1 === pos ? nodePos : nodePos);
+    const dom = view.nodeDOM(nodePos);
     if (!(dom instanceof HTMLElement)) continue;
 
     const rect = dom.getBoundingClientRect();
     if (y >= rect.top - 4 && y <= rect.bottom + 4) {
-      return nodePos;
+      return { pos: nodePos, index: i, dom };
     }
   }
   return null;
@@ -55,151 +59,124 @@ export const DragHandle = Extension.create({
 
   addProseMirrorPlugins() {
     let handle: HTMLDivElement | null = null;
-    let currentBlockPos: number | null = null;
-    let hideTimeout: ReturnType<typeof setTimeout> | null = null;
-    let handleHovered = false;
+    let currentBlock: { pos: number; index: number } | null = null;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+    let isOverHandle = false;
 
-    function showHandle() {
-      if (hideTimeout) {
-        clearTimeout(hideTimeout);
-        hideTimeout = null;
-      }
+    function show() {
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       if (handle) handle.style.display = "flex";
     }
 
-    function scheduleHide() {
-      if (hideTimeout) clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => {
-        if (!handleHovered && handle) {
+    function hideSoon() {
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        if (!isOverHandle && handle) {
           handle.style.display = "none";
-          currentBlockPos = null;
+          currentBlock = null;
         }
-      }, 300);
+      }, 200);
     }
 
     return [
       new Plugin({
         key: new PluginKey("dragHandle"),
-        view(editorView) {
+        view(view) {
           handle = createHandle();
-          // Append to the editor wrapper so positioning is relative to it
-          const parent = editorView.dom.parentElement;
-          if (parent) {
-            parent.style.position = "relative";
-            parent.appendChild(handle);
+
+          const wrapper = view.dom.parentElement;
+          if (wrapper) {
+            wrapper.style.position = "relative";
+            wrapper.appendChild(handle);
           }
 
-          // Keep handle visible while it's being hovered
-          handle.addEventListener("mouseenter", () => {
-            handleHovered = true;
-            showHandle();
-          });
-          handle.addEventListener("mouseleave", () => {
-            handleHovered = false;
-            scheduleHide();
-          });
+          // --- hover bookkeeping ---
+          handle.addEventListener("mouseenter", () => { isOverHandle = true; show(); });
+          handle.addEventListener("mouseleave", () => { isOverHandle = false; hideSoon(); });
 
-          handle.addEventListener("mousedown", (e) => {
-            if (currentBlockPos == null) return;
-            e.preventDefault();
-
-            // Select the block node
-            const tr = editorView.state.tr.setSelection(
-              NodeSelection.create(editorView.state.doc, currentBlockPos),
-            );
-            editorView.dispatch(tr);
-
-            // Let ProseMirror handle the drag from here
-            const dragEvent = new DragEvent("dragstart", {
-              bubbles: true,
-              cancelable: true,
-              dataTransfer: new DataTransfer(),
-            });
-            editorView.dom.dispatchEvent(dragEvent);
-          });
-
+          // --- drag start: set up ProseMirror dragging state ---
           handle.addEventListener("dragstart", (e) => {
-            if (currentBlockPos == null || !e.dataTransfer) return;
+            if (!currentBlock || !e.dataTransfer) { e.preventDefault(); return; }
 
-            // Ensure the node is selected so ProseMirror's drag behavior works
-            const { state } = editorView;
-            if (!(state.selection instanceof NodeSelection)) {
-              const tr = state.tr.setSelection(
-                NodeSelection.create(state.doc, currentBlockPos),
-              );
-              editorView.dispatch(tr);
-            }
+            // Select the node so ProseMirror serialises it
+            const { state } = view;
+            const node = state.doc.nodeAt(currentBlock.pos);
+            if (!node) { e.preventDefault(); return; }
 
-            // Serialize the selection for ProseMirror drag
-            const slice = editorView.state.selection.content();
-            if (!(editorView as any).dragging?.slice) {
-              const d = document.createElement("div");
-              d.textContent = "Dragging...";
-              e.dataTransfer.setDragImage(d, 0, 0);
-            }
+            const tr = state.tr.setSelection(
+              NodeSelection.create(state.doc, currentBlock.pos),
+            );
+            view.dispatch(tr);
+
+            // Let ProseMirror's built-in drop handling work
+            const slice = view.state.selection.content();
             e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", "");
 
-            // Set dragging on the view so ProseMirror handles the drop
-            (editorView as any).dragging = {
-              slice,
-              move: true,
-            };
+            // Ghost image: clone the block DOM
+            const blockDom = view.nodeDOM(currentBlock.pos);
+            if (blockDom instanceof HTMLElement) {
+              const ghost = blockDom.cloneNode(true) as HTMLElement;
+              ghost.style.width = `${blockDom.offsetWidth}px`;
+              ghost.style.opacity = "0.7";
+              ghost.style.position = "absolute";
+              ghost.style.top = "-9999px";
+              document.body.appendChild(ghost);
+              e.dataTransfer.setDragImage(ghost, 0, 0);
+              requestAnimationFrame(() => ghost.remove());
+            }
+
+            // Tell ProseMirror this is its drag
+            (view as any).dragging = { slice, move: true };
           });
 
           return {
             destroy() {
-              if (hideTimeout) clearTimeout(hideTimeout);
+              if (hideTimer) clearTimeout(hideTimer);
               handle?.remove();
               handle = null;
             },
           };
         },
+
         props: {
           handleDOMEvents: {
             mousemove(view, event) {
               if (!handle) return false;
 
-              const editorRect = view.dom.getBoundingClientRect();
+              const rect = view.dom.getBoundingClientRect();
               const { clientX, clientY } = event;
 
-              // Only show when mouse is near the left edge or over the editor
+              // Hide if cursor is far from the editor
               if (
-                clientX < editorRect.left - 50 ||
-                clientX > editorRect.right + 10 ||
-                clientY < editorRect.top - 10 ||
-                clientY > editorRect.bottom + 10
+                clientX < rect.left - 60 || clientX > rect.right + 10 ||
+                clientY < rect.top - 10 || clientY > rect.bottom + 10
               ) {
-                scheduleHide();
+                hideSoon();
                 return false;
               }
 
-              const blockPos = findBlockPos(view, clientY);
-              if (blockPos == null) {
-                scheduleHide();
-                return false;
-              }
+              const hit = findBlockAtY(view, clientY);
+              if (!hit) { hideSoon(); return false; }
 
-              currentBlockPos = blockPos;
-              const dom = view.nodeDOM(blockPos);
-              if (!(dom instanceof HTMLElement)) {
-                scheduleHide();
-                return false;
-              }
-
-              const blockRect = dom.getBoundingClientRect();
+              currentBlock = { pos: hit.pos, index: hit.index };
               const parentRect = view.dom.parentElement!.getBoundingClientRect();
+              const blockRect = hit.dom.getBoundingClientRect();
 
-              showHandle();
-              // Vertically center the handle with the first line of the block
-              handle.style.top = `${blockRect.top - parentRect.top}px`;
-              handle.style.left = "-36px";
+              show();
+              handle.style.top = `${blockRect.top - parentRect.top + 2}px`;
+              handle.style.left = "-32px";
 
               return false;
             },
-            mouseleave(_view, _event) {
-              scheduleHide();
+
+            mouseleave() {
+              hideSoon();
               return false;
             },
+
+            // ProseMirror needs to see the drop — make sure we don't block it
+            drop() { return false; },
           },
         },
       }),

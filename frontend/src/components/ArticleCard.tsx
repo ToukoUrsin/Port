@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, MapPin } from "lucide-react";
-import { BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
+import { BADGE_CLASS, type Article } from "@/data/articles";
 import "./ArticleCard.css";
 
 export default function ArticleCard({ article, featured }: { article: Article; featured?: boolean }) {

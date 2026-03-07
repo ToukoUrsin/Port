@@ -1207,26 +1207,31 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
+  width: 24px;
   height: 28px;
-  border-radius: var(--radius-md);
+  border-radius: 4px;
   cursor: grab;
-  color: var(--color-text-tertiary);
-  opacity: 0.6;
-  transition: opacity 0.2s ease, background 0.15s ease, color 0.15s ease;
+  color: #b0b0b0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.12s, color 0.12s;
   z-index: 20;
   user-select: none;
-  /* Larger clickable area via padding trick */
-  padding: 2px;
+}
+/* Show handle when hovering anywhere in the prose area */
+.article-prose:hover .drag-handle {
+  opacity: 0.45;
 }
 .drag-handle:hover {
-  opacity: 1;
-  background: var(--color-gray-200);
-  color: var(--color-text);
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.06);
+  color: #6b6b6b;
 }
-.drag-handle:active {
+.drag-handle:active,
+.drag-handle.dragging {
   cursor: grabbing;
-  background: var(--color-gray-300, #d4d4d8);
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.1);
+  color: #444;
 }
 
 /* ===============================================
