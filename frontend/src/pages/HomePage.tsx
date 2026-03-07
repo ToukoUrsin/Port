@@ -294,6 +294,10 @@ export default function HomePage() {
 
   const selectedLocation = locations.find((l) => l.slug === locationSlug);
   const [savedLocIds, setSavedLocIds] = useState(() => getSavedLocationIds());
+  const regionLocationIds = useMemo(
+    () => locations.filter((l) => l.article_count > 0).map((l) => l.id),
+    [locations],
+  );
 
   // Fetch articles, filtered by location when one is selected
   const fetchArticles = useCallback(
@@ -304,11 +308,14 @@ export default function HomePage() {
       if (savedLocIds.length > 0) {
         return getArticles({ limit: 100, location_ids: savedLocIds });
       }
+      if (regionLocationIds.length > 0) {
+        return getArticles({ limit: 100, location_ids: regionLocationIds });
+      }
       return getArticles({ limit: 100 });
     },
-    [selectedLocation?.id, savedLocIds],
+    [selectedLocation?.id, savedLocIds, regionLocationIds],
   );
-  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id, savedLocIds]);
+  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id, savedLocIds, regionLocationIds]);
   const allArticles = useMemo(
     () => (apiData?.articles ?? []).map((a) => apiToArticle(a, t)),
     [apiData, t],
