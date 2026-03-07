@@ -61,6 +61,20 @@ const (
 	FollowProfile  int16 = 2
 )
 
+// --- Reaction target types ---
+
+const (
+	ReactionTargetSubmission int16 = 1
+	ReactionTargetReply      int16 = 2
+)
+
+// --- Reaction kinds ---
+
+const (
+	ReactionLike    int16 = 1
+	ReactionDislike int16 = -1
+)
+
 // --- Reply status ---
 
 const (

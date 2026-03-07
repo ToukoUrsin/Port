@@ -51,6 +51,46 @@ func (h *Handler) CreateFollow(c *gin.Context) {
 	c.JSON(http.StatusCreated, follow)
 }
 
+func (h *Handler) GetFollowStatus(c *gin.Context) {
+	targetID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+
+	var follow models.Follow
+	if err := h.db.First(&follow, "profile_id = ? AND target_id = ? AND target_type = ?",
+		actor.ProfileID, targetID, models.FollowProfile).Error; err != nil {
+		c.JSON(http.StatusOK, gin.H{"following": false})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"following": true, "follow_id": follow.ID})
+}
+
+func (h *Handler) GetFollowCounts(c *gin.Context) {
+	profileID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var followers int64
+	h.db.Model(&models.Follow{}).Where("target_id = ? AND target_type = ?",
+		profileID, models.FollowProfile).Count(&followers)
+
+	var following int64
+	h.db.Model(&models.Follow{}).Where("profile_id = ? AND target_type = ?",
+		profileID, models.FollowProfile).Count(&following)
+
+	c.JSON(http.StatusOK, gin.H{
+		"followers": followers,
+		"following": following,
+	})
+}
+
 func (h *Handler) DeleteFollow(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

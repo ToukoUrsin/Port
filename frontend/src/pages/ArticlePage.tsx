@@ -1,19 +1,129 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown } from "lucide-react";
+import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Heart } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS, authorSlug } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
-import { getArticle, getSimilarArticles, getReplies, createReply, flagArticle } from "@/lib/api";
+import { getArticle, getSimilarArticles, getReplies, createReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
 import { apiToArticle, timeAgo, computeOverallScore } from "@/lib/types";
-import type { ApiSubmission, ApiReply } from "@/lib/types";
+import type { ApiSubmission, ApiReply, ReactionCounts, ReplyReactionMap } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { QualityPanel } from "@/components/QualityPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
 import "./ArticlePage.css";
+
+function ArticleReactions({ articleId }: { articleId: string }) {
+  const { isAuthenticated } = useAuth();
+  const [counts, setCounts] = useState<ReactionCounts>({ likes: 0, dislikes: 0 });
+  const [userReaction, setUserReaction] = useState<number>(0);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getArticleReactions(articleId).then((data) => {
+      setCounts({ likes: data.likes, dislikes: data.dislikes });
+      if (data.user_reaction !== undefined) setUserReaction(data.user_reaction);
+    }).catch(() => {});
+  }, [articleId]);
+
+  const total = counts.likes + counts.dislikes;
+  const likePercent = total > 0 ? Math.round((counts.likes / total) * 100) : 0;
+
+  const handleReact = async (kind: 1 | -1) => {
+    if (busy || !isAuthenticated) return;
+    setBusy(true);
+    try {
+      if (userReaction === kind) {
+        const data = await unreactArticle(articleId);
+        setCounts({ likes: data.likes, dislikes: data.dislikes });
+        setUserReaction(0);
+      } else {
+        const data = await reactArticle(articleId, kind);
+        setCounts({ likes: data.likes, dislikes: data.dislikes });
+        setUserReaction(kind);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="article-reactions">
+      <div className="article-reactions__buttons">
+        <button
+          className={`article-reactions__btn ${userReaction === 1 ? "article-reactions__btn--active" : ""}`}
+          onClick={() => handleReact(1)}
+          disabled={!isAuthenticated || busy}
+        >
+          <ThumbsUp size={16} />
+          <span>{counts.likes}</span>
+        </button>
+        <button
+          className={`article-reactions__btn article-reactions__btn--dislike ${userReaction === -1 ? "article-reactions__btn--active" : ""}`}
+          onClick={() => handleReact(-1)}
+          disabled={!isAuthenticated || busy}
+        >
+          <ThumbsDown size={16} />
+          <span>{counts.dislikes}</span>
+        </button>
+      </div>
+      {total > 0 && (
+        <div className="article-reactions__bar-wrapper">
+          <div className="article-reactions__bar">
+            <div className="article-reactions__bar-fill" style={{ width: `${likePercent}%` }} />
+          </div>
+          <span className="article-reactions__percent">{likePercent}% liked</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommentLikeButton({ replyId, initialLikes, initialLiked }: {
+  replyId: string;
+  initialLikes: number;
+  initialLiked: boolean;
+}) {
+  const { isAuthenticated } = useAuth();
+  const [likes, setLikes] = useState(initialLikes);
+  const [liked, setLiked] = useState(initialLiked);
+  const [busy, setBusy] = useState(false);
+
+  const handleToggle = async () => {
+    if (busy || !isAuthenticated) return;
+    setBusy(true);
+    try {
+      if (liked) {
+        const data = await unreactReply(replyId);
+        setLikes(data.likes);
+        setLiked(false);
+      } else {
+        const data = await reactReply(replyId);
+        setLikes(data.likes);
+        setLiked(true);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      className={`comment__like ${liked ? "comment__like--active" : ""}`}
+      onClick={handleToggle}
+      disabled={!isAuthenticated || busy}
+    >
+      <Heart size={12} fill={liked ? "currentColor" : "none"} />
+      {likes > 0 && <span>{likes}</span>}
+    </button>
+  );
+}
 
 function Comments({ articleId }: { articleId: string }) {
   const { t } = useLanguage();
@@ -24,7 +134,14 @@ function Comments({ articleId }: { articleId: string }) {
   const [newComment, setNewComment] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [replyReactions, setReplyReactions] = useState<ReplyReactionMap>({});
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    getReplyReactions(articleId).then((data) => {
+      setReplyReactions(data.reactions || {});
+    }).catch(() => {});
+  }, [articleId]);
 
   const allReplies = [...(repliesData?.replies ?? []), ...localReplies];
 
@@ -94,20 +211,28 @@ function Comments({ articleId }: { articleId: string }) {
 
       {visible.length > 0 && (
         <div className="comments-list">
-          {visible.map((reply) => (
-            <div key={reply.id} className="comment">
-              <div className="comment__avatar">
-                <User size={14} />
-              </div>
-              <div className="comment__body">
-                <div className="comment__header">
-                  <span className="comment__author">{reply.profile_id.slice(0, 8)}</span>
-                  <span className="comment__time">{timeAgo(reply.created_at)}</span>
+          {visible.map((reply) => {
+            const rxn = replyReactions[reply.id];
+            return (
+              <div key={reply.id} className="comment">
+                <div className="comment__avatar">
+                  <User size={14} />
                 </div>
-                <p className="comment__text">{reply.body}</p>
+                <div className="comment__body">
+                  <div className="comment__header">
+                    <span className="comment__author">{reply.profile_id.slice(0, 8)}</span>
+                    <span className="comment__time">{timeAgo(reply.created_at)}</span>
+                  </div>
+                  <p className="comment__text">{reply.body}</p>
+                  <CommentLikeButton
+                    replyId={reply.id}
+                    initialLikes={rxn?.likes ?? reply.meta?.reactions?.like ?? 0}
+                    initialLiked={!!rxn?.user_liked}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -231,6 +356,8 @@ export default function ArticlePage() {
             </Link>
           )}
         </div>
+
+        <ArticleReactions articleId={id!} />
 
         {isAuthenticated && !reportDone && (
           <div className="report-section">

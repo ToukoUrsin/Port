@@ -207,14 +207,17 @@ func main() {
 		public.GET("/locations", h.ListLocations)
 		public.GET("/locations/:slug", h.GetLocation)
 		public.GET("/locations/:slug/articles", h.LocationArticles)
-		public.GET("/articles/:id/replies", h.ListReplies)
 		public.GET("/articles/:id/similar", h.SimilarArticles)
+		public.GET("/profiles/:id/follow-counts", h.GetFollowCounts)
 	}
 
 	// --- Optional auth routes (public but enhanced with auth context) ---
 	optAuth := r.Group("/api", middleware.OptionalAuth(jwtSecret))
 	{
 		optAuth.GET("/profiles/:id", h.GetProfile)
+		optAuth.GET("/articles/:id/reactions", h.GetArticleReactions)
+		optAuth.GET("/articles/:id/replies", h.ListReplies)
+		optAuth.GET("/articles/:id/replies/reactions", h.GetReplyReactions)
 	}
 
 	// --- Authenticated routes ---
@@ -248,6 +251,13 @@ func main() {
 		// Follows
 		authed.POST("/follows", h.CreateFollow)
 		authed.DELETE("/follows/:id", h.DeleteFollow)
+		authed.GET("/follows/status/:id", h.GetFollowStatus)
+
+		// Reactions
+		authed.POST("/articles/:id/react", h.ReactArticle)
+		authed.DELETE("/articles/:id/react", h.UnreactArticle)
+		authed.POST("/replies/:id/react", h.ReactReply)
+		authed.DELETE("/replies/:id/react", h.UnreactReply)
 
 		// Flagging
 		authed.POST("/articles/:id/flag", h.FlagSubmission)

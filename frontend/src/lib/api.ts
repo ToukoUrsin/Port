@@ -9,6 +9,10 @@ import type {
   ApiReply,
   Coaching,
   RedTrigger,
+  ReactionCounts,
+  ReplyReactionMap,
+  FollowStatus,
+  FollowCounts,
 } from "@/lib/types.ts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -406,4 +410,62 @@ export function updateSubmissionMarkdown(
 export async function getSubmissions(): Promise<ApiSubmission[]> {
   const res = await apiFetch<{ submissions: ApiSubmission[]; total: number }>("/api/submissions");
   return res.submissions;
+}
+
+// --- Reactions ---
+
+export function getArticleReactions(articleId: string): Promise<ReactionCounts> {
+  return apiFetch<ReactionCounts>(`/api/articles/${articleId}/reactions`);
+}
+
+export function reactArticle(articleId: string, kind: 1 | -1): Promise<ReactionCounts> {
+  return apiFetch<ReactionCounts>(`/api/articles/${articleId}/react`, {
+    method: "POST",
+    body: JSON.stringify({ kind }),
+  });
+}
+
+export function unreactArticle(articleId: string): Promise<ReactionCounts> {
+  return apiFetch<ReactionCounts>(`/api/articles/${articleId}/react`, {
+    method: "DELETE",
+  });
+}
+
+export function getReplyReactions(articleId: string): Promise<{ reactions: ReplyReactionMap }> {
+  return apiFetch<{ reactions: ReplyReactionMap }>(`/api/articles/${articleId}/replies/reactions`);
+}
+
+export function reactReply(replyId: string): Promise<{ likes: number; user_liked: number }> {
+  return apiFetch<{ likes: number; user_liked: number }>(`/api/replies/${replyId}/react`, {
+    method: "POST",
+  });
+}
+
+export function unreactReply(replyId: string): Promise<{ likes: number; user_liked: number }> {
+  return apiFetch<{ likes: number; user_liked: number }>(`/api/replies/${replyId}/react`, {
+    method: "DELETE",
+  });
+}
+
+// --- Follows ---
+
+export function followUser(targetId: string): Promise<{ id: string }> {
+  return apiFetch<{ id: string }>("/api/follows", {
+    method: "POST",
+    body: JSON.stringify({ target_id: targetId, target_type: 2 }),
+  });
+}
+
+export function unfollowUser(followId: string): Promise<void> {
+  return apiFetch<void>(`/api/follows/${followId}`, {
+    method: "DELETE",
+  });
+}
+
+export function getFollowStatus(profileId: string): Promise<FollowStatus> {
+  return apiFetch<FollowStatus>(`/api/follows/status/${profileId}`);
+}
+
+export function getFollowCounts(profileId: string): Promise<FollowCounts> {
+  return apiFetch<FollowCounts>(`/api/profiles/${profileId}/follow-counts`);
 }

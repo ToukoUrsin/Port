@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import AccountSettings from "@/components/AccountSettings";
@@ -8,9 +8,9 @@ import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useApi } from "@/hooks/useApi";
-import { getArticles, getProfileBySlug, getSubmissions } from "@/lib/api";
+import { getArticles, getProfileBySlug, getSubmissions, getFollowStatus, getFollowCounts, followUser, unfollowUser } from "@/lib/api";
 import { apiToArticle, timeAgo, SubmissionStatus } from "@/lib/types";
-import type { ApiProfile, ApiSubmission } from "@/lib/types";
+import type { ApiProfile, ApiSubmission, FollowCounts } from "@/lib/types";
 import "./ProfilePage.css";
 
 const STATUS_LABEL: Record<number, string> = {
@@ -100,6 +100,45 @@ export default function ProfilePage() {
   const profile: ApiProfile | null = isOwnProfile ? user : otherProfile;
   const profileId = profile?.id;
 
+  // Follow state
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followId, setFollowId] = useState<string | null>(null);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [followCnts, setFollowCnts] = useState<FollowCounts>({ followers: 0, following: 0 });
+
+  useEffect(() => {
+    if (!profileId) return;
+    getFollowCounts(profileId).then(setFollowCnts).catch(() => {});
+    if (!isOwnProfile && user) {
+      getFollowStatus(profileId).then((data) => {
+        setIsFollowing(data.following);
+        setFollowId(data.follow_id ?? null);
+      }).catch(() => {});
+    }
+  }, [profileId, isOwnProfile, user]);
+
+  const handleFollow = async () => {
+    if (!profileId || followBusy) return;
+    setFollowBusy(true);
+    try {
+      if (isFollowing && followId) {
+        await unfollowUser(followId);
+        setIsFollowing(false);
+        setFollowId(null);
+        setFollowCnts((p) => ({ ...p, followers: Math.max(0, p.followers - 1) }));
+      } else {
+        const res = await followUser(profileId);
+        setIsFollowing(true);
+        setFollowId(res.id);
+        setFollowCnts((p) => ({ ...p, followers: p.followers + 1 }));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setFollowBusy(false);
+    }
+  };
+
   // Fetch published articles for this profile
   const fetchArticles = useCallback(
     () => profileId ? getArticles({ owner_id: profileId, limit: 100 }) : Promise.resolve({ articles: [], total: 0 }),
@@ -180,10 +219,19 @@ export default function ProfilePage() {
             {isOwnProfile && email && <span className="profile-email">{email}</span>}
             {joined && <span className="profile-joined">{t("profile.joined")} {joined}</span>}
           </div>
-          {isOwnProfile && (
+          {isOwnProfile ? (
             <button className="profile-logout" onClick={handleLogout}>
               <LogOut size={16} />
               <span>Log out</span>
+            </button>
+          ) : user && (
+            <button
+              className={`profile-follow-btn ${isFollowing ? "profile-follow-btn--following" : ""}`}
+              onClick={handleFollow}
+              disabled={followBusy}
+            >
+              {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
+              <span>{isFollowing ? "Following" : "Follow"}</span>
             </button>
           )}
         </div>
@@ -192,6 +240,14 @@ export default function ProfilePage() {
           <div className="profile-stat">
             <span className="profile-stat__value">{publishedPosts.length}</span>
             <span className="profile-stat__label">{t("profile.published")}</span>
+          </div>
+          <div className="profile-stat">
+            <span className="profile-stat__value">{followCnts.followers}</span>
+            <span className="profile-stat__label">Followers</span>
+          </div>
+          <div className="profile-stat">
+            <span className="profile-stat__value">{followCnts.following}</span>
+            <span className="profile-stat__label">Following</span>
           </div>
           {isOwnProfile && (
             <div className="profile-stat">
