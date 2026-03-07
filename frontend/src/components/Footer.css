@@ -1,4 +1,6 @@
 .site-footer {
+  position: relative;
+  z-index: var(--z-sticky);
   background: var(--color-gray-900);
   color: var(--color-gray-300);
   padding: var(--space-12) 0 var(--space-8);
