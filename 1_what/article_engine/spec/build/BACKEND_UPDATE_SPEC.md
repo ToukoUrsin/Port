@@ -784,9 +784,42 @@ Work in this order to keep the codebase compiling at each step:
 
 5. **Access control** — Add `CanRefineSubmission` and `CanAppealSubmission` to `access.go`.
 
-6. **Real API services** (when ready) — Implement `GeminiGenerationService`, `GeminiReviewService`, `GeminiPhotoDescriptionService` using the Google Gemini Go SDK and the prompts from PROMPTS_SPEC.md. Each wraps one Gemini API call. Include the parsing logic from PROMPTS_SPEC.md (delimiter search, fence stripping, retry on parse failure).
+6. **Prompt files** — Create `services/prompts/` directory with embedded text files:
 
-7. **Test** — Write test cases matching PROMPTS_SPEC.md test cases 1-7. Run against real Gemini API. Verify gate classifications, coaching vocabulary constraints, and output schema compliance.
+    ```
+    services/prompts/
+      prompts.go                 # //go:embed directives exposing var strings
+      generation_system.txt      # generation system prompt (from PROMPTS_SPEC.md)
+      review_system.txt          # review system prompt (from PROMPTS_SPEC.md)
+      photo_vision.txt           # photo description prompt
+      town_context.txt           # static Kirkkonummi demo context
+    ```
+
+    `prompts.go` uses Go 1.16+ embed:
+
+    ```go
+    package prompts
+
+    import _ "embed"
+
+    //go:embed generation_system.txt
+    var GenerationSystem string
+
+    //go:embed review_system.txt
+    var ReviewSystem string
+
+    //go:embed photo_vision.txt
+    var PhotoVision string
+
+    //go:embed town_context.txt
+    var TownContext string
+    ```
+
+    User prompt templates are built in each service using `strings.NewReplacer` with `{transcript}`, `{notes}`, etc. — kept inline since they're short.
+
+7. **Real API services** — Implement `GeminiGenerationService`, `GeminiReviewService`, `GeminiPhotoDescriptionService` using the Google Gemini Go SDK. Each wraps one Gemini API call with `prompts.GenerationSystem` (etc.) as the system instruction. Include the parsing logic from PROMPTS_SPEC.md (delimiter search, fence stripping, retry on parse failure).
+
+8. **Test** — Write test cases matching PROMPTS_SPEC.md test cases 1-7. Run against real Gemini API. Verify gate classifications, coaching vocabulary constraints, and output schema compliance.
 
 ---
 
@@ -803,3 +836,5 @@ Work in this order to keep the codebase compiling at each step:
 | `services/access.go` | Add `CanRefineSubmission`, `CanAppealSubmission`. |
 | `handlers/submissions.go` | Add `RefineSubmission`, `AppealSubmission`. Update `PublishSubmission` gate check. |
 | `cmd/server/main.go` | Add photo description stub to DI. Add `/refine` and `/appeal` routes. |
+| `services/prompts/prompts.go` | New file. `//go:embed` directives for all prompt text files. |
+| `services/prompts/*.txt` | New files. System prompts, photo vision prompt, town context (from PROMPTS_SPEC.md). |

@@ -27,7 +27,7 @@ Local media: Kirkkonummen Sanomat (local paper), Länsiväylä (regional).
 
 ## Generation System Prompt
 
-Copy-paste into the Go `GenerationService`. This is the full system prompt text.
+Stored in `services/prompts/generation_system.txt` and loaded via `//go:embed`. This is the full system prompt text.
 
 ```
 You are a local news editor at a community newspaper. You transform raw citizen contributions (voice transcripts, notes, photos) into professional local journalism articles.
@@ -173,7 +173,7 @@ When a variable is empty, omit its section entirely (don't send `Transcript: ` w
 
 ## Review System Prompt
 
-Copy-paste into the Go `ReviewService`. This is the full system prompt text.
+Stored in `services/prompts/review_system.txt` and loaded via `//go:embed`. This is the full system prompt text.
 
 ```
 You are the editor at a community newspaper. You review articles written from citizen contributions. Your job is to verify faithfulness, assess quality, determine publishability, and coach the contributor.
