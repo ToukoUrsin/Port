@@ -13,7 +13,7 @@ export interface Article {
 }
 
 export function authorSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return (name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
 export const BADGE_CLASS: Record<string, string> = {

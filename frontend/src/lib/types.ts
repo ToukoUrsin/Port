@@ -300,7 +300,7 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     excerpt: (s.meta.article_markdown || s.description || s.meta.summary || "").slice(0, 200),
     body,
     category: s.meta.category || tagsToCategory(s.tags),
-    author: s.owner_name || s.owner_id.slice(0, 8),
+    author: s.owner_name || s.owner_id?.slice(0, 8) || "Anonymous",
     authorId: s.owner_id,
     timeAgo: timeAgo(s.created_at, t),
     image: s.meta.featured_img || "",
