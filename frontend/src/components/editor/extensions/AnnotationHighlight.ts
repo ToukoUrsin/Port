@@ -57,7 +57,7 @@ export const AnnotationHighlight = Extension.create({
     return {
       setTriggers:
         (triggers: RedTrigger[]) =>
-        ({ editor }) => {
+        ({ editor }: { editor: any }) => {
           editor.storage.annotationHighlight.triggers = triggers;
           // Force plugin state recalculation by dispatching a transaction
           const { tr } = editor.state;
@@ -65,7 +65,7 @@ export const AnnotationHighlight = Extension.create({
           editor.view.dispatch(tr);
           return true;
         },
-    };
+    } as any;
   },
 
   addProseMirrorPlugins() {
