@@ -15,10 +15,28 @@ import (
 	"github.com/localnews/backend/internal/services"
 )
 
+// requirePublicProfile checks that the actor's profile is public.
+// Returns true (and writes a 403 response) if the profile is not public, meaning the caller should return.
+func (h *Handler) requirePublicProfile(c *gin.Context, actor services.Actor) bool {
+	var profile models.Profile
+	if err := h.db.Select("public").First(&profile, "id = ?", actor.ProfileID).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "public_profile_required"})
+		return true
+	}
+	if !profile.Public {
+		c.JSON(http.StatusForbidden, gin.H{"error": "public_profile_required"})
+		return true
+	}
+	return false
+}
+
 func (h *Handler) CreateSubmission(c *gin.Context) {
 	actor := services.ActorFromContext(c)
 	if !actor.HasPerm(models.PermSubmit) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+		return
+	}
+	if h.requirePublicProfile(c, actor) {
 		return
 	}
 
@@ -123,6 +141,9 @@ func (h *Handler) StreamPipeline(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if h.requirePublicProfile(c, actor) {
+		return
+	}
 	if !h.access.CanStreamSubmission(actor, &sub) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -314,6 +335,9 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if h.requirePublicProfile(c, actor) {
+		return
+	}
 	if !h.access.CanViewSubmission(actor, &sub) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -364,6 +388,9 @@ func (h *Handler) RefineSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if h.requirePublicProfile(c, actor) {
+		return
+	}
 	if !h.access.CanViewSubmission(actor, &sub) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -455,6 +482,9 @@ func (h *Handler) AppealSubmission(c *gin.Context) {
 	}
 
 	actor := services.ActorFromContext(c)
+	if h.requirePublicProfile(c, actor) {
+		return
+	}
 	if !h.access.CanViewSubmission(actor, &sub) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return

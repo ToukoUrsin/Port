@@ -30,6 +30,7 @@ import { EditorialScreen } from "@/components/editor";
 import { VoiceRecorder } from "@/components/editor/VoiceRecorder";
 import type { GeneralRefinement } from "@/components/editor/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import PublicProfileModal from "@/components/PublicProfileModal";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
@@ -42,6 +43,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [showPublicModal, setShowPublicModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -67,9 +69,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
 
   const canSubmit = text.trim().length > 0 || files.length > 0 || audioBlob !== null;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSubmit) return;
+  async function doSubmit() {
     setError("");
     setIsSubmitting(true);
     try {
@@ -88,10 +88,30 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       onSubmit(res.submission_id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Submission failed";
+      if (msg === "public_profile_required") {
+        setShowPublicModal(true);
+        setIsSubmitting(false);
+        return;
+      }
       setError(msg);
       toast(msg, "error");
       setIsSubmitting(false);
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    if (user && !user.public) {
+      setShowPublicModal(true);
+      return;
+    }
+    doSubmit();
+  }
+
+  function handleMadePublic() {
+    setShowPublicModal(false);
+    doSubmit();
   }
 
   return (
@@ -188,6 +208,11 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
         </div>
       </form>
 
+      <PublicProfileModal
+        open={showPublicModal}
+        onClose={() => setShowPublicModal(false)}
+        onMadePublic={handleMadePublic}
+      />
     </div>
   );
 }
