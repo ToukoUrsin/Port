@@ -156,24 +156,34 @@ function HeadlineItem({ article }: { article: Article }) {
    AD BANNER
    ======================================== */
 
-const AD_IMAGES = ["/Ad1.png", "/Ad 2.png", "/Ad 3.png", "/Ad 4.png"];
+const ADS = [
+  { image: "/Ad1.png", url: "https://westmac.fi" },
+  { image: "/Ad 2.png", url: "https://www.movaroo.fi/etusivu" },
+  { image: "/Ad 3.png", url: "https://isku.app" },
+  { image: "/Ad 4.png", url: "https://www.mesembria.fi" },
+];
 
 function AdBanner({ t }: { t: (key: string) => string }) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % AD_IMAGES.length);
+      setCurrent((prev) => (prev + 1) % ADS.length);
     }, 5000);
     return () => clearInterval(timer);
   }, []);
 
   return (
     <section className="ad-banner">
-      <div className="ad-banner__inner">
+      <a
+        href={ADS[current].url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="ad-banner__inner"
+      >
         <span className="ad-banner__label">{t("home.ad")}</span>
-        <img src={AD_IMAGES[current]} alt={t("home.advertisement")} />
-      </div>
+        <img src={ADS[current].image} alt={t("home.advertisement")} />
+      </a>
     </section>
   );
 }
