@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: news-postgres
+    environment:
+      POSTGRES_DB: localnews
+      POSTGRES_USER: news
+      POSTGRES_PASSWORD: ${NEWS_POSTGRES_PASSWORD}
+    volumes:
+      - news_postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U news -d localnews"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - news-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: news-redis
+    command: redis-server --requirepass ${NEWS_REDIS_PASSWORD}
+    volumes:
+      - news_redis_data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${NEWS_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - news-network
+
+  backend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.backend
+    container_name: news-backend
+    environment:
+      DATABASE_URL: postgresql://news:${NEWS_POSTGRES_PASSWORD}@news-postgres:5432/localnews?sslmode=disable
+      REDIS_URL: redis://:${NEWS_REDIS_PASSWORD}@news-redis:6379/0
+      PORT: "8000"
+      JWT_SECRET: ${NEWS_JWT_SECRET}
+      GEMINI_API_KEY: ${NEWS_GEMINI_API_KEY}
+      ELEVENLABS_API_KEY: ${NEWS_ELEVENLABS_API_KEY}
+      MEDIA_STORAGE_PATH: /app/uploads
+      ALLOWED_ORIGINS: https://news.minir.ai
+      GIN_MODE: release
+    volumes:
+      - news_uploads:/app/uploads
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - news-network
+      - nexa_nexa-network
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+      args:
+        VITE_API_URL: https://news.minir.ai
+    container_name: news-frontend
+    expose:
+      - "80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - news-network
+      - nexa_nexa-network
+
+networks:
+  news-network:
+    driver: bridge
+  nexa_nexa-network:
+    external: true
+
+volumes:
+  news_postgres_data:
+  news_redis_data:
+  news_uploads:
