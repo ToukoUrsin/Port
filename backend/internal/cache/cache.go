@@ -28,6 +28,11 @@ func New(redisURL string) (*Cache, error) {
 	return &Cache{client: client, ttl: DefaultTTL}, nil
 }
 
+// Client returns the underlying Redis client for direct access.
+func (c *Cache) Client() *redis.Client {
+	return c.client
+}
+
 // Get retrieves a cached value. Returns false on miss.
 func (c *Cache) Get(ctx context.Context, key string, dest any) bool {
 	val, err := c.client.Get(ctx, key).Bytes()

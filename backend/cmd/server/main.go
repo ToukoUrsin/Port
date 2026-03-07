@@ -127,6 +127,10 @@ func main() {
 	r := gin.Default()
 	middleware.SetupCORS(r, cfg.AllowedOrigins)
 
+	// Rate limiting
+	rl := middleware.NewRateLimiter(c.Client(), cfg)
+	r.Use(rl.Middleware())
+
 	jwtSecret := []byte(cfg.JWTSecret)
 
 	// --- Public routes ---
@@ -145,6 +149,7 @@ func main() {
 		public.GET("/auth/config", h.AuthConfig)
 
 		// Public reads
+		public.GET("/profiles/check-name", h.CheckProfileName)
 		public.GET("/articles", h.ListArticles)
 		public.GET("/articles/:id", h.GetArticle)
 		public.GET("/search", h.Search)

@@ -277,7 +277,7 @@ func (h *Handler) GoogleCallback(c *gin.Context) {
 	}
 
 	// Find or create profile
-	profile, _, err := h.auth.FindOrCreateOAuthProfile(
+	profile, isNew, err := h.auth.FindOrCreateOAuthProfile(
 		models.ProviderGoogle,
 		userInfo.ID,
 		userInfo.Email,
@@ -308,5 +308,8 @@ func (h *Handler) GoogleCallback(c *gin.Context) {
 	// Redirect to frontend callback page with access token in fragment
 	frontendOrigin := strings.Split(h.cfg.AllowedOrigins, ",")[0]
 	redirectURL := fmt.Sprintf("%s/auth/callback#access_token=%s", frontendOrigin, accessToken)
+	if isNew {
+		redirectURL += "&is_new=true"
+	}
 	c.Redirect(http.StatusFound, redirectURL)
 }

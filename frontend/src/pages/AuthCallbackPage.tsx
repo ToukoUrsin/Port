@@ -14,6 +14,7 @@ export default function AuthCallbackPage() {
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
     const token = params.get("access_token");
+    const isNew = params.get("is_new") === "true";
 
     if (!token) {
       navigate("/login", { replace: true });
@@ -21,7 +22,7 @@ export default function AuthCallbackPage() {
     }
 
     handleOAuthCallback(token)
-      .then(() => navigate("/", { replace: true }))
+      .then(() => navigate(isNew ? "/onboarding" : "/", { replace: true }))
       .catch(() => navigate("/login", { replace: true }));
   }, [handleOAuthCallback, navigate]);
 

@@ -88,7 +88,7 @@ func setupHandlerTest(t *testing.T) (*handlers.Handler, *gorm.DB) {
 	embed := services.NewNoOpEmbeddingService()
 	pipeline := services.NewPipelineService(db, trans, gen, rev, photo, chunker, embed)
 
-	h := handlers.NewHandler(db, nil, nil, access, media, pipeline)
+	h := handlers.NewHandler(db, nil, nil, nil, access, media, pipeline, nil)
 	return h, db
 }
 

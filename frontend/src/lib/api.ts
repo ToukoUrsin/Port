@@ -267,18 +267,28 @@ export function getLocationArticles(
 
 export function search(params: {
   q: string;
+  mode?: string;
   type?: string;
   location_id?: string;
-  limit?: number;
-  offset?: number;
 }): Promise<SearchResponse> {
   const qs = new URLSearchParams();
   qs.set("q", params.q);
+  if (params.mode) qs.set("mode", params.mode);
   if (params.type) qs.set("type", params.type);
   if (params.location_id) qs.set("location_id", params.location_id);
-  if (params.limit) qs.set("limit", String(params.limit));
-  if (params.offset) qs.set("offset", String(params.offset));
   return apiFetch<SearchResponse>(`/api/search?${qs.toString()}`);
+}
+
+export function searchSessionChunk(sessionId: string, chunk: number): Promise<SearchResponse> {
+  return apiFetch<SearchResponse>(`/api/search/sessions/${sessionId}?chunk=${chunk}`);
+}
+
+// --- Profile name check (public) ---
+
+export function checkProfileName(name: string): Promise<{ available: boolean }> {
+  return apiFetch<{ available: boolean }>(
+    `/api/profiles/check-name?name=${encodeURIComponent(name)}`,
+  );
 }
 
 // --- Profile ---

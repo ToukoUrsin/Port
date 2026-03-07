@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services"
 )
@@ -100,13 +103,33 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 	}
 
 	if len(updates) > 0 {
-		h.db.Model(&profile).Updates(updates)
+		if err := h.db.Model(&profile).Updates(updates).Error; err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				c.JSON(http.StatusConflict, gin.H{"error": "profile_name already taken"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "update failed"})
+			return
+		}
 	}
 
 	h.cache.DelProfile(c.Request.Context(), id.String())
 
 	h.db.First(&profile, "id = ?", id)
 	c.JSON(http.StatusOK, profile)
+}
+
+func (h *Handler) CheckProfileName(c *gin.Context) {
+	name := strings.TrimSpace(c.Query("name"))
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+
+	var count int64
+	h.db.Model(&models.Profile{}).Where("profile_name = ?", name).Count(&count)
+	c.JSON(http.StatusOK, gin.H{"available": count == 0})
 }
 
 func (h *Handler) ChangeUserRole(c *gin.Context) {

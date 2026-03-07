@@ -217,8 +217,13 @@ export interface SSEErrorEvent {
 }
 
 export interface SearchResponse {
-  submissions?: ApiSubmission[];
-  profiles?: ApiProfile[];
+  session_id: string;
+  mode: string;
+  chunk: number;
+  total_chunks: number;
+  total_results: number;
+  submissions: ApiSubmission[];
+  profiles: ApiProfile[];
 }
 
 // --- Status constants matching Go backend ---

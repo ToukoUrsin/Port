@@ -30,6 +30,20 @@ type Config struct {
 	RerankerModelPath string
 	RerankerVocabPath string
 	ONNXLibPath       string
+
+	// Rate limiting
+	RateLimitEnabled      bool
+	RateLimitAuthMax      int
+	RateLimitAuthWindow   time.Duration
+	RateLimitSearchMax    int
+	RateLimitSearchWindow time.Duration
+	RateLimitWriteMax     int
+	RateLimitWriteWindow  time.Duration
+	RateLimitReadMax      int
+	RateLimitReadWindow   time.Duration
+	RateLimitSSEMax       int
+	RateLimitEditorMult   float64
+	RateLimitAdminMult    float64
 }
 
 func Load() *Config {
@@ -58,6 +72,20 @@ func Load() *Config {
 	cfg.JWTAccessTTL = parseDuration(env("JWT_ACCESS_TTL", "15m"), 15*time.Minute)
 	cfg.JWTRefreshTTL = parseDuration(env("JWT_REFRESH_TTL", "720h"), 720*time.Hour)
 
+	// Rate limiting
+	cfg.RateLimitEnabled = envBool("RATE_LIMIT_ENABLED", true)
+	cfg.RateLimitAuthMax = envInt("RATE_LIMIT_AUTH_MAX", 10)
+	cfg.RateLimitAuthWindow = parseDuration(env("RATE_LIMIT_AUTH_WINDOW", "1m"), time.Minute)
+	cfg.RateLimitSearchMax = envInt("RATE_LIMIT_SEARCH_MAX", 35)
+	cfg.RateLimitSearchWindow = parseDuration(env("RATE_LIMIT_SEARCH_WINDOW", "1m"), time.Minute)
+	cfg.RateLimitWriteMax = envInt("RATE_LIMIT_WRITE_MAX", 20)
+	cfg.RateLimitWriteWindow = parseDuration(env("RATE_LIMIT_WRITE_WINDOW", "1m"), time.Minute)
+	cfg.RateLimitReadMax = envInt("RATE_LIMIT_READ_MAX", 60)
+	cfg.RateLimitReadWindow = parseDuration(env("RATE_LIMIT_READ_WINDOW", "1m"), time.Minute)
+	cfg.RateLimitSSEMax = envInt("RATE_LIMIT_SSE_MAX", 3)
+	cfg.RateLimitEditorMult = envFloat("RATE_LIMIT_EDITOR_MULT", 2.0)
+	cfg.RateLimitAdminMult = envFloat("RATE_LIMIT_ADMIN_MULT", 5.0)
+
 	return cfg
 }
 
@@ -72,6 +100,22 @@ func envInt(key string, fallback int) int {
 	if v := os.Getenv(key); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			return n
+		}
+	}
+	return fallback
+}
+
+func envBool(key string, fallback bool) bool {
+	if v := os.Getenv(key); v != "" {
+		return v == "true" || v == "1" || v == "yes"
+	}
+	return fallback
+}
+
+func envFloat(key string, fallback float64) float64 {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
 		}
 	}
 	return fallback

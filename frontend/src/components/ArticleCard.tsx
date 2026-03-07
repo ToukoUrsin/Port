@@ -1,0 +1,49 @@
+import { Link } from "react-router-dom";
+import { Clock, ImageIcon } from "lucide-react";
+import { BADGE_CLASS, authorSlug, type Article } from "@/data/articles";
+import "./ArticleCard.css";
+
+export default function ArticleCard({ article, featured }: { article: Article; featured?: boolean }) {
+  return (
+    <Link
+      to={`/article/${article.id}`}
+      className={`card article-card ${article.isLead ? "article-card--lead" : ""} ${featured ? "article-card--featured" : ""}`}
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      <div className="article-card__img">
+        {article.image ? (
+          <img src={article.image} alt={article.title} />
+        ) : (
+          <div className="article-card__img-placeholder">
+            <ImageIcon size={32} />
+          </div>
+        )}
+      </div>
+      <div className="article-card__body">
+        <div className="article-card__meta">
+          <span className={`badge ${BADGE_CLASS[article.category] || ""}`}>
+            {article.category}
+          </span>
+        </div>
+        <h2 className="article-card__title">
+          <span className="title-prefix">{article.category}</span>
+          <span className="title-sep"> | </span>
+          {article.title}
+        </h2>
+        <p className="article-card__excerpt">{article.excerpt}</p>
+        <div className="article-card__footer">
+          <Link
+            to={`/profile/${authorSlug(article.author)}`}
+            className="article-card__author-link"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {article.author}
+          </Link>
+          <span>&middot;</span>
+          <Clock size={12} />
+          <span>{article.timeAgo}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}

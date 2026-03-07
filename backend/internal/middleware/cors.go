@@ -34,4 +34,8 @@ var allowedHeaders = []string{
 
 var exposedHeaders = []string{
 	"X-Request-ID",
+	"X-RateLimit-Limit",
+	"X-RateLimit-Remaining",
+	"X-RateLimit-Reset",
+	"Retry-After",
 }
