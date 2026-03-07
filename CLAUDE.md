@@ -28,6 +28,11 @@ archive/                 Previous project (Preflight — content quality tool)
 
 Two frontend apps (contributor PWA + public reader site) talking to a single FastAPI backend. AI pipeline: raw input -> transcription -> article generation -> quality review -> publish.
 
+## Git Workflow
+
+- Push features frequently — commit and push small, working increments rather than large batches
+- Keep the repo clean: no dead code, no leftover debug logs, no unrelated changes in commits
+
 ## Context
 
 This is a hackathon project for PORT 2026 / GSSC. The `archive/` folder contains the earlier "Preflight" project (content quality infrastructure) and related research.
