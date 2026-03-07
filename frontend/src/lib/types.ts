@@ -353,13 +353,32 @@ export function timeAgo(dateStr: string, t?: (key: string) => string): string {
   return t ? t("time.weeksAgo").replace("{n}", String(weeks)) : `${weeks}w ago`;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, "")       // headings
+    .replace(/\*\*(.+?)\*\*/g, "$1")    // bold
+    .replace(/\*(.+?)\*/g, "$1")        // italic
+    .replace(/__(.+?)__/g, "$1")        // bold alt
+    .replace(/_(.+?)_/g, "$1")          // italic alt
+    .replace(/~~(.+?)~~/g, "$1")        // strikethrough
+    .replace(/`(.+?)`/g, "$1")          // inline code
+    .replace(/^\s*[-*+]\s+/gm, "")     // unordered lists
+    .replace(/^\s*\d+\.\s+/gm, "")     // ordered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1") // images
+    .replace(/^\s*>\s+/gm, "")         // blockquotes
+    .replace(/\n{2,}/g, " ")           // collapse double newlines
+    .replace(/\n/g, " ")               // remaining newlines
+    .trim();
+}
+
 export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Article {
   const body = s.meta.article_markdown || s.description || "";
 
   return {
     id: s.id,
     title: s.title,
-    excerpt: (s.meta.article_markdown || s.description || s.meta.summary || "").slice(0, 200),
+    excerpt: stripMarkdown(s.meta.article_markdown || s.description || s.meta.summary || "").slice(0, 200),
     body,
     category: s.meta.category || tagsToCategory(s.tags),
     author: s.meta.anonymous ? "Anonymous contributor" : (s.owner_name || s.owner_id?.slice(0, 8) || "Anonymous"),
