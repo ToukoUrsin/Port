@@ -390,6 +390,7 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     image: s.meta.featured_img || "",
     area: s.location_name || s.meta.place_name,
     views: s.views,
+    createdAt: s.created_at,
   };
 }
 

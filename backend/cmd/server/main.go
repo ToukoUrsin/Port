@@ -205,7 +205,7 @@ func main() {
 
 		// Public reads
 		public.GET("/profiles/check-name", h.CheckProfileName)
-		public.GET("/articles", h.ListArticles)
+		// NOTE: /articles moved to optAuth group for ranked feed personalization
 		public.GET("/articles/:id", h.GetArticle)
 		public.GET("/search", h.Search)
 		public.GET("/search/sessions/:id", h.SearchSession)
@@ -221,6 +221,7 @@ func main() {
 	// --- Optional auth routes (public but enhanced with auth context) ---
 	optAuth := r.Group("/api", middleware.OptionalAuth(jwtSecret))
 	{
+		optAuth.GET("/articles", h.ListArticles)
 		optAuth.GET("/profiles/:id", h.GetProfile)
 		optAuth.GET("/articles/:id/reactions", h.GetArticleReactions)
 		optAuth.GET("/articles/:id/replies", h.ListReplies)

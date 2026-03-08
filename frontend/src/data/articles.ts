@@ -12,6 +12,7 @@ export interface Article {
   area?: string;
   views?: number;
   isLead?: boolean;
+  createdAt?: string;
 }
 
 export function authorSlug(name: string): string {

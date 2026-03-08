@@ -369,9 +369,9 @@ export default function HomePage() {
   const fetchArticles = useCallback(
     () => {
       if (selectedIdsArray.length > 0) {
-        return getArticles({ limit: 100, location_ids: selectedIdsArray });
+        return getArticles({ limit: 100, location_ids: selectedIdsArray, sort: "ranked" });
       }
-      return getArticles({ limit: 100, country });
+      return getArticles({ limit: 100, country, sort: "ranked" });
     },
     [selectedIdsArray, country],
   );
@@ -408,13 +408,12 @@ export default function HomePage() {
   }, []);
 
   const recentArticles = allArticles.slice(0, 10);
-  const bestOfWeek = useMemo(
-    () => [...allArticles]
-      .filter((a) => a.image)
-      .sort((a, b) => b.title.localeCompare(a.title))
-      .slice(0, 5),
-    [allArticles],
-  );
+  const bestOfWeek = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return allArticles
+      .filter((a) => a.image && a.createdAt && new Date(a.createdAt).getTime() > weekAgo)
+      .slice(0, 5); // already ranked by server
+  }, [allArticles]);
   const opinionArticles = allArticles.filter((a) => a.category === "opinion");
   const eventArticles = allArticles.filter((a) => a.category === "events");
   const newsCategories = ["council", "news", "community"];

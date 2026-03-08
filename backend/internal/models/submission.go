@@ -143,6 +143,7 @@ type Submission struct {
 	SearchVector string                `gorm:"type:tsvector" json:"-"`
 	LocationName string                `gorm:"-" json:"location_name,omitempty"`
 	OwnerName    string                `gorm:"-" json:"owner_name,omitempty"`
+	ReplyCount   int                   `gorm:"-" json:"reply_count,omitempty"`
 	Timestamps
 }
 

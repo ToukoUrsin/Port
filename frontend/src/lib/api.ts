@@ -154,7 +154,7 @@ export function getArticles(params?: {
   category?: string;
   country?: string;
   owner_id?: string;
-  sort?: "recent" | "popular";
+  sort?: "recent" | "popular" | "ranked";
   limit?: number;
   offset?: number;
 }): Promise<ArticleListResponse> {

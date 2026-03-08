@@ -57,12 +57,86 @@ func (h *Handler) ListArticles(c *gin.Context) {
 
 	var articles []models.Submission
 	switch sort {
+	case "ranked":
+		// Over-fetch 200 candidates for ranking
+		fetchLimit := 200
+		query.Order("created_at DESC").Limit(fetchLimit).Find(&articles)
+
+		if len(articles) > 0 {
+			// Batch-load reply counts
+			articleIDs := make([]uuid.UUID, len(articles))
+			for i, a := range articles {
+				articleIDs[i] = a.ID
+			}
+			type replyCountRow struct {
+				SubmissionID uuid.UUID
+				Count        int
+			}
+			var replyCounts []replyCountRow
+			h.db.Model(&models.Reply{}).
+				Select("submission_id, COUNT(*) as count").
+				Where("submission_id IN ? AND status = ?", articleIDs, models.ReplyVisible).
+				Group("submission_id").
+				Scan(&replyCounts)
+			replyCountMap := make(map[uuid.UUID]int, len(replyCounts))
+			for _, rc := range replyCounts {
+				replyCountMap[rc.SubmissionID] = rc.Count
+			}
+
+			// Batch-load author karma
+			ownerSet := make(map[uuid.UUID]bool)
+			for _, a := range articles {
+				ownerSet[a.OwnerID] = true
+			}
+			ownerIDs := make([]uuid.UUID, 0, len(ownerSet))
+			for id := range ownerSet {
+				ownerIDs = append(ownerIDs, id)
+			}
+			type karmaRow struct {
+				ID    uuid.UUID
+				Karma int
+			}
+			var karmaRows []karmaRow
+			h.db.Model(&models.Profile{}).
+				Select("id, karma").
+				Where("id IN ?", ownerIDs).
+				Scan(&karmaRows)
+			karmaMap := make(map[uuid.UUID]int, len(karmaRows))
+			for _, kr := range karmaRows {
+				karmaMap[kr.ID] = kr.Karma
+			}
+
+			// Load personalization if user is logged in
+			var perso *FeedPersonalization
+			if pidRaw, exists := c.Get("profile_id"); exists {
+				if pidStr, ok := pidRaw.(string); ok {
+					if pid, err := uuid.Parse(pidStr); err == nil {
+						perso = h.loadPersonalization(c, pid)
+					}
+				}
+			}
+
+			h.rankArticles(articles, karmaMap, replyCountMap, perso)
+		}
+
+		// Apply pagination after ranking
+		if offset >= len(articles) {
+			articles = nil
+		} else {
+			end := offset + limit
+			if end > len(articles) {
+				end = len(articles)
+			}
+			articles = articles[offset:end]
+		}
+
 	case "popular":
 		query = query.Order("views DESC, updated_at DESC")
+		query.Limit(limit).Offset(offset).Find(&articles)
 	default:
 		query = query.Order("updated_at DESC")
+		query.Limit(limit).Offset(offset).Find(&articles)
 	}
-	query.Limit(limit).Offset(offset).Find(&articles)
 
 	h.fillLocationNames(articles)
 	h.fillOwnerNames(articles)

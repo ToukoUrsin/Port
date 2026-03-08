@@ -48,6 +48,9 @@ func (h *Handler) CreateFollow(c *gin.Context) {
 		return
 	}
 
+	// Invalidate feed personalization cache
+	h.cache.Delete(c.Request.Context(), "feed:perso:"+actor.ProfileID.String())
+
 	// Notify the followed user
 	if req.TargetType == models.FollowProfile {
 		go h.notifSvc.Notify(h.db, req.TargetID, actor.ProfileID, models.NotifNewFollower, follow.ID, models.FollowProfile, uuid.Nil)
@@ -204,5 +207,9 @@ func (h *Handler) DeleteFollow(c *gin.Context) {
 	}
 
 	h.db.Delete(&follow)
+
+	// Invalidate feed personalization cache
+	h.cache.Delete(c.Request.Context(), "feed:perso:"+follow.ProfileID.String())
+
 	c.Status(http.StatusNoContent)
 }
