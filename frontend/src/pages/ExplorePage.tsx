@@ -119,13 +119,10 @@ export default function ExplorePage() {
         else levels = [3];
 
         const useBbox = zoom > 2;
-        // Only filter by min_articles at city level — higher levels are
-        // navigational and their article_count doesn't include descendants
-        const onlyCities = levels.length === 1 && levels[0] === 3;
         const params: Parameters<typeof getLocations>[0] = {
           level: levels,
           limit: 300,
-          ...(onlyCities && { min_articles: 1 }),
+          min_articles: 1,
           ...(useBbox && {
             south: bounds.getSouth(),
             west: bounds.getWest(),

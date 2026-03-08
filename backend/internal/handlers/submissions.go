@@ -320,6 +320,9 @@ func (h *Handler) DeleteSubmission(c *gin.Context) {
 		return
 	}
 
+	if sub.Status == models.StatusPublished {
+		services.AdjustArticleCount(h.db, sub.LocationID, -1)
+	}
 	h.db.Delete(&sub)
 	c.Status(http.StatusNoContent)
 }
@@ -369,9 +372,8 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 		h.cache.DeletePattern(c.Request.Context(), "articles:list:"+sub.LocationID.String()+":*")
 	}
 
-	// Update location counters
-	h.db.Model(&models.Location{}).Where("id = ?", sub.LocationID).
-		Update("article_count", h.db.Raw("article_count + 1"))
+	// Update location counters (propagate up hierarchy)
+	services.AdjustArticleCount(h.db, sub.LocationID, +1)
 
 	h.db.First(&sub, "id = ?", id)
 	c.JSON(http.StatusOK, sub)

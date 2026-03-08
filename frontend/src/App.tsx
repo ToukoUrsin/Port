@@ -65,6 +65,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/post/:id"
+              element={
+                <ProtectedRoute>
+                  <PostPage />
+                </ProtectedRoute>
+              }
+            />
             {/* <Route path="/pitch" element={<PitchDeck />} /> */}
             <Route
               path="/profile"

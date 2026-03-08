@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUp, X, Loader2,
   CheckCircle, Camera, EyeOff,
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useToast } from "@/components/Toast.tsx";
 import {
   createSubmission,
+  getSubmission,
   publishArticle,
   refineSubmission,
   appealSubmission,
@@ -26,6 +27,7 @@ import type {
   SSEReviewedData,
   WebSource,
 } from "@/lib/types.ts";
+import { SubmissionStatus } from "@/lib/types.ts";
 import { EditorialScreen } from "@/components/editor";
 import { VoiceRecorder, AudioPlayer } from "@/components/editor/VoiceRecorder";
 import type { GeneralRefinement } from "@/components/editor/types";
@@ -601,15 +603,16 @@ const MOCK_METADATA: ArticleMetadata = {
 };
 
 // --- Main: Thin Orchestrator ---
-type FlowStep = "input" | "processing" | "preview";
+type FlowStep = "loading" | "input" | "processing" | "preview";
 
 export default function PostPage() {
+  const { id: routeId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const { t: pt } = useLanguage();
-  const [step, setStep] = useState<FlowStep>("input");
-  const [submissionId, setSubmissionId] = useState<string>("");
+  const [step, setStep] = useState<FlowStep>(routeId ? "loading" : "input");
+  const [submissionId, setSubmissionId] = useState<string>(routeId || "");
   const [articleMarkdown, setArticleMarkdown] = useState<string>("");
   const [reviewData, setReviewData] = useState<ReviewResult | null>(null);
   const [metadata, setMetadata] = useState<ArticleMetadata | null>(null);
@@ -619,6 +622,48 @@ export default function PostPage() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved">("saved");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const refineAbortRef = useRef<AbortController | null>(null);
+
+  // Load existing submission when navigating to /post/:id
+  useEffect(() => {
+    if (!routeId) return;
+    let cancelled = false;
+    getSubmission(routeId).then((sub) => {
+      if (cancelled) return;
+      setSubmissionId(sub.id);
+      const meta = sub.meta;
+      // Ready or Refining: go to editorial screen
+      if (
+        (sub.status === SubmissionStatus.Ready || sub.status === SubmissionStatus.Refining) &&
+        meta.article_markdown &&
+        meta.review &&
+        meta.article_metadata
+      ) {
+        setArticleMarkdown(meta.article_markdown);
+        setReviewData(meta.review);
+        setMetadata(meta.article_metadata);
+        setCurrentRound(meta.versions?.length ?? 0);
+        setIsRefining(sub.status === SubmissionStatus.Refining);
+        setStep("preview");
+      } else if (
+        sub.status === SubmissionStatus.Transcribing ||
+        sub.status === SubmissionStatus.Generating ||
+        sub.status === SubmissionStatus.Reviewing ||
+        sub.status === SubmissionStatus.Researching
+      ) {
+        // In-progress pipeline
+        setStep("processing");
+      } else {
+        // Draft with no article yet — treat as processing
+        setStep("processing");
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        toast(pt("post.loadFailed") || "Failed to load draft", "error");
+        setStep("input");
+      }
+    });
+    return () => { cancelled = true; };
+  }, [routeId, toast, pt]);
 
   const handleDemo = useCallback(() => {
     setSubmissionId("demo");
@@ -769,6 +814,11 @@ export default function PostPage() {
       <div
         className={`post-page ${step === "processing" ? "post-page--centered" : ""}`}
       >
+        {step === "loading" && (
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: "var(--space-16)" }}>
+            <Loader2 size={32} className="spin" style={{ color: "var(--color-text-tertiary)" }} />
+          </div>
+        )}
         {step === "input" && (
           <>
             {processingError && (
