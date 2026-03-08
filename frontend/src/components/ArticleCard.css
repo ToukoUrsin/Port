@@ -142,11 +142,29 @@
 .article-card__footer {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
   font-size: var(--text-xs);
   color: var(--color-text-tertiary);
   margin-top: auto;
   padding-top: var(--space-3);
+}
+.article-card__footer-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.article-card__footer .bookmark-btn {
+  border: none;
+  padding: var(--space-1);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.article-card:hover .article-card__footer .bookmark-btn {
+  opacity: 1;
+}
+.article-card__footer .bookmark-btn--active {
+  opacity: 1;
 }
 
 .article-card__author-link {

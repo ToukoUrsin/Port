@@ -8,6 +8,7 @@ import ArticleCard from "@/components/ArticleCard";
 import { search, searchSessionChunk } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import type { Article } from "@/data/articles";
 import "./SearchPage.css";
 
@@ -15,6 +16,7 @@ export default function SearchPage() {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
+  useDocumentHead({ title: q ? `Search: ${q}` : "Search" });
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);

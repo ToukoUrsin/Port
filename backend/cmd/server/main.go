@@ -262,6 +262,12 @@ func main() {
 		authed.POST("/replies/:id/react", h.ReactReply)
 		authed.DELETE("/replies/:id/react", h.UnreactReply)
 
+		// Bookmarks
+		authed.POST("/articles/:id/bookmark", h.BookmarkArticle)
+		authed.DELETE("/articles/:id/bookmark", h.UnbookmarkArticle)
+		authed.GET("/articles/:id/bookmark", h.GetBookmarkStatus)
+		authed.GET("/profiles/me/bookmarks", h.ListBookmarks)
+
 		// Notifications
 		authed.GET("/notifications", h.ListNotifications)
 		authed.GET("/notifications/unread-count", h.UnreadCount)

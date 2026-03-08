@@ -1,14 +1,16 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck, Music, FolderOpen, Bell, ThumbsUp, ThumbsDown, MessageSquare, X } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck, Music, FolderOpen, Bell, ThumbsUp, ThumbsDown, MessageSquare, X, Bookmark } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import AccountSettings from "@/components/AccountSettings";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { useApi } from "@/hooks/useApi";
-import { getArticles, getProfileBySlug, getSubmissions, getMyFiles, fileToMediaUrl, getFollowStatus, getFollowCounts, followUser, unfollowUser, getNotifications, markAllNotificationsRead, markNotificationRead, getFollowers, getFollowing } from "@/lib/api";
+import { getArticles, getProfileBySlug, getSubmissions, getMyFiles, fileToMediaUrl, getFollowStatus, getFollowCounts, followUser, unfollowUser, getNotifications, markAllNotificationsRead, markNotificationRead, getFollowers, getFollowing, getBookmarks } from "@/lib/api";
+import ArticleCard from "@/components/ArticleCard";
 import { apiToArticle, timeAgo, SubmissionStatus, FileType } from "@/lib/types";
 import type { ApiProfile, ApiSubmission, FollowCounts, ApiFile, ApiNotification, FollowUser } from "@/lib/types";
 import { NotifType, NotifTargetType } from "@/lib/types";
@@ -200,10 +202,11 @@ function FollowListModal({
 
 export default function ProfilePage() {
   const { slug } = useParams<{ slug: string }>();
-  const [tab, setTab] = useState<"posts" | "drafts" | "files" | "notifications" | "settings">("posts");
+  const [tab, setTab] = useState<"posts" | "drafts" | "saved" | "files" | "notifications" | "settings">("posts");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  useDocumentHead({ title: "Profile" });
   const isOwnProfile = !slug;
 
   // Fetch profile for other users
@@ -305,6 +308,17 @@ export default function ProfilePage() {
   const allFiles = filesData?.files ?? [];
   const photoFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Photo), [allFiles]);
   const audioFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Audio), [allFiles]);
+
+  // Fetch bookmarks for own profile
+  const fetchBookmarks = useCallback(
+    () => isOwnProfile ? getBookmarks({ limit: 100 }) : Promise.resolve({ articles: [], total: 0 }),
+    [isOwnProfile],
+  );
+  const { data: bookmarksData, isLoading: bookmarksLoading } = useApi(fetchBookmarks, [isOwnProfile]);
+  const savedArticles = useMemo(
+    () => (bookmarksData?.articles ?? []).map((s) => apiToArticle(s, t)),
+    [bookmarksData],
+  );
 
   // Notifications for own profile
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
@@ -441,6 +455,14 @@ export default function ProfilePage() {
           </button>
           {isOwnProfile && (
             <button
+              className={`profile-tab ${tab === "saved" ? "profile-tab--active" : ""}`}
+              onClick={() => setTab("saved")}
+            >
+              Saved
+            </button>
+          )}
+          {isOwnProfile && (
+            <button
               className={`profile-tab ${tab === "drafts" ? "profile-tab--active" : ""}`}
               onClick={() => setTab("drafts")}
             >
@@ -514,6 +536,23 @@ export default function ProfilePage() {
             <div className="profile-empty">
               <div className="profile-empty__icon"><Bell size={32} /></div>
               <p className="profile-empty__text">No notifications yet</p>
+            </div>
+          )
+        ) : tab === "saved" ? (
+          bookmarksLoading ? (
+            <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
+              <Loader2 size={24} className="animate-spin" />
+            </div>
+          ) : savedArticles.length > 0 ? (
+            <div className="profile-saved-grid">
+              {savedArticles.map((article) => (
+                <ArticleCard key={article.id} article={article} />
+              ))}
+            </div>
+          ) : (
+            <div className="profile-empty">
+              <div className="profile-empty__icon"><Bookmark size={32} /></div>
+              <p className="profile-empty__text">No saved articles yet</p>
             </div>
           )
         ) : tab === "files" ? (
