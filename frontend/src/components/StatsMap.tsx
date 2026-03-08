@@ -22,6 +22,8 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const pulseRef = useRef<HTMLDivElement | null>(null);
+  const activeCountRef = useRef(0);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -41,11 +43,12 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
     // Pulsing marker at Otaniemi
     const pulseIcon = L.divIcon({
       className: "",
-      html: '<div class="stats-map__pulse"><div class="stats-map__pulse-ring"></div><div class="stats-map__pulse-dot"></div></div>',
+      html: '<div class="stats-map__pulse"><div class="stats-map__pulse-ring"></div><div class="stats-map__pulse-ring stats-map__pulse-ring--second"></div><div class="stats-map__pulse-dot"></div></div>',
       iconSize: [20, 20],
       iconAnchor: [10, 10],
     });
-    L.marker(OTANIEMI, { icon: pulseIcon }).addTo(map);
+    const marker = L.marker(OTANIEMI, { icon: pulseIcon }).addTo(map);
+    pulseRef.current = marker.getElement()?.querySelector(".stats-map__pulse") ?? null;
 
     // SVG overlay — append to map container (NOT leaflet-map-pane)
     // so we can use container-relative coordinates
@@ -61,6 +64,37 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
       mapRef.current = null;
       svgRef.current = null;
     };
+  }, []);
+
+  // Kick the center dot into "active" mode when an arc arrives.
+  // Multiple rapid hits shift the color through green → yellow → orange → red.
+  const kickPulse = useCallback(() => {
+    const el = pulseRef.current;
+    if (!el) return;
+    activeCountRef.current++;
+    const hits = activeCountRef.current;
+
+    el.classList.add("stats-map__pulse--active");
+
+    // Color intensity: 1 hit = green(140°), ramps toward red(0°) over ~8+ hits
+    const hue = Math.max(0, 140 - hits * 18);
+    const lightness = Math.min(70, 50 + hits * 3);
+    el.style.setProperty("--pulse-color", `hsl(${hue}, 100%, ${lightness}%)`);
+
+    // Scale also increases slightly with stacked hits (cap at 3x)
+    const scale = Math.min(3, 1.8 + hits * 0.15);
+    el.style.setProperty("--pulse-scale", `${scale}`);
+
+    // Decay: remove active class and reset after no hits for 2s
+    const snapshot = hits;
+    setTimeout(() => {
+      if (activeCountRef.current === snapshot) {
+        activeCountRef.current = 0;
+        el.classList.remove("stats-map__pulse--active");
+        el.style.removeProperty("--pulse-color");
+        el.style.removeProperty("--pulse-scale");
+      }
+    }, 2000);
   }, []);
 
   const drawArc = useCallback(
@@ -152,10 +186,11 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
         path.style.strokeDashoffset = "0";
       });
 
-      // Impact ripple after line arrives
+      // Impact ripple after line arrives + kick the center dot
       setTimeout(() => {
         impact.setAttribute("r", "6");
         impact.classList.add("stats-map__impact-dot--ripple");
+        kickPulse();
       }, 2000);
 
       // Start fading at 3.5s
@@ -168,7 +203,7 @@ const StatsMap = forwardRef<StatsMapHandle>(function StatsMap(_props, ref) {
         g.remove();
       }, 5500);
     },
-    [],
+    [kickPulse],
   );
 
   useImperativeHandle(
