@@ -43,12 +43,10 @@ import "./PostPage.css";
 // --- Step 1: Input ---
 function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [text, setText] = useState("");
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioURL, setAudioURL] = useState<string | null>(null);
+  const [audioFiles, setAudioFiles] = useState<{ blob: Blob; url: string; name: string }[]>([]);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [audioFileName, setAudioFileName] = useState("recording.webm");
   const [anonymous, setAnonymous] = useState(false);
   const [locationId, setLocationId] = useState("");
   const [locationName, setLocationName] = useState("");
@@ -78,23 +76,33 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   }
 
   function onAudioFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setAudioBlob(file);
-    setAudioURL(URL.createObjectURL(file));
-    setAudioFileName(file.name);
+    const sel = e.target.files;
+    if (!sel) return;
+    const added = Array.from(sel).map((f) => ({
+      blob: f as Blob,
+      url: URL.createObjectURL(f),
+      name: f.name,
+    }));
+    setAudioFiles((p) => [...p, ...added].slice(0, 5));
     e.target.value = "";
   }
 
-  const canSubmit = text.trim().length > 0 || files.length > 0 || audioBlob !== null;
+  function removeAudio(i: number) {
+    setAudioFiles((p) => {
+      URL.revokeObjectURL(p[i].url);
+      return p.filter((_, j) => j !== i);
+    });
+  }
+
+  const canSubmit = text.trim().length > 0 || files.length > 0 || audioFiles.length > 0;
 
   async function doSubmit() {
     setError("");
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      if (audioBlob) {
-        formData.append("audio", audioBlob, audioFileName);
+      for (const a of audioFiles) {
+        formData.append("audio[]", a.blob, a.name);
       }
       for (const f of files) {
         formData.append("photos[]", f.file);
@@ -143,14 +151,15 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       {error && <p className="auth-error">{error}</p>}
 
       <form className="compose-form" onSubmit={handleSubmit}>
-        {(files.length > 0 || audioURL) && (
+        {(files.length > 0 || audioFiles.length > 0) && (
           <div className="compose-attachments">
-            {audioURL && (
+            {audioFiles.map((a, i) => (
               <AudioPlayer
-                src={audioURL}
-                onRemove={() => { setAudioBlob(null); setAudioURL(null); }}
+                key={i}
+                src={a.url}
+                onRemove={() => removeAudio(i)}
               />
-            )}
+            ))}
             {files.length > 0 && (
               <div className="compose-files">
                 {files.map((f, i) => (
@@ -209,13 +218,14 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             </button>
             <VoiceRecorder
               onRecording={(blob) => {
-                setAudioBlob(blob);
-                setAudioURL(URL.createObjectURL(blob));
-                setAudioFileName("recording.webm");
+                const url = URL.createObjectURL(blob);
+                setAudioFiles((p) => [...p, { blob, url, name: "recording.webm" }].slice(0, 5));
               }}
               compact
-              externalAudioURL={audioURL}
-              onClear={() => { setAudioBlob(null); setAudioURL(null); }}
+              externalAudioURL={audioFiles.length > 0 ? audioFiles[audioFiles.length - 1].url : null}
+              onClear={() => {
+                if (audioFiles.length > 0) removeAudio(audioFiles.length - 1);
+              }}
             />
           </div>
           <input
@@ -230,6 +240,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             ref={audioFileRef}
             type="file"
             accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.webm"
+            multiple
             style={{ display: "none" }}
             onChange={onAudioFile}
           />

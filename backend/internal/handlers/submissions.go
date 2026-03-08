@@ -76,28 +76,34 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 
 	maxSize := int64(h.cfg.MaxUploadSizeMB) * 1024 * 1024
 
-	// Save audio file
-	audioFile, err := c.FormFile("audio")
-	if err == nil {
-		path, size, err := h.media.SaveUploadedFile(audioFile, sub.ID, maxSize)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "audio upload failed: " + err.Error()})
+	// Save audio files
+	form, _ := c.MultipartForm()
+	if form != nil {
+		audioFiles := form.File["audio[]"]
+		if len(audioFiles) > 5 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "too many audio files: max 5 allowed"})
 			return
 		}
-		file := models.File{
-			EntityID:       sub.ID,
-			EntityCategory: models.EntitySubmission,
-			SubmissionID:   sub.ID,
-			ContributorID:  actor.ProfileID,
-			FileType:       1, // audio
-			Name:           path,
-			Size:           size,
+		for _, af := range audioFiles {
+			path, size, err := h.media.SaveUploadedFile(af, sub.ID, maxSize)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "audio upload failed: " + err.Error()})
+				return
+			}
+			file := models.File{
+				EntityID:       sub.ID,
+				EntityCategory: models.EntitySubmission,
+				SubmissionID:   sub.ID,
+				ContributorID:  actor.ProfileID,
+				FileType:       1, // audio
+				Name:           path,
+				Size:           size,
+			}
+			h.db.Create(&file)
 		}
-		h.db.Create(&file)
 	}
 
 	// Save photo files
-	form, _ := c.MultipartForm()
 	if form != nil {
 		photos := form.File["photos[]"]
 		if len(photos) > h.cfg.MaxPhotos {

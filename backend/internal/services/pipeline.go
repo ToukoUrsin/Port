@@ -460,9 +460,10 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 	var wg sync.WaitGroup
 	var transcriptErr, photoErr error
 
-	// Find audio file
-	var audioFile models.File
-	hasAudio := p.db.Where("submission_id = ? AND file_type = ?", submissionID, 1).First(&audioFile).Error == nil
+	// Find audio files
+	var audioFiles []models.File
+	p.db.Where("submission_id = ? AND file_type = ?", submissionID, 1).Find(&audioFiles)
+	hasAudio := len(audioFiles) > 0
 
 	// Find photo files
 	var photoFiles []models.File
@@ -477,7 +478,18 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 				return
 			}
 			p.db.Model(sub).Update("status", models.StatusTranscribing)
-			transcript, transcriptErr = p.transcription.Transcribe(ctx, audioFile.Name)
+			var parts []string
+			for _, af := range audioFiles {
+				t, tErr := p.transcription.Transcribe(ctx, af.Name)
+				if tErr != nil {
+					transcriptErr = tErr
+					return
+				}
+				if t != "" {
+					parts = append(parts, t)
+				}
+			}
+			transcript = strings.Join(parts, "\n\n")
 		}()
 	}
 
