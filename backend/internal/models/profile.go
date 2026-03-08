@@ -37,6 +37,7 @@ type Profile struct {
 	Role         int16              `gorm:"default:0;index" json:"role"`
 	Permissions  int64              `gorm:"default:0" json:"permissions"`
 	Tags         int64              `gorm:"default:0" json:"tags"`
+	Karma        int                `gorm:"default:0" json:"karma"`
 	Public       bool               `gorm:"default:false" json:"public"`
 	IsAdult      bool               `gorm:"default:false" json:"is_adult"`
 	Meta         JSONB[ProfileMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`

@@ -35,6 +35,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "home.loadError": "Artikkeleiden lataus epäonnistui. Yritä myöhemmin uudelleen.",
     "home.noArticles": "Ei artikkeleita vielä. Ole ensimmäinen kirjoittaja!",
     "home.anonymous": "Anonyymi",
+    "home.all": "Kaikki",
 
     // Filter chips
     "filter.clearAll": "Tyhjennä kaikki",
@@ -470,6 +471,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "home.loadError": "Failed to load articles. Please try again later.",
     "home.noArticles": "No articles yet. Be the first to contribute!",
     "home.anonymous": "Anonymous",
+    "home.all": "All",
 
     // Filter chips
     "filter.clearAll": "Clear all",

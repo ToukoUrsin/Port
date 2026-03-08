@@ -375,6 +375,9 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 	// Update location counters (propagate up hierarchy)
 	services.AdjustArticleCount(h.db, sub.LocationID, +1)
 
+	// Recalculate karma for the article owner
+	h.recalculateKarma(sub.OwnerID)
+
 	h.db.First(&sub, "id = ?", id)
 	c.JSON(http.StatusOK, sub)
 }

@@ -407,6 +407,10 @@ export default function ProfilePage() {
 
         <div className="profile-stats">
           <div className="profile-stat">
+            <span className="profile-stat__value">{profile?.karma ?? 0}</span>
+            <span className="profile-stat__label">{t("profile.karma")}</span>
+          </div>
+          <div className="profile-stat">
             <span className="profile-stat__value">{publishedPosts.length}</span>
             <span className="profile-stat__label">{t("profile.published")}</span>
           </div>

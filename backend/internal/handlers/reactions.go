@@ -53,6 +53,7 @@ func (h *Handler) ReactArticle(c *gin.Context) {
 	}).Create(&reaction)
 
 	counts := h.updateAndGetSubmissionReactions(subID)
+	h.recalculateKarma(sub.OwnerID)
 	h.cache.Delete(c.Request.Context(), "articles:"+subID.String())
 
 	// Notify article owner (async)
@@ -71,6 +72,12 @@ func (h *Handler) UnreactArticle(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
+	}
+
+	// Look up article owner for karma update
+	var sub models.Submission
+	if err := h.db.Select("owner_id").First(&sub, "id = ?", subID).Error; err == nil {
+		defer h.recalculateKarma(sub.OwnerID)
 	}
 
 	actor := services.ActorFromContext(c)

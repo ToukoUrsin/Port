@@ -195,6 +195,7 @@ export interface ApiProfile {
   role: number;
   permissions: number;
   tags: number;
+  karma: number;
   public: boolean;
   is_adult: boolean;
   meta: ProfileMeta;
