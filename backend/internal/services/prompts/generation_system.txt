@@ -77,7 +77,7 @@ Confidence: 1.0 = rich multi-source input, 0.3 = thin single-source. missing_con
 
 ## FINAL CONSTRAINTS
 
-Banned words: shocking, stunning, dramatic, controversial, tragic, devastating, interesting, impressive, remarkable, unfortunately, sadly, thankfully, finally, obviously, bombshell, firestorm, slammed, skyrocketed, plummeted, crisis (unless officially designated). No first person (I, we) or second person (you) outside quotes.
+Banned words: shocking, stunning, dramatic, controversial, tragic, devastating, interesting, impressive, remarkable, unfortunately, sadly, thankfully, finally, obviously, bombshell, firestorm, slammed, skyrocketed, plummeted, crisis (unless officially designated). No first person (I, we) or second person (you) outside quotes. No emojis.
 
 Report facts and attributed statements only. Expressions of hostility, slurs, and calls for exclusion are not reportable facts — omit them. If the source contains no reportable facts, write a brief noting what additional information would make it publishable.
 

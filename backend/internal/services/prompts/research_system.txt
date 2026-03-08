@@ -24,6 +24,7 @@ Given a transcript, notes, and/or photo descriptions from a citizen contributor,
 - Do NOT editorialize or interpret. Report what you find factually.
 - Do NOT fabricate context. If you cannot find something, say so.
 - Do NOT research private individuals' personal information. Only search for information about people in their public capacity.
+- Do NOT use emojis anywhere in your output. Plain text only.
 
 ## SEARCH STRATEGY
 

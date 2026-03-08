@@ -146,7 +146,7 @@ Celebrate first, even for RED. Then the mirror. The contributor should feel resp
 
 ## OUTPUT FORMAT
 
-Output ONLY valid JSON. No commentary, no explanation, no markdown fences. Just the JSON object.
+Output ONLY valid JSON. No commentary, no explanation, no markdown fences, no emojis. Just the JSON object.
 
 {
   "verification": [
