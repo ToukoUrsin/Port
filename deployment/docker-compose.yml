@@ -53,9 +53,7 @@ services:
       GEMINI_API_KEY: ${NEWS_GEMINI_API_KEY}
       ELEVENLABS_API_KEY: ${NEWS_ELEVENLABS_API_KEY}
       GENERATION_MODEL: gemini-3.1-pro-preview
-      GOOGLE_CLIENT_ID: 537452979916-q7l3jf1mnfjm9ked1ad30qr76rinob9l.apps.googleusercontent.com
-      GOOGLE_CLIENT_SECRET: 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
-      GOOGLE_REDIRECT_URL: https://news.minir.ai/api/auth/google/callback
+      GOOGLE_CLIENT_SECRET_FILE: /app/google_client_secret.json
       MEDIA_STORAGE_PATH: /app/uploads
       ALLOWED_ORIGINS: https://news.minir.ai
       TRUSTED_PROXIES: 172.18.0.0/16
@@ -66,6 +64,7 @@ services:
       GIN_MODE: release
     volumes:
       - news_uploads:/app/uploads
+      - ../backend/client_secret_537452979916-th8o417cqotnj76c1fbbequap0sjdc86.apps.googleusercontent.com.json:/app/google_client_secret.json:ro
     expose:
       - "8000"
     depends_on:

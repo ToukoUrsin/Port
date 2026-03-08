@@ -1,6 +1,8 @@
 package config
 
 import (
+	"encoding/json"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -59,6 +61,8 @@ type Config struct {
 	RateLimitWriteWindow  time.Duration
 	RateLimitReadMax      int
 	RateLimitReadWindow   time.Duration
+	RateLimitLocationMax    int
+	RateLimitLocationWindow time.Duration
 	RateLimitSSEMax       int
 	RateLimitEditorMult   float64
 	RateLimitAdminMult    float64
@@ -118,13 +122,67 @@ func Load() *Config {
 	cfg.RateLimitSearchWindow = parseDuration(env("RATE_LIMIT_SEARCH_WINDOW", "1m"), time.Minute)
 	cfg.RateLimitWriteMax = envInt("RATE_LIMIT_WRITE_MAX", 20)
 	cfg.RateLimitWriteWindow = parseDuration(env("RATE_LIMIT_WRITE_WINDOW", "1m"), time.Minute)
-	cfg.RateLimitReadMax = envInt("RATE_LIMIT_READ_MAX", 60)
+	cfg.RateLimitReadMax = envInt("RATE_LIMIT_READ_MAX", 200)
 	cfg.RateLimitReadWindow = parseDuration(env("RATE_LIMIT_READ_WINDOW", "1m"), time.Minute)
+	cfg.RateLimitLocationMax = envInt("RATE_LIMIT_LOCATION_MAX", 120)
+	cfg.RateLimitLocationWindow = parseDuration(env("RATE_LIMIT_LOCATION_WINDOW", "1m"), time.Minute)
 	cfg.RateLimitSSEMax = envInt("RATE_LIMIT_SSE_MAX", 3)
 	cfg.RateLimitEditorMult = envFloat("RATE_LIMIT_EDITOR_MULT", 2.0)
 	cfg.RateLimitAdminMult = envFloat("RATE_LIMIT_ADMIN_MULT", 5.0)
 
+	// Load Google OAuth from client_secret JSON file if env vars are empty
+	if cfg.GoogleClientID == "" {
+		loadGoogleClientSecretJSON(cfg)
+	}
+
 	return cfg
+}
+
+// loadGoogleClientSecretJSON reads a Google OAuth client_secret JSON file
+// and populates the config's Google fields.
+func loadGoogleClientSecretJSON(cfg *Config) {
+	path := env("GOOGLE_CLIENT_SECRET_FILE", "")
+	if path == "" {
+		// Auto-discover: look for client_secret_*.json in working dir
+		entries, err := os.ReadDir(".")
+		if err != nil {
+			return
+		}
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), "client_secret_") && strings.HasSuffix(e.Name(), ".json") {
+				path = e.Name()
+				break
+			}
+		}
+	}
+	if path == "" {
+		return
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Printf("config: failed to read Google client secret file %s: %v", path, err)
+		return
+	}
+
+	var f struct {
+		Web struct {
+			ClientID     string   `json:"client_id"`
+			ClientSecret string   `json:"client_secret"`
+			RedirectURIs []string `json:"redirect_uris"`
+		} `json:"web"`
+	}
+	if err := json.Unmarshal(data, &f); err != nil {
+		log.Printf("config: failed to parse Google client secret file: %v", err)
+		return
+	}
+
+	cfg.GoogleClientID = f.Web.ClientID
+	cfg.GoogleSecret = f.Web.ClientSecret
+	if len(f.Web.RedirectURIs) > 0 {
+		cfg.GoogleRedirect = f.Web.RedirectURIs[0]
+	}
+	log.Printf("config: loaded Google OAuth from %s (client_id=%s...)", path, cfg.GoogleClientID[:20])
 }
 
 func env(key, fallback string) string {

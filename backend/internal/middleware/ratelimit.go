@@ -72,6 +72,7 @@ func NewRateLimiter(client *redis.Client, cfg *config.Config) *RateLimiter {
 	searchTier := Tier{Name: "search", Max: cfg.RateLimitSearchMax, Window: cfg.RateLimitSearchWindow}
 	writeTier := Tier{Name: "write", Max: cfg.RateLimitWriteMax, Window: cfg.RateLimitWriteWindow}
 	readTier := Tier{Name: "read", Max: cfg.RateLimitReadMax, Window: cfg.RateLimitReadWindow}
+	locationTier := Tier{Name: "location", Max: cfg.RateLimitLocationMax, Window: cfg.RateLimitLocationWindow}
 	sseTier := Tier{Name: "sse", Max: cfg.RateLimitSSEMax, Window: 0}
 
 	routes := map[string]Tier{
@@ -91,6 +92,9 @@ func NewRateLimiter(client *redis.Client, cfg *config.Config) *RateLimiter {
 		"POST /api/submissions/:id/appeal":   writeTier,
 		"POST /api/follows":              writeTier,
 		"POST /api/locations":            writeTier,
+		"GET /api/locations":             locationTier,
+		"GET /api/locations/:slug":       locationTier,
+		"GET /api/locations/:slug/articles": locationTier,
 	}
 
 	methodAll := map[string]Tier{

@@ -214,10 +214,9 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 		replies := replyCountMap[articles[i].ID]
 		base := computeBaseScore(&articles[i], karma, replies)
 
-		// Override freshness for boosted articles (uses pre-computed BoostScore)
+		// Additive boost for promoted articles — directly added to score
 		if articles[i].BoostScore > 0 {
-			actualFreshness := computeFreshness(articles[i].CreatedAt)
-			base = base - wFreshness*actualFreshness + wFreshness*articles[i].BoostScore
+			base += articles[i].BoostScore
 		}
 
 		personalBoost := computePersonalBoost(&articles[i], perso)
@@ -230,7 +229,8 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 		return scored[i].score > scored[j].score
 	})
 
-	scored = applyDiversityCap(scored, 2)
+	// Diversity cap disabled — let boosted articles rank naturally
+	// scored = applyDiversityCap(scored, 2)
 
 	// Reorder articles slice in-place
 	reordered := make([]models.Submission, len(scored))
