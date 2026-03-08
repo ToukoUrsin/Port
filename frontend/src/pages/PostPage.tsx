@@ -189,15 +189,6 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
           disabled={isSubmitting}
         />
 
-        <div className="compose-location">
-          <LocationPicker
-            value={locationId}
-            onChange={(id, name) => { setLocationId(id); setLocationName(name); }}
-            defaultName={locationName}
-            placeholder={t("post.whereHappened") || "Where did this happen?"}
-          />
-        </div>
-
         <div className="compose-toolbar">
           <div className="compose-actions">
             <button
@@ -266,6 +257,15 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
           </div>
         </div>
       </form>
+
+      <div className="compose-location-standalone">
+        <LocationPicker
+          value={locationId}
+          onChange={(id, name) => { setLocationId(id); setLocationName(name); }}
+          defaultName={locationName}
+          placeholder={t("post.whereHappened") || "Where did this happen?"}
+        />
+      </div>
 
       <PublicProfileModal
         open={showPublicModal}

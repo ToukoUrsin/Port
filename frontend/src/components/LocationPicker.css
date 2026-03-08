@@ -10,12 +10,13 @@
   width: 100%;
   padding: var(--space-2) var(--space-3);
   background: none;
-  border: none;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
   cursor: pointer;
   font-size: var(--text-sm);
   color: var(--color-text-tertiary);
   font-family: var(--font-sans);
-  transition: color var(--transition-fast);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 .loc-picker-trigger:hover {
   color: var(--color-text-secondary);
@@ -53,7 +54,9 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--color-gray-200);
-  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: transparent;
   z-index: var(--z-dropdown);
 }
 
@@ -103,7 +106,7 @@
   transition: background var(--transition-fast);
 }
 .loc-picker-option:hover {
-  background: var(--color-surface-hover);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .loc-picker-option-main {
@@ -127,7 +130,7 @@
 .loc-picker-option-path {
   font-size: var(--text-xs);
   color: var(--color-text-tertiary);
-  padding-left: calc(14px + var(--space-2));
+  padding-left: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

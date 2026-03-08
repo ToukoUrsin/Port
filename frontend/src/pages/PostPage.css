@@ -135,9 +135,9 @@
   color: var(--color-text-tertiary);
 }
 
-/* Location picker row */
-.compose-location {
-  border-top: 1px solid var(--color-gray-100);
+/* Location picker — standalone below the form card */
+.compose-location-standalone {
+  margin-top: var(--space-3);
 }
 
 /* Soft tips below form */

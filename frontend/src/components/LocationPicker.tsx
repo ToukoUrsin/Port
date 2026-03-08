@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { MapPin, ChevronDown, X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { getLocations } from "@/lib/api";
 import type { ApiLocation } from "@/lib/types";
 import "./LocationPicker.css";
@@ -107,7 +107,6 @@ export default function LocationPicker({
             setTimeout(() => inputRef.current?.focus(), 50);
           }}
         >
-          <MapPin size={16} />
           <span className="loc-picker-value">
             {selectedName || placeholder}
           </span>
@@ -154,7 +153,6 @@ export default function LocationPicker({
                     onClick={() => handleSelect(loc)}
                   >
                     <div className="loc-picker-option-main">
-                      <MapPin size={14} />
                       <span className="loc-picker-option-name">{loc.name}</span>
                       <span className="loc-picker-option-level">
                         {LEVEL_LABELS[loc.level] || ""}
