@@ -263,7 +263,10 @@
   color: var(--color-text-secondary);
   text-decoration: none;
   white-space: nowrap;
+  border: none;
   border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
