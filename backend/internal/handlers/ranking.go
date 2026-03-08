@@ -22,7 +22,7 @@ const (
 )
 
 // --- LocalNews freshness boost ---
-const boostFreshness = 0.5
+const boostFreshness = 0.3
 
 // boostCutoff: only boost articles created before this date (the original editorial batch)
 var boostCutoff = time.Date(2026, 3, 8, 0, 0, 0, 0, time.UTC)
@@ -251,7 +251,7 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 		return scored[i].score > scored[j].score
 	})
 
-	applyDiversityCap(scored, systemOwnerIDs, 3)
+	applyDiversityCap(scored, systemOwnerIDs, 2)
 
 	// Reorder articles slice in-place
 	reordered := make([]models.Submission, len(scored))
