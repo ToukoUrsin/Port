@@ -242,7 +242,7 @@ func TestDetectMIME(t *testing.T) {
 
 func TestBuildGenerationUserPrompt(t *testing.T) {
 	t.Run("full input", func(t *testing.T) {
-		input := GenerationInput{
+		input := &PipelineContext{
 			Transcript:        "The mayor spoke about the budget.",
 			Notes:             "Budget meeting at town hall.",
 			PhotoDescriptions: []string{"Photo of town hall exterior"},
@@ -265,7 +265,7 @@ func TestBuildGenerationUserPrompt(t *testing.T) {
 	})
 
 	t.Run("notes only — no transcript or photos sections", func(t *testing.T) {
-		input := GenerationInput{
+		input := &PipelineContext{
 			Notes:       "Just notes.",
 			TownContext: "Test town",
 		}
@@ -283,7 +283,7 @@ func TestBuildGenerationUserPrompt(t *testing.T) {
 	})
 
 	t.Run("refinement includes previous article and direction", func(t *testing.T) {
-		input := GenerationInput{
+		input := &PipelineContext{
 			Transcript:      "transcript",
 			TownContext:     "town",
 			PreviousArticle: "# Old Article\n\nOld body.",
@@ -301,7 +301,7 @@ func TestBuildGenerationUserPrompt(t *testing.T) {
 }
 
 func TestBuildReviewUserPrompt(t *testing.T) {
-	input := ReviewInput{
+	input := &PipelineContext{
 		ArticleMarkdown:   "# Test\n\nArticle body.",
 		Transcript:        "Source transcript.",
 		Notes:             "Source notes.",

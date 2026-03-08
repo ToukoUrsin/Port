@@ -13,24 +13,13 @@ import (
 	"github.com/localnews/backend/internal/models"
 )
 
-type GenerationInput struct {
-	Transcript            string
-	Notes                 string
-	PhotoDescriptions     []string
-	TownContext           string
-	ResearchContext       string // web-sourced background research (empty if research skipped/failed)
-	ClarificationAnswers  string // contributor answers to pre-generation questions
-	PreviousArticle       string // empty on first run
-	Direction             string // empty on first run
-}
-
 type GenerationOutput struct {
 	ArticleMarkdown string
 	Metadata        models.ArticleMetadata
 }
 
 type GenerationService interface {
-	Generate(ctx context.Context, input GenerationInput) (*GenerationOutput, error)
+	Generate(ctx context.Context, pctx *PipelineContext) (*GenerationOutput, error)
 	ModelName() string
 }
 
@@ -42,16 +31,16 @@ func NewStubGenerationService() *StubGenerationService {
 
 func (s *StubGenerationService) ModelName() string { return "stub" }
 
-func (s *StubGenerationService) Generate(ctx context.Context, input GenerationInput) (*GenerationOutput, error) {
+func (s *StubGenerationService) Generate(ctx context.Context, pctx *PipelineContext) (*GenerationOutput, error) {
 	time.Sleep(3 * time.Second)
 
 	return &GenerationOutput{
-		ArticleMarkdown: "# City Council Debates $4.2M Budget\n\nThe Kirkkonummi city council convened Tuesday evening for a budget discussion that drew approximately 30 residents to the chamber.\n\n> \"Our children deserve better than this.\"\n> — Korhonen, council member\n\nThe budget's specific provisions were not immediately available. Council members' reasoning for their votes was not available at press time.\n\n![Residents at the council meeting](photo_1)",
+		ArticleMarkdown: "# Community Meeting Draws Residents\n\n[Stub] A local community meeting drew residents to discuss matters of public interest.\n\n> \"We need to work together on this.\"\n> — Local resident\n\n[Stub] Details of the meeting's specific outcomes were not immediately available.\n\n![Residents at the meeting](photo_1)",
 		Metadata: models.ArticleMetadata{
 			ChosenStructure: "news_report",
-			Category:        "council",
-			Confidence:      0.7,
-			MissingContext:  []string{"What specifically does the budget cut?", "How did the other council members vote?"},
+			Category:        "community",
+			Confidence:      0.5,
+			MissingContext:  []string{"[Stub] Specific details not available in stub mode"},
 		},
 	}, nil
 }

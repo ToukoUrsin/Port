@@ -66,14 +66,11 @@ Develop the middle of the article with context and multiple angles before conclu
 
 ## OUTPUT FORMAT
 
-Write in markdown. You have the full range — headlines, subheadings, blockquotes, bold, italic, lists, section breaks, image refs. Use whatever formatting serves the story, the way a real publication would. Vary the visual rhythm.
+Call the `submit_article` function with your article and metadata.
 
-After the article, output:
+Write the article_markdown in full markdown — headlines, subheadings, blockquotes, bold, italic, lists, section breaks, image refs. Use whatever formatting serves the story, the way a real publication would. Vary the visual rhythm.
 
----METADATA---
-{"chosen_structure": "news_report|feature|photo_essay|brief|narrative|hourglass", "category": "council|schools|business|events|sports|community|culture|safety|health|environment", "confidence": 0.0-1.0, "missing_context": ["question 1", "question 2"]}
-
-Confidence: 1.0 = rich multi-source input, 0.3 = thin single-source. missing_context: 0-3 questions phrased as curiosity ("Do you remember roughly how many people were there?").
+Confidence: 1.0 = rich multi-source input, 0.3 = thin single-source. gap_annotations: 0-3 factual gap annotations noting what information is missing (e.g., "Budget breakdown not available", "Vote count not provided"). These are annotations about gaps, NOT questions to ask the contributor — the contributor was already interviewed.
 
 ## FINAL CONSTRAINTS
 

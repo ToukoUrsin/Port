@@ -9,20 +9,12 @@ import (
 	"time"
 )
 
-type QuestioningInput struct {
-	Transcript        string
-	Notes             string
-	PhotoDescriptions []string
-	TownContext       string
-	ResearchContext   string
-}
-
 type QuestioningOutput struct {
 	Questions []string `json:"questions"`
 }
 
 type QuestioningService interface {
-	Analyze(ctx context.Context, input QuestioningInput) (*QuestioningOutput, error)
+	Analyze(ctx context.Context, pctx *PipelineContext) (*QuestioningOutput, error)
 }
 
 // StubQuestioningService returns 2 mock questions after 1s delay.
@@ -32,12 +24,12 @@ func NewStubQuestioningService() *StubQuestioningService {
 	return &StubQuestioningService{}
 }
 
-func (s *StubQuestioningService) Analyze(ctx context.Context, input QuestioningInput) (*QuestioningOutput, error) {
+func (s *StubQuestioningService) Analyze(ctx context.Context, pctx *PipelineContext) (*QuestioningOutput, error) {
 	time.Sleep(1 * time.Second)
 	return &QuestioningOutput{
 		Questions: []string{
-			"Can you estimate how many people were present?",
-			"Did anyone else comment or react to what happened?",
+			"[Stub] Can you estimate how many people were present?",
+			"[Stub] Did anyone else comment or react to what happened?",
 		},
 	}, nil
 }

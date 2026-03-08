@@ -16,8 +16,4 @@ Rules:
 - Return 2–5 questions, ordered by impact (most important first)
 - Keep questions concise — one sentence each
 
-Output ONLY a JSON object in this exact format:
-{"questions": ["question 1", "question 2", ...]}
-
-If no questions are needed, return:
-{"questions": []}
+Call the `submit_questions` function with your analysis results. If no questions are needed, call it with an empty questions array.

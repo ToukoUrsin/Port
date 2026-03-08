@@ -1,9 +1,4 @@
 // Gemini-backed article generation service.
-//
-// Plan: 1_what/article_engine/spec/build/PROMPTS_SPEC.md
-//
-// Changes:
-// - 2026-03-07: Initial implementation
 package services
 
 import (
@@ -16,6 +11,33 @@ import (
 	"github.com/localnews/backend/internal/services/prompts"
 	"google.golang.org/genai"
 )
+
+var generationTool = &genai.Tool{
+	FunctionDeclarations: []*genai.FunctionDeclaration{{
+		Name:        "submit_article",
+		Description: "Submit the completed article with metadata",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"article_markdown":  {Type: genai.TypeString, Description: "The full article in markdown format"},
+				"chosen_structure":  {Type: genai.TypeString, Enum: []string{"news_report", "feature", "photo_essay", "brief", "narrative", "hourglass"}},
+				"category":          {Type: genai.TypeString, Enum: []string{"council", "schools", "business", "events", "sports", "community", "culture", "safety", "health", "environment"}},
+				"confidence":        {Type: genai.TypeNumber, Description: "Confidence score 0.0-1.0"},
+				"gap_annotations":   {Type: genai.TypeArray, Items: &genai.Schema{Type: genai.TypeString}, Description: "Factual gap annotations (not questions)"},
+			},
+			Required: []string{"article_markdown", "chosen_structure", "category", "confidence", "gap_annotations"},
+		},
+	}},
+}
+
+// generationFuncResult is the intermediate struct for unmarshaling the submit_article function call.
+type generationFuncResult struct {
+	ArticleMarkdown string   `json:"article_markdown"`
+	ChosenStructure string   `json:"chosen_structure"`
+	Category        string   `json:"category"`
+	Confidence      float64  `json:"confidence"`
+	GapAnnotations  []string `json:"gap_annotations"`
+}
 
 type GeminiGenerationService struct {
 	client *genai.Client
@@ -31,8 +53,8 @@ func NewGeminiGenerationService(client *genai.Client, model string) *GeminiGener
 
 func (s *GeminiGenerationService) ModelName() string { return s.model }
 
-func (s *GeminiGenerationService) Generate(ctx context.Context, input GenerationInput) (*GenerationOutput, error) {
-	userPrompt := buildGenerationUserPrompt(input)
+func (s *GeminiGenerationService) Generate(ctx context.Context, pctx *PipelineContext) (*GenerationOutput, error) {
+	userPrompt := buildGenerationUserPrompt(pctx)
 
 	resp, err := s.client.Models.GenerateContent(ctx, s.model,
 		[]*genai.Content{{
@@ -43,6 +65,12 @@ func (s *GeminiGenerationService) Generate(ctx context.Context, input Generation
 			SystemInstruction: &genai.Content{
 				Parts: []*genai.Part{genai.NewPartFromText(prompts.GenerationSystem)},
 			},
+			Tools: []*genai.Tool{generationTool},
+			ToolConfig: &genai.ToolConfig{
+				FunctionCallingConfig: &genai.FunctionCallingConfig{
+					Mode: genai.FunctionCallingConfigModeAny,
+				},
+			},
 			ThinkingConfig: &genai.ThinkingConfig{
 				ThinkingLevel: genai.ThinkingLevelHigh,
 			},
@@ -52,61 +80,92 @@ func (s *GeminiGenerationService) Generate(ctx context.Context, input Generation
 		return nil, fmt.Errorf("gemini generation: %w", err)
 	}
 
-	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("gemini generation: empty response")
+	_, args, fcErr := extractFunctionCall(resp)
+	if fcErr != nil {
+		// Fallback: try text extraction and old-style parsing
+		text, textErr := extractText(resp)
+		if textErr != nil {
+			return nil, fmt.Errorf("gemini generation: no function call or text: %w", fcErr)
+		}
+		return parseGenerationOutput(text)
 	}
 
-	raw := resp.Candidates[0].Content.Parts[0].Text
-	return parseGenerationOutput(raw)
+	result, unmarshalErr := unmarshalFunctionArgs[generationFuncResult](args)
+	if unmarshalErr != nil {
+		return nil, fmt.Errorf("gemini generation: unmarshal function args: %w", unmarshalErr)
+	}
+
+	// Apply defaults
+	if result.ChosenStructure == "" {
+		result.ChosenStructure = "news_report"
+	}
+	if result.Category == "" {
+		result.Category = "community"
+	}
+	if result.Confidence == 0 {
+		result.Confidence = 0.5
+	}
+
+	return &GenerationOutput{
+		ArticleMarkdown: strings.TrimSpace(result.ArticleMarkdown),
+		Metadata: models.ArticleMetadata{
+			ChosenStructure: result.ChosenStructure,
+			Category:        result.Category,
+			Confidence:      result.Confidence,
+			MissingContext:  result.GapAnnotations,
+		},
+	}, nil
 }
 
-func buildGenerationUserPrompt(input GenerationInput) string {
+func buildGenerationUserPrompt(pctx *PipelineContext) string {
 	var b strings.Builder
 
-	if input.Transcript != "" {
+	if pctx.Transcript != "" {
 		b.WriteString("Transcript: ")
-		b.WriteString(input.Transcript)
+		b.WriteString(pctx.Transcript)
 		b.WriteString("\n\n")
 	}
-	if input.Notes != "" {
+	if pctx.Notes != "" {
 		b.WriteString("Notes: ")
-		b.WriteString(input.Notes)
+		b.WriteString(pctx.Notes)
 		b.WriteString("\n\n")
 	}
-	if len(input.PhotoDescriptions) > 0 {
+	if len(pctx.PhotoDescriptions) > 0 {
 		b.WriteString("Photo descriptions: ")
-		b.WriteString(strings.Join(input.PhotoDescriptions, "\n"))
+		b.WriteString(strings.Join(pctx.PhotoDescriptions, "\n"))
 		b.WriteString("\n\n")
 	}
 
-	if input.ResearchContext != "" {
+	if pctx.ResearchContext != "" {
 		b.WriteString("Background research (verified via web search — use where relevant, always attribute): ")
-		b.WriteString(input.ResearchContext)
+		b.WriteString(pctx.ResearchContext)
 		b.WriteString("\n\n")
 	}
 
-	if input.ClarificationAnswers != "" {
+	if pctx.ClarificationAnswers != "" {
 		b.WriteString("Contributor clarifications (answers to follow-up questions — treat as primary source material):\n")
-		b.WriteString(input.ClarificationAnswers)
+		b.WriteString(pctx.ClarificationAnswers)
 		b.WriteString("\n\n")
 	}
 
-	if input.TownContext != "" {
+	if pctx.TownContext != "" {
 		b.WriteString("Town context (background reference only — do NOT use to add geographic claims or details not in the source material): ")
-		b.WriteString(input.TownContext)
+		b.WriteString(pctx.TownContext)
 	}
 
-	if input.PreviousArticle != "" {
+	if pctx.PreviousArticle != "" {
 		b.WriteString("\n\nPrevious article:\n")
-		b.WriteString(input.PreviousArticle)
+		b.WriteString(pctx.PreviousArticle)
 		b.WriteString("\n\nThe contributor says: ")
-		b.WriteString(input.Direction)
+		b.WriteString(pctx.Direction)
 		b.WriteString("\n\nRegenerate the article incorporating the contributor's direction. Keep what works, change what they asked for. Do not lose information from the original sources.")
 	}
 
 	return b.String()
 }
 
+// parseGenerationOutput is the fallback parser for when function calling doesn't work.
+// It splits on ---METADATA--- delimiter and parses JSON metadata.
 func parseGenerationOutput(raw string) (*GenerationOutput, error) {
 	article, metaJSON := splitMetadata(raw)
 
@@ -114,7 +173,6 @@ func parseGenerationOutput(raw string) (*GenerationOutput, error) {
 	if metaJSON != "" {
 		cleaned := stripCodeFences(metaJSON)
 		if err := json.Unmarshal([]byte(cleaned), &metadata); err != nil {
-			// Fallback: try to extract first JSON object
 			if start := strings.Index(cleaned, "{"); start >= 0 {
 				if end := strings.LastIndex(cleaned, "}"); end > start {
 					_ = json.Unmarshal([]byte(cleaned[start:end+1]), &metadata)
@@ -123,7 +181,6 @@ func parseGenerationOutput(raw string) (*GenerationOutput, error) {
 		}
 	}
 
-	// Apply defaults if parsing failed
 	if metadata.ChosenStructure == "" {
 		metadata.ChosenStructure = "news_report"
 	}
@@ -141,18 +198,15 @@ func parseGenerationOutput(raw string) (*GenerationOutput, error) {
 }
 
 func splitMetadata(raw string) (article string, metaJSON string) {
-	// Try exact delimiter first
 	delimiters := []string{"---METADATA---", "--- METADATA ---", "---metadata---"}
 	for _, d := range delimiters {
 		if idx := strings.Index(raw, d); idx >= 0 {
 			return raw[:idx], raw[idx+len(d):]
 		}
 	}
-	// Try markdown heading variant
 	if idx := strings.Index(raw, "## METADATA"); idx >= 0 {
 		return raw[:idx], raw[idx+len("## METADATA"):]
 	}
-	// No delimiter found — everything is article
 	return raw, ""
 }
 

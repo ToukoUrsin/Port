@@ -32,29 +32,29 @@ func (m *mockTranscription) Transcribe(_ context.Context, audioPath string) (str
 
 type mockGeneration struct {
 	called bool
-	input  GenerationInput
+	input  *PipelineContext
 	result *GenerationOutput
 	err    error
 }
 
 func (m *mockGeneration) ModelName() string { return "mock" }
 
-func (m *mockGeneration) Generate(_ context.Context, input GenerationInput) (*GenerationOutput, error) {
+func (m *mockGeneration) Generate(_ context.Context, pctx *PipelineContext) (*GenerationOutput, error) {
 	m.called = true
-	m.input = input
+	m.input = pctx
 	return m.result, m.err
 }
 
 type mockReview struct {
 	called bool
-	input  ReviewInput
+	input  *PipelineContext
 	result *models.ReviewResult
 	err    error
 }
 
-func (m *mockReview) Review(_ context.Context, input ReviewInput) (*models.ReviewResult, error) {
+func (m *mockReview) Review(_ context.Context, pctx *PipelineContext) (*models.ReviewResult, error) {
 	m.called = true
-	m.input = input
+	m.input = pctx
 	return m.result, m.err
 }
 
@@ -73,14 +73,14 @@ func (m *mockPhotoDescription) Describe(_ context.Context, photoPath string) (st
 
 type mockResearch struct {
 	called bool
-	input  ResearchInput
+	input  *PipelineContext
 	result *models.ResearchResult
 	err    error
 }
 
-func (m *mockResearch) Research(_ context.Context, input ResearchInput) (*models.ResearchResult, error) {
+func (m *mockResearch) Research(_ context.Context, pctx *PipelineContext) (*models.ResearchResult, error) {
 	m.called = true
-	m.input = input
+	m.input = pctx
 	return m.result, m.err
 }
 
@@ -236,15 +236,15 @@ func collectEvents(events chan PipelineEvent) []PipelineEvent {
 // mockQuestioning returns no questions so the pipeline continues without pausing.
 type mockQuestioning struct{}
 
-func (m *mockQuestioning) Analyze(ctx context.Context, input QuestioningInput) (*QuestioningOutput, error) {
+func (m *mockQuestioning) Analyze(ctx context.Context, pctx *PipelineContext) (*QuestioningOutput, error) {
 	return &QuestioningOutput{Questions: []string{}}, nil
 }
 
 func defaultResearchResult() *models.ResearchResult {
 	return &models.ResearchResult{
 		Context: "Background: The council met on March 4.",
-		Sources: []models.WebSource{{Title: "Kirkkonummi Council", URL: "https://kirkkonummi.fi"}},
-		Queries: []string{"kirkkonummi council"},
+		Sources: []models.WebSource{{Title: "Local Council", URL: "https://example.com/council"}},
+		Queries: []string{"local council meeting"},
 	}
 }
 
@@ -1006,7 +1006,7 @@ func TestPipeline_ResearchContext_PassedToGeneration(t *testing.T) {
 	research := &mockResearch{result: &models.ResearchResult{
 		Context: "The council budget is EUR 245 million.",
 		Sources: []models.WebSource{{Title: "Budget", URL: "https://example.com"}},
-		Queries: []string{"kirkkonummi budget"},
+		Queries: []string{"council budget"},
 	}}
 
 	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})

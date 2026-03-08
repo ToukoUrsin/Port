@@ -35,17 +35,6 @@ Given a transcript, notes, and/or photo descriptions from a citizen contributor,
 
 ## OUTPUT FORMAT
 
-Output ONLY valid JSON. No commentary, no explanation, no markdown fences. Just the JSON object.
+Call the `submit_research` function with your findings. The context field should be comprehensive but concise — include only information that would genuinely help a journalist write a better article. Do not pad with generic information.
 
-{
-  "context": "A multi-paragraph summary of all relevant research findings. Each finding should note its source. Format as readable text that a journalist can quickly scan. Group findings by topic.",
-  "sources": [
-    {"title": "Source page title", "url": "https://example.com/source"}
-  ],
-  "queries": ["search query 1", "search query 2"]
-}
-
-The context field should be comprehensive but concise. Include only information that would genuinely help a journalist write a better article. Do not pad with generic information.
-
-If the source material is too thin to research (e.g., "I saw a nice sunset"), return minimal results:
-{"context": "", "sources": [], "queries": []}
+If the source material is too thin to research (e.g., "I saw a nice sunset"), call the function with an empty context, empty sources array, and empty queries array.

@@ -21,5 +21,5 @@ func NewStubPhotoDescriptionService() *StubPhotoDescriptionService {
 }
 
 func (s *StubPhotoDescriptionService) Describe(ctx context.Context, photoPath string) (string, error) {
-	return "A photo showing a local scene in Kirkkonummi. Several people are visible in an indoor setting.", nil
+	return "A photo showing a local scene. Several people are visible in an indoor setting.", nil
 }

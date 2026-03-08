@@ -160,12 +160,13 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 		p.db.Model(&sub).Update("status", models.StatusResearching)
 
-		rr, researchErr := p.researcher.Research(ctx, ResearchInput{
+		researchPctx := &PipelineContext{
 			Transcript:        transcript,
 			Notes:             sub.Description,
 			PhotoDescriptions: photoDescs,
 			TownContext:       townContext,
-		})
+		}
+		rr, researchErr := p.researcher.Research(ctx, researchPctx)
 		if researchErr != nil {
 			log.Printf("research failed for submission %s: %v", submissionID, researchErr)
 		} else if rr != nil {
@@ -176,19 +177,26 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
+	// Build PipelineContext
+	pctx := &PipelineContext{
+		Transcript:        transcript,
+		Notes:             sub.Description,
+		PhotoDescriptions: photoDescs,
+		PhotoFileURLs:     photoFileURLs,
+		TownContext:       townContext,
+		ResearchContext:   researchContext,
+	}
+	if researchResult != nil {
+		pctx.ResearchSources = researchResult.Sources
+	}
+
 	// QUESTIONING — ask clarification questions before generation (skip during refinement and question-resume)
 	if sub.Status != models.StatusRefining && sub.Status != models.StatusQuestioning {
 		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "questioning", Message: "Analyzing for follow-up questions..."}) {
 			return
 		}
 
-		qOutput, qErr := p.questioning.Analyze(ctx, QuestioningInput{
-			Transcript:        transcript,
-			Notes:             sub.Description,
-			PhotoDescriptions: photoDescs,
-			TownContext:       townContext,
-			ResearchContext:   researchContext,
-		})
+		qOutput, qErr := p.questioning.Analyze(ctx, pctx)
 		if qErr != nil {
 			log.Printf("questioning failed for submission %s: %v", submissionID, qErr)
 			// Non-fatal: continue without questions
@@ -231,29 +239,26 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	}
 	p.db.Model(&sub).Update("status", models.StatusGenerating)
 
-	genInput := GenerationInput{
-		Transcript:        transcript,
-		Notes:             sub.Description,
-		PhotoDescriptions: photoDescs,
-		TownContext:       townContext,
-		ResearchContext:   researchContext,
-	}
-
 	// Fold in clarification answers from questioning stage
 	if len(sub.Meta.V.Questions) > 0 {
-		genInput.ClarificationAnswers = formatQAPairs(sub.Meta.V.Questions)
+		pctx.ClarificationAnswers = formatQAPairs(sub.Meta.V.Questions)
+		for _, qa := range sub.Meta.V.Questions {
+			if !qa.Skipped && qa.Answer != "" {
+				pctx.QuestionsAsked = append(pctx.QuestionsAsked, qa.Question)
+			}
+		}
 	}
 
 	// If refinement, add previous article + direction
 	if sub.Meta.V.ArticleMarkdown != "" {
-		genInput.PreviousArticle = sub.Meta.V.ArticleMarkdown
+		pctx.PreviousArticle = sub.Meta.V.ArticleMarkdown
 		if len(sub.Meta.V.Versions) > 0 {
 			latest := sub.Meta.V.Versions[len(sub.Meta.V.Versions)-1]
-			genInput.Direction = latest.ContributorInput
+			pctx.Direction = latest.ContributorInput
 		}
 	}
 
-	genOutput, err := p.generation.Generate(ctx, genInput)
+	genOutput, err := p.generation.Generate(ctx, pctx)
 	if err != nil {
 		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrGeneration})
 		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "generating", Message: fmt.Sprintf("Generation failed: %v", err)})
@@ -270,18 +275,22 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		"word_count":      wordCount,
 	}})
 
+	// Update pipeline context with generation outputs
+	pctx.ArticleMarkdown = genOutput.ArticleMarkdown
+	pctx.Metadata = genOutput.Metadata
+
+	// Collect gap annotations as additional questions asked
+	for _, gap := range genOutput.Metadata.MissingContext {
+		pctx.QuestionsAsked = append(pctx.QuestionsAsked, gap)
+	}
+
 	// REVIEW
 	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}) {
 		return
 	}
 	p.db.Model(&sub).Update("status", models.StatusReviewing)
 
-	reviewResult, err := p.review.Review(ctx, ReviewInput{
-		ArticleMarkdown:   genOutput.ArticleMarkdown,
-		Transcript:        transcript,
-		Notes:             sub.Description,
-		PhotoDescriptions: photoDescs,
-	})
+	reviewResult, err := p.review.Review(ctx, pctx)
 	if err != nil {
 		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrReview})
 		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "reviewing", Message: fmt.Sprintf("Review failed: %v", err)})
