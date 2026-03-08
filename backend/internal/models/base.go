@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Timestamps struct {
@@ -37,4 +39,18 @@ func (j JSONB[T]) MarshalJSON() ([]byte, error) {
 
 func (j *JSONB[T]) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, &j.V)
+}
+
+// NewJSONB creates a JSONB wrapper with the given value.
+func NewJSONB[T any](v T) JSONB[T] {
+	return JSONB[T]{V: v}
+}
+
+// Well-known IDs for agent system.
+func EspooLocationID() uuid.UUID {
+	return uuid.MustParse("b1000000-0000-0000-0000-000000000011")
+}
+
+func AgentAdminID() uuid.UUID {
+	return uuid.MustParse("b0000000-0000-0000-0000-000000000099")
 }

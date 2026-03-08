@@ -102,3 +102,10 @@ const (
 	LevelRegion    int16 = 2 // state, province, lan
 	LevelCity      int16 = 3
 )
+
+// --- System account names ---
+var SystemAccountNames = map[string]bool{"LocalNews": true}
+
+func IsSystemAccount(profileName string) bool {
+	return SystemAccountNames[profileName]
+}

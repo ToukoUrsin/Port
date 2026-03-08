@@ -87,12 +87,15 @@ func (s *AccessService) CanPublishSubmission(actor Actor, sub *models.Submission
 	if sub.Status != models.StatusReady {
 		return false
 	}
-	// Owners can always publish their own submissions
+	if !actor.HasPerm(models.PermPublish) {
+		return false
+	}
+	// Owners with PermPublish can publish their own submissions
 	if sub.OwnerID == actor.ProfileID {
 		return true
 	}
 	// Editors/admins with PermPublish can publish anyone's
-	if actor.HasPerm(models.PermPublish) && actor.IsEditor() {
+	if actor.IsEditor() {
 		return true
 	}
 	return false

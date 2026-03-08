@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -178,12 +179,19 @@ func (s *BatchService) processArticle(job *BatchJob, index int, input BatchArtic
 		PublishedAt:     &now,
 	}
 
+	var boostScore float64
+	if models.IsSystemAccount(profile.ProfileName) && featuredImg != "" &&
+		!strings.Contains(featuredImg, "picsum") {
+		boostScore = 0.3
+	}
+
 	sub := models.Submission{
 		OwnerID:    input.OwnerID,
 		LocationID: input.LocationID,
 		Title:      headline,
 		Tags:       input.Tags,
 		Status:     models.StatusPublished,
+		BoostScore: boostScore,
 		Meta:       models.JSONB[models.SubmissionMeta]{V: meta},
 	}
 

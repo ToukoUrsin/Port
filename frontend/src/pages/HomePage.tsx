@@ -17,6 +17,7 @@ import { BADGE_CLASS, type Article } from "@/data/articles";
 import { getSavedLocationIds, getSavedLocationNames } from "@/pages/ExplorePage";
 import "./HomePage.css";
 
+const ALL_CATEGORIES = ["council", "schools", "business", "events", "sports", "community", "opinion", "news"];
 
 /* ========================================
    CARD VARIANTS
@@ -351,6 +352,45 @@ function NewsSection({
   );
 }
 
+function MoreStoriesSection({
+  articles,
+  hasMore,
+  isLoadingMore,
+  sentinelRef,
+  t,
+}: {
+  articles: Article[];
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  sentinelRef: React.RefObject<HTMLDivElement | null>;
+  t: (key: string) => string;
+}) {
+  if (articles.length === 0 && !hasMore) return null;
+
+  return (
+    <section className="home-section">
+      <h2 className="home-section__title">{t("home.moreStories")}</h2>
+      <div className="article-grid">
+        {articles.map((article) => (
+          <ArticleCard key={article.id} article={article} />
+        ))}
+      </div>
+      <div ref={sentinelRef} className="scroll-sentinel" />
+      {isLoadingMore && (
+        <div className="more-stories__status">
+          <Loader2 size={16} className="animate-spin" />
+          <span>{t("search.loading")}</span>
+        </div>
+      )}
+      {!hasMore && articles.length > 0 && (
+        <div className="more-stories__status">
+          <span>{t("home.allLoaded")}</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function HomePage() {
   const [searchParams] = useSearchParams();
   const { language, setLanguage, t } = useLanguage();
@@ -421,6 +461,17 @@ export default function HomePage() {
     localStorage.setItem("selected_locations", JSON.stringify(Array.from(selectedIds)));
   }, [selectedIds]);
 
+  // Filter panel state
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("selected_categories") || "[]")); }
+    catch { return new Set(); }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("selected_categories", JSON.stringify([...selectedCategories]));
+  }, [selectedCategories]);
+
   function toggleCity(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -437,6 +488,7 @@ export default function HomePage() {
   function selectAll() {
     setSharedLoc(null); // clear shared link filter when user taps "All"
     setSelectedIds(new Set());
+    setSelectedCategories(new Set());
   }
 
   // Merge selected IDs + shared location for article fetching
@@ -454,9 +506,9 @@ export default function HomePage() {
         return Promise.resolve({ articles: [], total: 0 } as ArticleListResponse);
       }
       if (effectiveIds.length > 0) {
-        return getArticles({ limit: 100, location_ids: effectiveIds, sort: "ranked" });
+        return getArticles({ limit: 30, location_ids: effectiveIds, sort: "ranked" });
       }
-      return getArticles({ limit: 100, country, sort: "ranked" });
+      return getArticles({ limit: 30, country, sort: "ranked" });
     },
     [effectiveIds, country, sharedLoc],
   );
@@ -479,6 +531,94 @@ export default function HomePage() {
     [trendingData, t],
   );
 
+  // --- Infinite scroll state ---
+  const [moreArticles, setMoreArticles] = useState<Article[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+
+  // Capture cursor from initial fetch & reset on filter change
+  useEffect(() => {
+    setNextCursor(apiData?.next_cursor ?? null);
+    setHasMore(apiData?.has_more ?? false);
+    setMoreArticles([]);
+  }, [apiData]);
+
+  // Deduplication set: IDs already shown in curated sections + trending
+  const initialIdSet = useMemo(() => {
+    const ids = new Set<string>();
+    for (const a of allArticles) ids.add(a.id);
+    for (const a of trendingArticles) ids.add(a.id);
+    return ids;
+  }, [allArticles, trendingArticles]);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !nextCursor) return;
+    setIsLoadingMore(true);
+    try {
+      const params: Parameters<typeof getArticles>[0] = {
+        limit: 20,
+        cursor: nextCursor,
+        sort: "ranked",
+        country: effectiveIds.length > 0 ? undefined : country,
+      };
+      if (effectiveIds.length > 0) {
+        params.location_ids = effectiveIds;
+      }
+      const res = await getArticles(params);
+      const newArticles = res.articles
+        .map((a) => apiToArticle(a, t))
+        .filter((a) => !initialIdSet.has(a.id));
+      // Also deduplicate against already-loaded more articles
+      const existingMore = new Set(moreArticles.map((a) => a.id));
+      const unique = newArticles.filter((a) => !existingMore.has(a.id));
+      setMoreArticles((prev) => [...prev, ...unique]);
+      setNextCursor(res.next_cursor ?? null);
+      setHasMore(res.has_more ?? false);
+    } catch {
+      // Silently fail — user can retry by scrolling
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, nextCursor, effectiveIds, country, t, initialIdSet, moreArticles]);
+
+  // IntersectionObserver for infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  // Category counts (from fetched articles, before category filtering)
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const a of allArticles) counts[a.category] = (counts[a.category] || 0) + 1;
+    return counts;
+  }, [allArticles]);
+
+  // Filtered articles (category filter applied client-side)
+  const filteredArticles = useMemo(() => {
+    if (selectedCategories.size === 0) return allArticles;
+    return allArticles.filter(a => selectedCategories.has(a.category));
+  }, [allArticles, selectedCategories]);
+
+  const filteredTrending = useMemo(() => {
+    if (selectedCategories.size === 0) return trendingArticles;
+    return trendingArticles.filter(a => selectedCategories.has(a.category));
+  }, [trendingArticles, selectedCategories]);
+
+  // Filter more articles by selected categories
+  const filteredMore = useMemo(() => {
+    if (selectedCategories.size === 0) return moreArticles;
+    return moreArticles.filter(a => selectedCategories.has(a.category));
+  }, [moreArticles, selectedCategories]);
+
   // Saved location names from explore map picks
   const savedNames = useMemo(() => getSavedLocationNames(), []);
 
@@ -499,10 +639,22 @@ export default function HomePage() {
         chips.push({ type: "location", id: locId, label: name });
       }
     }
+    // Category chips
+    for (const cat of selectedCategories) {
+      chips.push({ type: "category", id: cat, label: t("tag." + cat) });
+    }
     return chips;
-  }, [selectedIds, allLocations, nearbyIdSet, sharedLoc, savedNames]);
+  }, [selectedIds, allLocations, nearbyIdSet, sharedLoc, savedNames, selectedCategories, t]);
 
   const handleRemoveChip = useCallback((chip: FilterChip) => {
+    if (chip.type === "category") {
+      setSelectedCategories((prev) => {
+        const next = new Set(prev);
+        next.delete(chip.id);
+        return next;
+      });
+      return;
+    }
     // If removing the shared link chip, clear it
     if (sharedLoc && chip.id === sharedLoc.id) {
       setSharedLoc(null);
@@ -518,6 +670,7 @@ export default function HomePage() {
   const handleClearAll = useCallback(() => {
     setSharedLoc(null);
     setSelectedIds(new Set());
+    setSelectedCategories(new Set());
   }, []);
 
   // Deduplicate: each article appears in at most one section
@@ -525,11 +678,11 @@ export default function HomePage() {
     const used = new Set<string>();
 
     // 1. Trending gets first pick (from separate fetch — mark those IDs)
-    for (const a of trendingArticles) used.add(a.id);
+    for (const a of filteredTrending) used.add(a.id);
 
     // 2. Recent: top 10 from ranked feed, excluding trending
     const recent: Article[] = [];
-    for (const a of allArticles) {
+    for (const a of filteredArticles) {
       if (recent.length >= 10) break;
       if (!used.has(a.id)) {
         recent.push(a);
@@ -540,7 +693,7 @@ export default function HomePage() {
     // 3. Best of Week: image articles from last 7 days, excluding used
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const bow: Article[] = [];
-    for (const a of allArticles) {
+    for (const a of filteredArticles) {
       if (bow.length >= 5) break;
       if (!used.has(a.id) && a.image && a.createdAt && new Date(a.createdAt).getTime() > weekAgo) {
         bow.push(a);
@@ -549,18 +702,18 @@ export default function HomePage() {
     }
 
     // 4. Category sections: only unused articles
-    const opinions = allArticles.filter((a) => !used.has(a.id) && a.category === "opinion");
+    const opinions = filteredArticles.filter((a) => !used.has(a.id) && a.category === "opinion");
     opinions.forEach((a) => used.add(a.id));
 
-    const events = allArticles.filter((a) => !used.has(a.id) && a.category === "events");
+    const events = filteredArticles.filter((a) => !used.has(a.id) && a.category === "events");
     events.forEach((a) => used.add(a.id));
 
     const newsCategories = ["council", "news", "community"];
-    const headlines = allArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !a.image);
-    const featured = allArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !!a.image);
+    const headlines = filteredArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !a.image);
+    const featured = filteredArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !!a.image);
 
     return { recentArticles: recent, bestOfWeek: bow, opinionArticles: opinions, eventArticles: events, newsHeadlines: headlines, newsFeatured: featured };
-  }, [allArticles, trendingArticles]);
+  }, [filteredArticles, filteredTrending]);
 
   // Skip onboarding when arriving via shared town link
   const [showOnboarding, setShowOnboarding] = useState(() =>
@@ -572,26 +725,85 @@ export default function HomePage() {
       {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
       <Navbar />
       <nav className="city-bar">
-        <div className="city-bar__scroll">
+        <div className="city-bar__inner">
+          <div className="city-bar__scroll">
+            <button
+              className={`city-bar__item ${isAllSelected ? "city-bar__item--active" : ""}`}
+              onClick={selectAll}
+            >
+              {t("home.all")}
+            </button>
+            {nearbyCities.map((loc) => {
+              const isActive = selectedIds.has(loc.id) || (sharedLoc?.id === loc.id);
+              return (
+                <button
+                  key={loc.id}
+                  className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
+                  onClick={() => toggleCity(loc.id)}
+                >
+                  {loc.name}
+                </button>
+              );
+            })}
+          </div>
           <button
-            className={`city-bar__item ${isAllSelected ? "city-bar__item--active" : ""}`}
-            onClick={selectAll}
+            className={`city-bar__toggle ${filterPanelOpen ? "city-bar__toggle--active" : ""}`}
+            onClick={() => setFilterPanelOpen((p) => !p)}
+            aria-expanded={filterPanelOpen}
+            aria-label={t("filter.categories")}
           >
-            {t("home.all")}
+            <ChevronDown size={16} style={{ transform: filterPanelOpen ? "rotate(180deg)" : undefined }} />
           </button>
-          {nearbyCities.map((loc) => {
-            const isActive = selectedIds.has(loc.id) || (sharedLoc?.id === loc.id);
-            return (
-              <button
-                key={loc.id}
-                className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
-                onClick={() => toggleCity(loc.id)}
-              >
-                {loc.name}
-              </button>
-            );
-          })}
         </div>
+        {filterPanelOpen && (
+          <div className="filter-panel">
+            {ALL_CATEGORIES.some((cat) => (categoryCounts[cat] ?? 0) > 0) && (
+              <div>
+                <div className="filter-panel__label">{t("filter.categories")}</div>
+                <div className="filter-panel__items" style={{ marginTop: "var(--space-2)" }}>
+                  {ALL_CATEGORIES.filter((cat) => (categoryCounts[cat] ?? 0) > 0).map((cat) => (
+                    <button
+                      key={cat}
+                      className={`badge ${BADGE_CLASS[cat] ?? ""} badge--clickable ${selectedCategories.has(cat) ? "badge--active" : ""}`}
+                      onClick={() =>
+                        setSelectedCategories((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(cat)) next.delete(cat);
+                          else next.add(cat);
+                          return next;
+                        })
+                      }
+                    >
+                      {t("tag." + cat)}
+                      <span className="filter-panel__count">{categoryCounts[cat]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {allLocations.filter((loc) => !nearbyIdSet.has(loc.id)).length > 0 && (
+              <div>
+                <div className="filter-panel__label">{t("filter.moreCities")}</div>
+                <div className="filter-panel__items" style={{ marginTop: "var(--space-2)" }}>
+                  {allLocations
+                    .filter((loc) => !nearbyIdSet.has(loc.id))
+                    .map((loc) => (
+                      <button
+                        key={loc.id}
+                        className={`filter-panel__city ${selectedIds.has(loc.id) ? "filter-panel__city--active" : ""}`}
+                        onClick={() => toggleCity(loc.id)}
+                      >
+                        {loc.name}
+                        {loc.article_count != null && (
+                          <span className="filter-panel__count">({loc.article_count})</span>
+                        )}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </nav>
       <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
 
@@ -608,15 +820,19 @@ export default function HomePage() {
           <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-secondary)" }}>
             <p>{t("home.noArticles")}</p>
           </div>
+        ) : filteredArticles.length === 0 && selectedCategories.size > 0 ? (
+          <div style={{ textAlign: "center", padding: "var(--space-16)", color: "var(--color-text-secondary)" }}>
+            <p>{t("home.noFilterResults")}</p>
+          </div>
         ) : (
           <>
             <RecentSection articles={recentArticles} t={t} />
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
-            {trendingArticles.length > 0 && (
+            {filteredTrending.length > 0 && (
               <>
                 <img src="/Line 1.svg" alt="" className="line-divider" />
-                <TrendingSection articles={trendingArticles} t={t} />
+                <TrendingSection articles={filteredTrending} t={t} />
               </>
             )}
             {bestOfWeek.length > 0 && (
@@ -643,6 +859,18 @@ export default function HomePage() {
               <>
                 <img src="/Line 1.svg" alt="" className="line-divider" />
                 <NewsSection headlines={newsHeadlines} featured={newsFeatured} t={t} />
+              </>
+            )}
+            {(filteredMore.length > 0 || hasMore) && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <MoreStoriesSection
+                  articles={filteredMore}
+                  hasMore={hasMore}
+                  isLoadingMore={isLoadingMore}
+                  sentinelRef={sentinelRef}
+                  t={t}
+                />
               </>
             )}
           </>

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUp, X, Loader2,
-  CheckCircle, Camera, EyeOff,
+  CheckCircle, Camera, EyeOff, FileAudio,
   Mic, ImageIcon, Search, PenTool, ShieldCheck, Type, MessageCircleQuestion, Send,
   RefreshCw,
 } from "lucide-react";
@@ -35,6 +35,7 @@ import { VoiceRecorder, AudioPlayer } from "@/components/editor/VoiceRecorder";
 import type { GeneralRefinement } from "@/components/editor/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import PublicProfileModal from "@/components/PublicProfileModal";
+import LocationPicker from "@/components/LocationPicker";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
@@ -42,14 +43,16 @@ import "./PostPage.css";
 // --- Step 1: Input ---
 function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [text, setText] = useState("");
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [audioURL, setAudioURL] = useState<string | null>(null);
+  const [audioFiles, setAudioFiles] = useState<{ blob: Blob; url: string; name: string }[]>([]);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [locationId, setLocationId] = useState("");
+  const [locationName, setLocationName] = useState("");
   const [showPublicModal, setShowPublicModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -72,22 +75,41 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
     });
   }
 
-  const canSubmit = text.trim().length > 0 || files.length > 0 || audioBlob !== null;
+  function onAudioFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const sel = e.target.files;
+    if (!sel) return;
+    const added = Array.from(sel).map((f) => ({
+      blob: f as Blob,
+      url: URL.createObjectURL(f),
+      name: f.name,
+    }));
+    setAudioFiles((p) => [...p, ...added].slice(0, 5));
+    e.target.value = "";
+  }
+
+  function removeAudio(i: number) {
+    setAudioFiles((p) => {
+      URL.revokeObjectURL(p[i].url);
+      return p.filter((_, j) => j !== i);
+    });
+  }
+
+  const canSubmit = text.trim().length > 0 || files.length > 0 || audioFiles.length > 0;
 
   async function doSubmit() {
     setError("");
     setIsSubmitting(true);
     try {
       const formData = new FormData();
-      if (audioBlob) {
-        formData.append("audio", audioBlob, "recording.webm");
+      for (const a of audioFiles) {
+        formData.append("audio[]", a.blob, a.name);
       }
       for (const f of files) {
         formData.append("photos[]", f.file);
       }
       if (text.trim()) formData.append("notes", text);
       if (anonymous) formData.append("anonymous", "true");
-      formData.append("location_id", user?.location_id || "a0000000-0000-0000-0000-000000000004");
+      if (locationId) formData.append("location_id", locationId);
 
       const res = await createSubmission(formData);
       onSubmit(res.submission_id);
@@ -129,14 +151,15 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       {error && <p className="auth-error">{error}</p>}
 
       <form className="compose-form" onSubmit={handleSubmit}>
-        {(files.length > 0 || audioURL) && (
+        {(files.length > 0 || audioFiles.length > 0) && (
           <div className="compose-attachments">
-            {audioURL && (
+            {audioFiles.map((a, i) => (
               <AudioPlayer
-                src={audioURL}
-                onRemove={() => { setAudioBlob(null); setAudioURL(null); }}
+                key={i}
+                src={a.url}
+                onRemove={() => removeAudio(i)}
               />
-            )}
+            ))}
             {files.length > 0 && (
               <div className="compose-files">
                 {files.map((f, i) => (
@@ -185,14 +208,24 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             >
               <Camera size={20} />
             </button>
+            <button
+              type="button"
+              className="compose-action"
+              onClick={() => audioFileRef.current?.click()}
+              disabled={isSubmitting}
+            >
+              <FileAudio size={20} />
+            </button>
             <VoiceRecorder
               onRecording={(blob) => {
-                setAudioBlob(blob);
-                setAudioURL(URL.createObjectURL(blob));
+                const url = URL.createObjectURL(blob);
+                setAudioFiles((p) => [...p, { blob, url, name: "recording.webm" }].slice(0, 5));
               }}
               compact
-              externalAudioURL={audioURL}
-              onClear={() => { setAudioBlob(null); setAudioURL(null); }}
+              externalAudioURL={audioFiles.length > 0 ? audioFiles[audioFiles.length - 1].url : null}
+              onClear={() => {
+                if (audioFiles.length > 0) removeAudio(audioFiles.length - 1);
+              }}
             />
           </div>
           <input
@@ -202,6 +235,14 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             multiple
             style={{ display: "none" }}
             onChange={onFiles}
+          />
+          <input
+            ref={audioFileRef}
+            type="file"
+            accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.webm"
+            multiple
+            style={{ display: "none" }}
+            onChange={onAudioFile}
           />
           <div className="compose-toolbar-right">
             <button
@@ -227,6 +268,15 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
           </div>
         </div>
       </form>
+
+      <div className="compose-location-standalone">
+        <LocationPicker
+          value={locationId}
+          onChange={(id, name) => { setLocationId(id); setLocationName(name); }}
+          defaultName={locationName}
+          placeholder={t("post.whereHappened") || "Where did this happen?"}
+        />
+      </div>
 
       <PublicProfileModal
         open={showPublicModal}

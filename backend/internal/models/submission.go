@@ -147,6 +147,7 @@ type Submission struct {
 	Error       int16                 `gorm:"default:0" json:"error"`
 	Views       int                   `gorm:"default:0" json:"views"`
 	ShareCount  int                   `gorm:"default:0" json:"share_count"`
+	BoostScore  float64               `gorm:"default:0" json:"boost_score"`
 	Reactions   JSONB[map[string]int] `gorm:"type:jsonb;default:'{}'" json:"reactions"`
 	Meta         JSONB[SubmissionMeta] `gorm:"type:jsonb;default:'{}'" json:"meta"`
 	SearchVector string                `gorm:"type:tsvector" json:"-"`

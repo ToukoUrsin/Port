@@ -15,6 +15,11 @@ func (h *Handler) ListLocations(c *gin.Context) {
 	var locations []models.Location
 	q := h.db.Where("is_active = ?", true)
 
+	// Text search by name (case-insensitive prefix match)
+	if search := c.Query("q"); search != "" {
+		q = q.Where("LOWER(name) LIKE ?", strings.ToLower(search)+"%")
+	}
+
 	if country := c.Query("country"); country != "" {
 		q = q.Where("path LIKE ? OR slug = ?", "%/"+country+"/%", country)
 	}

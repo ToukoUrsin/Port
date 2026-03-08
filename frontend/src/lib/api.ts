@@ -157,6 +157,7 @@ export function getArticles(params?: {
   sort?: "recent" | "popular" | "ranked";
   limit?: number;
   offset?: number;
+  cursor?: string;
 }): Promise<ArticleListResponse> {
   const qs = new URLSearchParams();
   if (params?.location_id) qs.set("location_id", params.location_id);
@@ -167,6 +168,7 @@ export function getArticles(params?: {
   if (params?.sort) qs.set("sort", params.sort);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
+  if (params?.cursor) qs.set("cursor", params.cursor);
   const query = qs.toString();
   return apiFetch<ArticleListResponse>(
     `/api/articles${query ? `?${query}` : ""}`,
@@ -322,6 +324,7 @@ export async function appealSubmission(
 // --- Location endpoints ---
 
 export function getLocations(params?: {
+  q?: string;
   country?: string;
   level?: number[];
   south?: number;
@@ -332,6 +335,7 @@ export function getLocations(params?: {
   min_articles?: number;
 }): Promise<{ locations: ApiLocation[] }> {
   const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
   if (params?.country) qs.set("country", params.country);
   if (params?.level?.length) qs.set("level", params.level.join(","));
   if (params?.south != null) qs.set("south", String(params.south));

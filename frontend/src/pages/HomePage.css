@@ -20,6 +20,12 @@
     z-index: var(--z-sticky);
   }
 
+  .home-nav-topbar__left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
   .home-nav-topbar__brand {
     font-family: var(--font-heading);
     font-size: var(--text-2xl);
@@ -27,6 +33,15 @@
     color: var(--color-text);
     letter-spacing: 0.04em;
     text-decoration: none;
+  }
+
+  .lang-toggle--mobile {
+    height: 30px;
+  }
+
+  .lang-toggle--mobile .lang-toggle__btn {
+    padding: var(--space-1) var(--space-2);
+    font-size: 0.625rem;
   }
 
   .home-nav-topbar__icon {
@@ -200,12 +215,17 @@
   top: 0;
   z-index: calc(var(--z-sticky) - 1);
   background: var(--color-bg);
-  overflow: hidden;
+}
+
+.city-bar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .city-bar__scroll {
   display: flex;
-  justify-content: center;
+  align-items: center;
   gap: var(--space-1);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -277,6 +297,88 @@
 .city-bar__item--active {
   color: var(--color-text);
   border-bottom-color: var(--color-secondary);
+}
+
+/* Toggle button (expand filter panel) */
+.city-bar__toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: var(--space-3) var(--space-1);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+.city-bar__toggle:hover,
+.city-bar__toggle--active {
+  color: var(--color-text);
+}
+.city-bar__toggle svg {
+  transition: transform var(--transition-fast);
+}
+
+/* Filter panel (overlay below city bar) */
+.filter-panel {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 100%;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--size-container);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.filter-panel__label {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+.filter-panel__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.filter-panel__count {
+  font-weight: var(--font-normal);
+  opacity: 0.6;
+  margin-left: var(--space-1);
+}
+.filter-panel__city {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.filter-panel__city:hover {
+  color: var(--color-text);
+  border-color: var(--color-gray-400);
+}
+.filter-panel__city--active {
+  color: var(--color-text);
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+.badge--active {
+  box-shadow: 0 0 0 2px currentColor;
 }
 
 /* Location modal overlay */
@@ -1104,22 +1206,24 @@
 @media (max-width: 767px) {
   .home-nav {
     z-index: calc(var(--z-sticky) + 3);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .home-nav__left {
+    display: none;
   }
 
   .home-nav__search {
     flex: 1;
     width: auto;
     margin-left: 0;
-    height: 36px;
-    padding: 0 var(--space-2);
+    height: 40px;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-full);
   }
 
   .home-nav__search-input {
-    font-size: var(--text-xs);
-  }
-
-  .home-nav__left .home-nav__icon-btn {
-    display: none;
+    font-size: var(--text-sm);
   }
 
   .home-nav__right {
@@ -1127,9 +1231,11 @@
   }
 
   .search-dropdown {
+    position: fixed;
+    top: 52px;
+    left: var(--space-3);
+    right: var(--space-3);
     width: auto;
-    left: 0;
-    right: 0;
   }
 }
 
@@ -1242,5 +1348,23 @@
   padding: var(--space-6) var(--space-5);
   display: flex;
   justify-content: center;
+  color: var(--color-text-tertiary);
+}
+
+/* ========================================
+   MORE STORIES (Infinite Scroll)
+   ======================================== */
+.scroll-sentinel {
+  height: 1px;
+}
+
+.more-stories__status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   color: var(--color-text-tertiary);
 }

@@ -42,7 +42,7 @@ export default function SearchPage() {
     setError(null);
     setArticles([]);
 
-    search({ q: q.trim() })
+    search({ q: q.trim(), mode: "hybrid" })
       .then((res) => {
         setArticles((res.submissions || []).map((s) => apiToArticle(s, t)));
         setSessionId(res.session_id);

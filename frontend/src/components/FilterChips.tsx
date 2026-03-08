@@ -1,9 +1,9 @@
-import { MapPin, X } from "lucide-react";
+import { MapPin, Tag, X } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import "./FilterChips.css";
 
 export interface FilterChip {
-  type: "location";
+  type: "location" | "category";
   id: string;
   label: string;
 }
@@ -23,8 +23,8 @@ export default function FilterChips({ chips, onRemove, onClearAll }: FilterChips
     <div className="filter-chips">
       <div className="filter-chips__scroll">
         {chips.map((chip) => (
-          <span key={chip.id} className="filter-chip">
-            <MapPin size={14} />
+          <span key={`${chip.type}-${chip.id}`} className="filter-chip">
+            {chip.type === "category" ? <Tag size={14} /> : <MapPin size={14} />}
             <span>{chip.label}</span>
             <button
               className="filter-chip__dismiss"

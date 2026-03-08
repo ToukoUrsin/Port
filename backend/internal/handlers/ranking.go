@@ -214,6 +214,12 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 		replies := replyCountMap[articles[i].ID]
 		base := computeBaseScore(&articles[i], karma, replies)
 
+		// Override freshness for boosted articles (uses pre-computed BoostScore)
+		if articles[i].BoostScore > 0 {
+			actualFreshness := computeFreshness(articles[i].CreatedAt)
+			base = base - wFreshness*actualFreshness + wFreshness*articles[i].BoostScore
+		}
+
 		personalBoost := computePersonalBoost(&articles[i], perso)
 		finalScore := base * (1.0 + personalBoost)
 
@@ -224,12 +230,33 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 		return scored[i].score > scored[j].score
 	})
 
+	scored = applyDiversityCap(scored, 2)
+
 	// Reorder articles slice in-place
 	reordered := make([]models.Submission, len(scored))
 	for i, s := range scored {
 		reordered[i] = *s.article
 	}
 	copy(articles, reordered)
+}
+
+// applyDiversityCap demotes excess boosted articles past maxBoosted to the end.
+// Single-pass O(n) implementation.
+func applyDiversityCap(scored []scoredArticle, maxBoosted int) []scoredArticle {
+	result := make([]scoredArticle, 0, len(scored))
+	demoted := make([]scoredArticle, 0)
+	count := 0
+	for _, s := range scored {
+		if s.article.BoostScore > 0 {
+			count++
+			if count > maxBoosted {
+				demoted = append(demoted, s)
+				continue
+			}
+		}
+		result = append(result, s)
+	}
+	return append(result, demoted...)
 }
 
 // FeedPersonalization JSON marshaling for Redis cache

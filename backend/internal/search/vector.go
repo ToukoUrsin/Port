@@ -9,6 +9,13 @@ import (
 	"gorm.io/gorm"
 )
 
+type entityHit struct {
+	EntityID       string  `gorm:"column:entity_id"`
+	EntityCategory int16   `gorm:"column:entity_category"`
+	ChunkText      string  `gorm:"column:chunk_text"`
+	Score          float64 `gorm:"column:score"`
+}
+
 func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 	result := &Result{Mode: string(ModeSemantic)}
 
@@ -17,83 +24,69 @@ func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
 
-	type entityHit struct {
-		EntityID       string  `gorm:"column:entity_id"`
-		EntityCategory int16   `gorm:"column:entity_category"`
-		ChunkText      string  `gorm:"column:chunk_text"`
-		Score          float64 `gorm:"column:score"`
-	}
-
-	// Run vector searches inside a transaction so we can increase ef_search.
-	// The HNSW index with filtered queries (JOIN + WHERE) can miss high-scoring
-	// results because the graph traversal terminates too early when many nodes
-	// are filtered out. SET LOCAL scopes the change to this transaction only.
+	// Use raw SQL for vector search. GORM's Order() doesn't correctly bind
+	// pgvector parameters, causing results to be returned in arbitrary order.
+	// SET LOCAL hnsw.ef_search inside a transaction ensures the HNSW index
+	// explores enough candidates when filtered queries skip many nodes.
 	var hits []entityHit
-	if txErr := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		tx.Exec("SET LOCAL hnsw.ef_search = 400")
 
-		if p.LocationID != "" {
-			if p.Type == "" || p.Type == "submissions" {
-				var subHits []entityHit
-				if err := tx.
-					Table("embeddings e").
-					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-					Joins("JOIN submissions s ON s.id = e.entity_id").
-					Where("e.entity_category = ? AND s.status = ? AND s.location_id = ?", models.EntitySubmission, models.StatusPublished, p.LocationID).
-					Order(tx.Raw("e.embedding <=> ?", queryVec)).
-					Limit(p.Limit).
-					Find(&subHits).Error; err != nil {
+		if p.Type == "" || p.Type == "submissions" {
+			var subHits []entityHit
+			if p.LocationID != "" {
+				if err := tx.Raw(`
+					SELECT e.entity_id, e.entity_category, e.chunk_text,
+					       1 - (e.embedding <=> ?) AS score
+					FROM embeddings e
+					JOIN submissions s ON s.id = e.entity_id
+					WHERE e.entity_category = ? AND s.status = ? AND s.location_id = ?
+					ORDER BY e.embedding <=> ?
+					LIMIT ?`,
+					queryVec, models.EntitySubmission, models.StatusPublished, p.LocationID,
+					queryVec, p.Limit,
+				).Scan(&subHits).Error; err != nil {
 					return fmt.Errorf("vector search submissions: %w", err)
 				}
-				hits = append(hits, subHits...)
-			}
-			if p.Type == "" || p.Type == "profiles" {
-				var profHits []entityHit
-				if err := tx.
-					Table("embeddings e").
-					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-					Joins("JOIN profiles p ON p.id = e.entity_id").
-					Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
-					Order(tx.Raw("e.embedding <=> ?", queryVec)).
-					Limit(p.Limit).
-					Find(&profHits).Error; err != nil {
-					return fmt.Errorf("vector search profiles: %w", err)
-				}
-				hits = append(hits, profHits...)
-			}
-		} else {
-			if p.Type == "" || p.Type == "submissions" {
-				var subHits []entityHit
-				if err := tx.
-					Table("embeddings e").
-					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-					Joins("JOIN submissions s ON s.id = e.entity_id").
-					Where("e.entity_category = ? AND s.status = ?", models.EntitySubmission, models.StatusPublished).
-					Order(tx.Raw("e.embedding <=> ?", queryVec)).
-					Limit(p.Limit).
-					Find(&subHits).Error; err != nil {
+			} else {
+				if err := tx.Raw(`
+					SELECT e.entity_id, e.entity_category, e.chunk_text,
+					       1 - (e.embedding <=> ?) AS score
+					FROM embeddings e
+					JOIN submissions s ON s.id = e.entity_id
+					WHERE e.entity_category = ? AND s.status = ?
+					ORDER BY e.embedding <=> ?
+					LIMIT ?`,
+					queryVec, models.EntitySubmission, models.StatusPublished,
+					queryVec, p.Limit,
+				).Scan(&subHits).Error; err != nil {
 					return fmt.Errorf("vector search submissions: %w", err)
 				}
-				hits = append(hits, subHits...)
 			}
-			if p.Type == "" || p.Type == "profiles" {
-				var profHits []entityHit
-				if err := tx.
-					Table("embeddings e").
-					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-					Joins("JOIN profiles p ON p.id = e.entity_id").
-					Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
-					Order(tx.Raw("e.embedding <=> ?", queryVec)).
-					Limit(p.Limit).
-					Find(&profHits).Error; err != nil {
-					return fmt.Errorf("vector search profiles: %w", err)
-				}
-				hits = append(hits, profHits...)
-			}
+			hits = append(hits, subHits...)
 		}
+
+		if p.Type == "" || p.Type == "profiles" {
+			var profHits []entityHit
+			if err := tx.Raw(`
+				SELECT e.entity_id, e.entity_category, e.chunk_text,
+				       1 - (e.embedding <=> ?) AS score
+				FROM embeddings e
+				JOIN profiles p ON p.id = e.entity_id
+				WHERE e.entity_category = ? AND p.public = true
+				ORDER BY e.embedding <=> ?
+				LIMIT ?`,
+				queryVec, models.EntityProfile,
+				queryVec, p.Limit,
+			).Scan(&profHits).Error; err != nil {
+				return fmt.Errorf("vector search profiles: %w", err)
+			}
+			hits = append(hits, profHits...)
+		}
+
 		return nil
-	}); txErr != nil {
-		return nil, txErr
+	}); err != nil {
+		return nil, err
 	}
 
 	// Deduplicate by entity_id, keeping the best chunk per entity
@@ -160,7 +153,6 @@ func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 		if err := stmt.Find(&subs).Error; err != nil {
 			return nil, fmt.Errorf("load submissions: %w", err)
 		}
-		// Preserve rerank order
 		subMap := make(map[string]models.Submission, len(subs))
 		for _, s := range subs {
 			subMap[s.ID.String()] = s

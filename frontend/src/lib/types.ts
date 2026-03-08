@@ -221,6 +221,8 @@ export interface AuthResponse {
 export interface ArticleListResponse {
   articles: ApiSubmission[];
   total: number;
+  has_more?: boolean;
+  next_cursor?: string;
 }
 
 export interface SubmissionCreateResponse {
