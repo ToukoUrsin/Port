@@ -257,9 +257,25 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
 
       {/* Mobile-only second row: location + logo + profile/login */}
       <div className="home-nav-topbar">
-        <Link to="/explore" className="home-nav-topbar__icon" title={t("navbar.selectCities")}>
-          <MapPin size={18} />
-        </Link>
+        <div className="home-nav-topbar__left">
+          <Link to="/explore" className="home-nav-topbar__icon" title={t("navbar.selectCities")}>
+            <MapPin size={18} />
+          </Link>
+          <div className="lang-toggle lang-toggle--mobile">
+            <button
+              className={`lang-toggle__btn ${language === "fi" ? "lang-toggle__btn--active" : ""}`}
+              onClick={() => setLanguage("fi")}
+            >
+              FI
+            </button>
+            <button
+              className={`lang-toggle__btn ${language === "en" ? "lang-toggle__btn--active" : ""}`}
+              onClick={() => setLanguage("en")}
+            >
+              EN
+            </button>
+          </div>
+        </div>
         <Link to="/" className="home-nav-topbar__brand">{t("navbar.brandName")}</Link>
         {isAuthenticated ? (
           <div className="notif-bell-wrapper" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
