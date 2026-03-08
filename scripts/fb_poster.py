@@ -786,33 +786,24 @@ EXAMPLE OF GOOD TONE (don't copy, just match the vibe):
 Write ONLY the post text, nothing else."""
 
 
+def _load_pregenerated_posts():
+    """Load pre-generated posts from JSON file."""
+    posts_file = Path(__file__).parent / "pregenerated_posts.json"
+    if posts_file.exists():
+        data = json.load(open(posts_file, encoding="utf-8"))
+        return data.get("facebook", {})
+    return {}
+
+_PREGENERATED = _load_pregenerated_posts()
+
+
 async def generate_post(town_key: str, target: dict) -> str:
-    """Use Claude to generate a personalized post for the group."""
-    try:
-        import anthropic
-    except ImportError:
-        print("  anthropic not installed, using fallback.")
-        return _fallback_post(target)
+    """Return pre-generated post for the group, fall back to template if missing."""
+    if town_key in _PREGENERATED:
+        return _PREGENERATED[town_key]
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("  ANTHROPIC_API_KEY not set, using fallback.")
-        return _fallback_post(target)
-
-    client = anthropic.Anthropic(api_key=api_key)
-
-    if target["lang"] == "fi":
-        prompt = _get_prompt_fi(target)
-    else:
-        prompt = _get_prompt_en(target)
-
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    return message.content[0].text.strip()
+    print(f"  No pre-generated post for {town_key}, using fallback.")
+    return _fallback_post(target)
 
 
 def _fallback_post(target: dict) -> str:

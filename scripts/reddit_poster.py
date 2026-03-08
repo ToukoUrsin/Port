@@ -152,96 +152,26 @@ TARGETS = {
 }
 
 
+def _load_pregenerated_reddit():
+    """Load pre-generated Reddit post bodies from JSON file."""
+    posts_file = Path(__file__).parent / "pregenerated_posts.json"
+    if posts_file.exists():
+        data = json.load(open(posts_file, encoding="utf-8"))
+        return data.get("reddit", {})
+    return {}
+
+_PREGENERATED_REDDIT = _load_pregenerated_reddit()
+
+
 async def generate_reddit_body(target: dict) -> str:
-    """Use Claude to generate a Reddit post body."""
-    try:
-        import anthropic
-    except ImportError:
-        return _fallback_body(target)
+    """Return pre-generated Reddit post body, fall back to template if missing."""
+    # Find the key by matching subreddit
+    for key, body in _PREGENERATED_REDDIT.items():
+        if key in TARGETS and TARGETS[key]["subreddit"] == target["subreddit"]:
+            return body
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return _fallback_body(target)
-
-    client = anthropic.Anthropic(api_key=api_key)
-
-    if target["angle"] == "journalism_meta":
-        prompt = """Write a Reddit post body for r/journalism about Port, a free AI local news platform for news desert towns.
-
-KEY FACTS:
-- 2,500+ US newspapers closed since 2005. 213 US counties have zero journalists.
-- We built a free platform where anyone can submit news tips (voice, photo, text) and they become articles.
-- Already have 68 articles across 15 towns in US and Finland.
-- Towns include: Chesterton IN (Tribune closed after 141 yrs), Laurel MS (Leader-Call closed after 100 yrs), Spencer TN (9 papers attempted since 1915, all failed), Claremont NH (Eagle Times suspended)
-- We're not replacing journalists. Laid-off reporters can use this to keep covering their communities.
-- The platform is free. We want to bring local news back to places that lost it.
-
-LINK: https://port.news
-
-RULES:
-- Reddit tone — conversational, slightly self-deprecating, honest about limitations
-- Acknowledge this is an early project / hackathon build
-- Don't oversell. Be honest that AI articles aren't the same as human journalism.
-- But make the case that AI articles > no articles at all for these communities.
-- Invite feedback and criticism (Reddit loves that)
-- 3-4 paragraphs max
-- End with the link
-
-Write ONLY the post body."""
-
-    elif target["angle"] == "suomi":
-        prompt = """Kirjoita Reddit-julkaisun tekstiosa r/Suomi-subreddittiin. Aihe: Port, ilmainen tekoalypohjainen paikallislehti uutisaavikoiden kunnille.
-
-FAKTAT:
-- 118 suomalaisessa kunnassa on 0-1 toimittajaa. 18 kunnassa ei ole mitaan lehtea.
-- Karkkilan Tienoo lakkautettiin 2022, Turkulainen 2020, Loviisan Sanomat leikattiin 2024.
-- Alustalla on jo 33 artikkelia Karkkilasta, Turusta, Kemista ja Loviisasta.
-- Kuka tahansa voi lahettaa uutisvinkkeja (aaniviesti, kuva, teksti) ja tekoaly muokkaa ne artikkeleiksi.
-- Tama on opiskelijaprojekti/hackathon-tyo, ei valmis tuote.
-
-LINKKI: https://port.news
-
-SAANNOT:
-- Reddit-tyyli — rento, rehellinen, itseironinen
-- Myonna etta tekoaly ei korvaa oikeaa journalismia
-- Mutta vaitä etta tekoalyartikkeli > ei mitaan artikkelia
-- Pyydä palautetta ja kritiikkia
-- 3-4 kappaletta max
-- Linkki lopussa
-
-Kirjoita VAIN tekstiosa."""
-
-    elif target["angle"] == "state":
-        town = target.get("town", "the area")
-        prompt = f"""Write a Reddit post body for {target['subreddit']}. The title is:
-"{target['title']}"
-
-This is about Port, a free local news site for news deserts. There are already real articles about {town} on the site.
-
-LINK: https://port.news/explore?town={town.lower().replace(' ', '-')}
-
-RULES:
-- Very short — 2-3 sentences max. State subs hate long posts.
-- Link to the town's page directly.
-- Mention you can submit tips about local things happening.
-- Don't be preachy about news deserts — they already know their paper is gone.
-- Reddit tone — casual, not marketing.
-
-Write ONLY the post body."""
-
-    else:
-        prompt = f"""Write a short Reddit post body about Port (free AI local news for news deserts).
-Title: "{target['title']}"
-Link: https://port.news
-Keep it to 2-3 sentences. Reddit tone. Write ONLY the body text."""
-
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    return message.content[0].text.strip()
+    print(f"  No pre-generated post for {target['subreddit']}, using fallback.")
+    return _fallback_body(target)
 
 
 def _fallback_body(target: dict) -> str:
