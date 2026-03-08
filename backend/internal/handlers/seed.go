@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -158,7 +159,17 @@ func (h *Handler) AdminUploadMedia(c *gin.Context) {
 		return
 	}
 
-	filename := filepath.Base(path)
+	// Compress image
+	newPath, _, compErr := h.media.CompressImage(path)
+	if compErr != nil {
+		log.Printf("compression failed for %s: %v", path, compErr)
+		newPath = path
+	}
+	if info, statErr := os.Stat(newPath); statErr == nil {
+		size = info.Size()
+	}
+
+	filename := filepath.Base(newPath)
 	url := fmt.Sprintf("/api/media/%s/%s", subID, filename)
 	c.JSON(http.StatusOK, gin.H{"url": url, "size": size})
 }

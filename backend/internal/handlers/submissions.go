@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -108,14 +110,29 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "photo upload failed: " + err.Error()})
 				return
 			}
+
+			// Compress image
+			var fileMeta models.FileMeta
+			newPath, meta, compErr := h.media.CompressImage(path)
+			if compErr != nil {
+				log.Printf("compression failed for %s: %v", path, compErr)
+				newPath = path
+			} else {
+				fileMeta = meta
+			}
+			if info, _ := os.Stat(newPath); info != nil {
+				size = info.Size()
+			}
+
 			file := models.File{
 				EntityID:       sub.ID,
 				EntityCategory: models.EntitySubmission,
 				SubmissionID:   sub.ID,
 				ContributorID:  actor.ProfileID,
 				FileType:       2, // photo
-				Name:           path,
+				Name:           newPath,
 				Size:           size,
+				Meta:           models.JSONB[models.FileMeta]{V: fileMeta},
 			}
 			h.db.Create(&file)
 		}
