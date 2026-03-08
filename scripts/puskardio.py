@@ -76,6 +76,33 @@ def get_locations():
     return resp.json().get("locations", [])
 
 
+def get_existing_titles(limit=100):
+    """Fetch recent article titles to avoid duplicates."""
+    try:
+        resp = requests.get(f"{API_URL}/api/articles?limit={limit}&sort=recent")
+        if resp.status_code != 200:
+            return []
+        articles = resp.json().get("articles", [])
+        return [a.get("title", "").lower() for a in articles if a.get("title")]
+    except Exception:
+        return []
+
+
+def is_duplicate(topic, existing_titles, threshold=0.4):
+    """Check if a topic overlaps too much with existing article titles."""
+    topic_words = set(topic.lower().split())
+    if len(topic_words) < 3:
+        return False
+    for title in existing_titles:
+        title_words = set(title.split())
+        if not title_words:
+            continue
+        overlap = len(topic_words & title_words) / min(len(topic_words), len(title_words))
+        if overlap >= threshold:
+            return True
+    return False
+
+
 def get_finnish_cities(locations):
     """Return city-level locations under Finland."""
     return [
@@ -173,7 +200,7 @@ def fetch_reddit_ideas(subs, limit=25):
     for sub in subs:
         try:
             resp = requests.get(
-                f"https://www.reddit.com/r/{sub}/hot.json?limit={limit}",
+                f"https://www.reddit.com/r/{sub}/rising.json?limit={limit}",
                 headers=headers,
                 timeout=10,
             )
@@ -216,15 +243,20 @@ def fetch_reddit_ideas(subs, limit=25):
     return ideas
 
 
-def fetch_gemini_ideas(client, city_names, count=10):
+def fetch_gemini_ideas(client, city_names, count=10, existing_titles=None):
     """Use Gemini with Google Search to brainstorm trending local topics for specific cities."""
     cities_str = ", ".join(city_names)
+    avoid_section = ""
+    if existing_titles:
+        sample = existing_titles[:20]
+        avoid_section = f"\n\nAVOID these topics (already published):\n" + "\n".join(f"- {t}" for t in sample) + "\n"
+
     prompt = f"""You are a Finnish tabloid journalist brainstorming story ideas.
 
 Find {count} interesting, funny, surprising, or heartwarming things happening RIGHT NOW
 in or near these Finnish towns: {cities_str}.
 
-Each story MUST be specifically about one of those towns. Think Iltalehti/Iltasanomat style.
+Each story MUST be specifically about one of those towns. Think Iltalehti/Iltasanomat style.{avoid_section}
 
 Topics should be:
 - Real and verifiable (based on actual events, trends, or phenomena in that specific town)
@@ -468,14 +500,31 @@ def main():
     print("Phase 1: Fetching ideas")
     print(f"{'='*60}")
 
+    # Fetch existing articles to avoid duplicates
+    existing_titles = get_existing_titles() if not dry_run else []
+    if existing_titles:
+        print(f"  {len(existing_titles)} existing articles loaded for dedup")
+
     all_ideas = []
     if "reddit" in PUSKARDIO_SOURCES:
         all_ideas.extend(fetch_reddit_ideas(PUSKARDIO_REDDIT_SUBS))
     if "gemini" in PUSKARDIO_SOURCES:
-        all_ideas.extend(fetch_gemini_ideas(client, city_names, count=PUSKARDIO_COUNT))
+        all_ideas.extend(fetch_gemini_ideas(client, city_names, count=PUSKARDIO_COUNT, existing_titles=existing_titles))
 
     if not all_ideas:
         print("ERROR: No ideas sourced. Check your sources config.")
+        sys.exit(1)
+
+    # Dedup against existing articles
+    if existing_titles:
+        before = len(all_ideas)
+        all_ideas = [idea for idea in all_ideas if not is_duplicate(idea["topic"], existing_titles)]
+        skipped = before - len(all_ideas)
+        if skipped:
+            print(f"  Skipped {skipped} duplicate ideas (already published)")
+
+    if not all_ideas:
+        print("ERROR: All ideas are duplicates of existing articles. Try again later.")
         sys.exit(1)
 
     # Shuffle and pick
