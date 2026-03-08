@@ -110,6 +110,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "post.submissionFailed": "Lähetys epäonnistui",
     "post.demo": "Demo (ohita pipeline)",
     "post.refineFailed": "Muokkaus epäonnistui",
+    "post.loadFailed": "Luonnoksen lataus epäonnistui",
     "post.publishFailed": "Julkaisu epäonnistui.",
 
     // Article
@@ -530,6 +531,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "post.submissionFailed": "Submission failed",
     "post.demo": "Demo (skip pipeline)",
     "post.refineFailed": "Refinement failed",
+    "post.loadFailed": "Failed to load draft",
     "post.publishFailed": "Publish failed.",
 
     // Article

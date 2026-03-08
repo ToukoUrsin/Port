@@ -61,14 +61,17 @@ function PostItem({ post, status }: { post: Article; status?: number }) {
     </>
   );
 
-  // Drafts link to the article view (owner can see their own); published articles too
+  // Drafts without a title are not clickable
   if (isDraft && !post.title) {
     return <div className="profile-post profile-post--disabled">{inner}</div>;
   }
 
+  // Drafts link to the editor; published articles link to the article page
+  const href = isDraft ? `/post/${post.id}` : `/article/${post.id}`;
+
   return (
     <Link
-      to={`/article/${post.id}`}
+      to={href}
       className="profile-post"
       style={{ textDecoration: "none", color: "inherit" }}
     >
