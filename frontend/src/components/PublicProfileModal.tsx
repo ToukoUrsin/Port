@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import Modal from "./Modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/Toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { updateProfile } from "@/lib/api";
 
 interface PublicProfileModalProps {
@@ -18,6 +19,7 @@ export default function PublicProfileModal({
 }: PublicProfileModalProps) {
   const { user, updateUser } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
 
   async function handleMakePublic() {
@@ -26,10 +28,10 @@ export default function PublicProfileModal({
     try {
       await updateProfile(user.id, { public: true });
       updateUser({ public: true });
-      toast("Profile is now public", "success");
+      toast(t("modal.profileNowPublic"), "success");
       onMadePublic();
     } catch {
-      toast("Failed to update profile", "error");
+      toast(t("modal.profileUpdateFailed"), "error");
     } finally {
       setLoading(false);
     }
@@ -37,11 +39,10 @@ export default function PublicProfileModal({
 
   return (
     <Modal open={open} onClose={onClose} size="sm">
-      <Modal.Header>Public profile required</Modal.Header>
+      <Modal.Header>{t("modal.publicProfileRequired")}</Modal.Header>
       <Modal.Body>
         <p className="confirm-message">
-          Your profile must be public before you can submit content. Published
-          articles are linked to your profile so readers can see who contributed.
+          {t("modal.publicProfileDesc")}
         </p>
         <div className="confirm-actions">
           <button
@@ -50,7 +51,7 @@ export default function PublicProfileModal({
             type="button"
             disabled={loading}
           >
-            Keep Private
+            {t("modal.keepPrivate")}
           </button>
           <button
             className="btn btn-primary"
@@ -58,7 +59,7 @@ export default function PublicProfileModal({
             type="button"
             disabled={loading}
           >
-            {loading ? <Loader2 size={16} className="spin" /> : "Make Public"}
+            {loading ? <Loader2 size={16} className="spin" /> : t("modal.makePublic")}
           </button>
         </div>
       </Modal.Body>

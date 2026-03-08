@@ -6,6 +6,7 @@
   position: relative;
   height: calc(100vh - 56px);
   overflow: hidden;
+  z-index: 0;           /* create stacking context so map stays below navbar */
 }
 
 .explore .leaflet-container {

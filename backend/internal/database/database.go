@@ -36,6 +36,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Advertiser{},
 		&models.Embedding{},
 		&models.Reaction{},
+		&models.Notification{},
 	)
 }
 

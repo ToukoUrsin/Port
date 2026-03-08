@@ -56,3 +56,9 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+.search-end-message {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}

@@ -48,17 +48,20 @@ func (h *Handler) ReactArticle(c *gin.Context) {
 		Kind:       req.Kind,
 	}
 
-	// Upsert: insert or update kind
 	h.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "profile_id"}, {Name: "target_id"}, {Name: "target_type"}},
 		DoUpdates: clause.AssignmentColumns([]string{"kind"}),
 	}).Create(&reaction)
 
-	// Update aggregate counts
 	h.updateSubmissionReactions(subID)
-
-	// Invalidate article cache
 	h.cache.Delete(c.Request.Context(), "articles:"+subID.String())
+
+	// Notify article owner
+	notifType := models.NotifLike
+	if req.Kind == models.ReactionDislike {
+		notifType = models.NotifDislike
+	}
+	h.createNotification(sub.OwnerID, actor.ProfileID, notifType, subID, models.ReactionTargetSubmission, subID)
 
 	counts := h.getReactionCounts(subID, models.ReactionTargetSubmission)
 	counts["user_reaction"] = int(req.Kind)
@@ -95,7 +98,6 @@ func (h *Handler) GetArticleReactions(c *gin.Context) {
 
 	counts := h.getReactionCounts(subID, models.ReactionTargetSubmission)
 
-	// Check if user has reacted (optional auth)
 	profileIDRaw, hasAuth := c.Get("profile_id")
 	if hasAuth {
 		idStr, _ := profileIDRaw.(string)
@@ -112,7 +114,7 @@ func (h *Handler) GetArticleReactions(c *gin.Context) {
 	c.JSON(http.StatusOK, counts)
 }
 
-// --- Reply reactions (like only) ---
+// --- Reply reactions (like / dislike) ---
 
 func (h *Handler) ReactReply(c *gin.Context) {
 	replyID, err := uuid.Parse(c.Param("id"))
@@ -127,13 +129,21 @@ func (h *Handler) ReactReply(c *gin.Context) {
 		return
 	}
 
+	var req struct {
+		Kind int16 `json:"kind"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || (req.Kind != models.ReactionLike && req.Kind != models.ReactionDislike) {
+		// Default to like for backward compat (old frontend sends no kind)
+		req.Kind = models.ReactionLike
+	}
+
 	actor := services.ActorFromContext(c)
 
 	reaction := models.Reaction{
 		ProfileID:  actor.ProfileID,
 		TargetID:   replyID,
 		TargetType: models.ReactionTargetReply,
-		Kind:       models.ReactionLike,
+		Kind:       req.Kind,
 	}
 
 	h.db.Clauses(clause.OnConflict{
@@ -143,8 +153,15 @@ func (h *Handler) ReactReply(c *gin.Context) {
 
 	h.updateReplyReactions(replyID)
 
+	// Notify comment author
+	notifType := models.NotifLike
+	if req.Kind == models.ReactionDislike {
+		notifType = models.NotifDislike
+	}
+	h.createNotification(reply.ProfileID, actor.ProfileID, notifType, replyID, models.ReactionTargetReply, reply.SubmissionID)
+
 	counts := h.getReactionCounts(replyID, models.ReactionTargetReply)
-	counts["user_liked"] = 1
+	counts["user_reaction"] = int(req.Kind)
 	c.JSON(http.StatusOK, counts)
 }
 
@@ -164,12 +181,11 @@ func (h *Handler) UnreactReply(c *gin.Context) {
 	h.updateReplyReactions(replyID)
 
 	counts := h.getReactionCounts(replyID, models.ReactionTargetReply)
-	counts["user_liked"] = 0
+	counts["user_reaction"] = 0
 	c.JSON(http.StatusOK, counts)
 }
 
-// GetReplyReactions returns reaction data for all replies of an article,
-// including the current user's likes if authenticated.
+// GetReplyReactions returns reaction data for all replies of an article.
 func (h *Handler) GetReplyReactions(c *gin.Context) {
 	subID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -177,7 +193,6 @@ func (h *Handler) GetReplyReactions(c *gin.Context) {
 		return
 	}
 
-	// Get all reply IDs for this submission
 	var replyIDs []uuid.UUID
 	h.db.Model(&models.Reply{}).
 		Where("submission_id = ? AND status = ?", subID, models.ReplyVisible).
@@ -188,25 +203,33 @@ func (h *Handler) GetReplyReactions(c *gin.Context) {
 		return
 	}
 
-	// Get counts per reply
+	// Get counts per reply per kind
 	type countResult struct {
 		TargetID uuid.UUID
+		Kind     int16
 		Count    int
 	}
 	var counts []countResult
 	h.db.Model(&models.Reaction{}).
-		Select("target_id, COUNT(*) as count").
-		Where("target_id IN ? AND target_type = ? AND kind = ?",
-			replyIDs, models.ReactionTargetReply, models.ReactionLike).
-		Group("target_id").
+		Select("target_id, kind, COUNT(*) as count").
+		Where("target_id IN ? AND target_type = ?", replyIDs, models.ReactionTargetReply).
+		Group("target_id, kind").
 		Scan(&counts)
 
 	result := map[string]map[string]int{}
 	for _, cnt := range counts {
-		result[cnt.TargetID.String()] = map[string]int{"likes": cnt.Count}
+		id := cnt.TargetID.String()
+		if result[id] == nil {
+			result[id] = map[string]int{}
+		}
+		if cnt.Kind == models.ReactionLike {
+			result[id]["likes"] = cnt.Count
+		} else if cnt.Kind == models.ReactionDislike {
+			result[id]["dislikes"] = cnt.Count
+		}
 	}
 
-	// Check user's likes if auth present
+	// Check user's reactions if auth present
 	profileIDRaw, hasAuth := c.Get("profile_id")
 	if hasAuth {
 		idStr, _ := profileIDRaw.(string)
@@ -220,7 +243,7 @@ func (h *Handler) GetReplyReactions(c *gin.Context) {
 			if result[id] == nil {
 				result[id] = map[string]int{}
 			}
-			result[id]["user_liked"] = 1
+			result[id]["user_reaction"] = int(r.Kind)
 		}
 	}
 
@@ -263,5 +286,5 @@ func (h *Handler) updateReplyReactions(replyID uuid.UUID) {
 	counts := h.getReactionCounts(replyID, models.ReactionTargetReply)
 	h.db.Model(&models.Reply{}).Where("id = ?", replyID).
 		UpdateColumn("meta", gorm.Expr("jsonb_set(COALESCE(meta, '{}'), '{reactions}', ?::jsonb)",
-			fmt.Sprintf(`{"like": %d}`, counts["likes"])))
+			fmt.Sprintf(`{"like": %d, "dislike": %d}`, counts["likes"], counts["dislikes"])))
 }

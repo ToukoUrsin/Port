@@ -23,7 +23,7 @@ func (h *Handler) ListReplies(c *gin.Context) {
 	}
 
 	var replies []models.Reply
-	h.db.Where("submission_id = ? AND status = ?", subID, models.ReplyVisible).
+	h.db.Where("submission_id = ? AND status IN ?", subID, []int16{models.ReplyVisible, models.ReplyDeleted}).
 		Order("created_at ASC").Find(&replies)
 
 	h.fillReplyProfileNames(replies)
@@ -69,6 +69,14 @@ func (h *Handler) CreateReply(c *gin.Context) {
 	if err := h.db.Create(&reply).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create reply"})
 		return
+	}
+
+	// Notify parent comment author if this is a threaded reply
+	if req.ParentID != nil {
+		var parent models.Reply
+		if h.db.First(&parent, "id = ?", *req.ParentID).Error == nil {
+			h.createNotification(parent.ProfileID, actor.ProfileID, models.NotifReply, reply.ID, models.ReactionTargetReply, subID)
+		}
 	}
 
 	replies := []models.Reply{reply}
@@ -165,7 +173,10 @@ func (h *Handler) DeleteReply(c *gin.Context) {
 		return
 	}
 
-	h.db.Delete(&reply)
+	h.db.Model(&reply).Updates(map[string]interface{}{
+		"status": models.ReplyDeleted,
+		"body":   "",
+	})
 	c.Status(http.StatusNoContent)
 }
 

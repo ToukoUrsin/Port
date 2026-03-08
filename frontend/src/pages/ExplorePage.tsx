@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect } from "react";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
-import { useApi } from "@/hooks/useApi";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getLocations } from "@/lib/api";
+import type { ApiLocation } from "@/lib/types";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "leaflet/dist/leaflet.css";
@@ -48,14 +49,8 @@ function createAreaIcon(area: Area, selected: boolean) {
   });
 }
 
-export default function ExplorePage() {
-  const navigate = useNavigate();
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-  const fetchLocations = useCallback(() => getLocations(), []);
-  const { data: locData } = useApi(fetchLocations, []);
-
-  const areas: Area[] = (locData?.locations ?? [])
+function toAreas(locations: ApiLocation[]): Area[] {
+  return locations
     .filter((loc) => loc.lat != null && loc.lng != null)
     .map((loc) => ({
       id: loc.id,
@@ -65,15 +60,84 @@ export default function ExplorePage() {
       articleCount: loc.article_count,
       slug: loc.slug,
     }));
+}
 
-  // Load saved selections once areas are available
+function MapEventHandler({
+  onViewportChange,
+}: {
+  onViewportChange: (bounds: L.LatLngBounds, zoom: number) => void;
+}) {
+  const map = useMapEvents({
+    moveend: () => {
+      onViewportChange(map.getBounds(), map.getZoom());
+    },
+    zoomend: () => {
+      onViewportChange(map.getBounds(), map.getZoom());
+    },
+  });
+
+  // Fire initial fetch once the map is ready
   useEffect(() => {
-    if (areas.length === 0) return;
+    onViewportChange(map.getBounds(), map.getZoom());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
+}
+
+export default function ExplorePage() {
+  const { t } = useLanguage();
+  const navigate = useNavigate();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [areas, setAreas] = useState<Area[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedLoaded = useRef(false);
+
+  // Load saved selections once on mount
+  useEffect(() => {
     const saved = getSavedLocationIds();
     if (saved.length > 0) {
       setSelectedIds(new Set(saved));
     }
-  }, [areas.length]);
+    savedLoaded.current = true;
+  }, []);
+
+  const handleViewportChange = useCallback(
+    (bounds: L.LatLngBounds, zoom: number) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        // Gradual zoom hierarchy:
+        // 1-2: continents | 3: continents+countries | 4-5: countries
+        // 6: countries+regions | 7-8: regions | 9: regions+cities | 10+: cities
+        let levels: number[];
+        if (zoom <= 2) levels = [0];
+        else if (zoom === 3) levels = [0, 1];
+        else if (zoom <= 5) levels = [1];
+        else if (zoom === 6) levels = [1, 2];
+        else if (zoom <= 8) levels = [2];
+        else if (zoom === 9) levels = [2, 3];
+        else levels = [3];
+
+        const useBbox = zoom > 2;
+        const params = useBbox
+          ? {
+              level: levels,
+              south: bounds.getSouth(),
+              west: bounds.getWest(),
+              north: bounds.getNorth(),
+              east: bounds.getEast(),
+              limit: 300,
+              min_articles: 1,
+            }
+          : { level: levels, limit: 300, min_articles: 1 };
+
+        getLocations(params).then((res) => {
+          setAreas(toAreas(res.locations));
+        });
+      }, 300);
+    },
+    [],
+  );
 
   function toggleArea(id: string) {
     setSelectedIds((prev) => {
@@ -90,7 +154,7 @@ export default function ExplorePage() {
     navigate("/");
   }
 
-  const center: [number, number] = [60.1233, 24.4397];
+  const center: [number, number] = [20, 0];
 
   return (
     <>
@@ -98,7 +162,7 @@ export default function ExplorePage() {
       <div className="explore">
         <MapContainer
           center={center}
-          zoom={13}
+          zoom={3}
           style={{ width: "100%", height: "100%" }}
           zoomControl={false}
         >
@@ -106,6 +170,7 @@ export default function ExplorePage() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           />
+          <MapEventHandler onViewportChange={handleViewportChange} />
           {areas.map((area) => (
             <Marker
               key={area.id}
@@ -125,8 +190,8 @@ export default function ExplorePage() {
             disabled={selectedIds.size === 0}
           >
             {selectedIds.size === 0
-              ? "Select areas on the map"
-              : `Apply (${selectedIds.size})`}
+              ? t("explore.selectAreas")
+              : `${t("explore.apply")} (${selectedIds.size})`}
           </button>
         </div>
       </div>

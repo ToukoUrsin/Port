@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck, Music, FolderOpen } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck, Music, FolderOpen, Bell, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import AccountSettings from "@/components/AccountSettings";
@@ -8,25 +8,30 @@ import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useApi } from "@/hooks/useApi";
-import { getArticles, getProfileBySlug, getSubmissions, getMyFiles, fileToMediaUrl, getFollowStatus, getFollowCounts, followUser, unfollowUser } from "@/lib/api";
+import { getArticles, getProfileBySlug, getSubmissions, getMyFiles, fileToMediaUrl, getFollowStatus, getFollowCounts, followUser, unfollowUser, getNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/api";
 import { apiToArticle, timeAgo, SubmissionStatus, FileType } from "@/lib/types";
-import type { ApiProfile, ApiSubmission, FollowCounts, ApiFile } from "@/lib/types";
+import type { ApiProfile, ApiSubmission, FollowCounts, ApiFile, ApiNotification } from "@/lib/types";
+import { NotifType, NotifTargetType } from "@/lib/types";
 import "./ProfilePage.css";
 
-const STATUS_LABEL: Record<number, string> = {
-  [SubmissionStatus.Draft]: "Draft",
-  [SubmissionStatus.Transcribing]: "Processing",
-  [SubmissionStatus.Generating]: "Processing",
-  [SubmissionStatus.Reviewing]: "Processing",
-  [SubmissionStatus.Ready]: "Ready",
-  [SubmissionStatus.Refining]: "Refining",
-  [SubmissionStatus.Appealed]: "In review",
-  [SubmissionStatus.Archived]: "Archived",
-};
+function statusLabel(status: number, t: (key: string) => string): string {
+  const map: Record<number, string> = {
+    [SubmissionStatus.Draft]: t("profile.statusDraft"),
+    [SubmissionStatus.Transcribing]: t("profile.statusProcessing"),
+    [SubmissionStatus.Generating]: t("profile.statusProcessing"),
+    [SubmissionStatus.Reviewing]: t("profile.statusProcessing"),
+    [SubmissionStatus.Ready]: t("profile.statusReady"),
+    [SubmissionStatus.Refining]: t("profile.statusRefining"),
+    [SubmissionStatus.Appealed]: t("profile.statusInReview"),
+    [SubmissionStatus.Archived]: t("profile.statusArchived"),
+  };
+  return map[status] ?? t("profile.statusDraft");
+}
 
 function PostItem({ post, status }: { post: Article; status?: number }) {
+  const { t } = useLanguage();
   const isDraft = status !== undefined;
-  const label = status !== undefined ? STATUS_LABEL[status] ?? "Draft" : null;
+  const label = status !== undefined ? statusLabel(status, t) : null;
   const isReady = status === SubmissionStatus.Ready;
 
   const inner = (
@@ -42,7 +47,7 @@ function PostItem({ post, status }: { post: Article; status?: number }) {
       </div>
       <div className="profile-post__body">
         <div className="profile-post__meta">
-          <span className={`badge ${BADGE_CLASS[post.category]}`}>{post.category}</span>
+          <span className={`badge ${BADGE_CLASS[post.category]}`}>{t("tag." + post.category)}</span>
           {label && (
             <span className={`profile-draft-badge ${isReady ? "profile-draft-badge--ready" : ""}`}>
               {label}
@@ -50,7 +55,7 @@ function PostItem({ post, status }: { post: Article; status?: number }) {
           )}
           <span>{post.timeAgo}</span>
         </div>
-        <h3 className="profile-post__title">{post.title || "Untitled"}</h3>
+        <h3 className="profile-post__title">{post.title || t("profile.untitled")}</h3>
         <p className="profile-post__excerpt">{post.excerpt}</p>
       </div>
     </>
@@ -120,12 +125,33 @@ function FileCard({ file }: { file: ApiFile }) {
   );
 }
 
+function NotificationIcon({ type }: { type: number }) {
+  if (type === NotifType.Like) return <ThumbsUp size={14} />;
+  if (type === NotifType.Dislike) return <ThumbsDown size={14} />;
+  return <MessageSquare size={14} />;
+}
+
+function notifText(n: ApiNotification): string {
+  const actor = n.actor_name || "Someone";
+  if (n.type === NotifType.Like) {
+    return n.target_type === NotifTargetType.Reply
+      ? `${actor} liked your comment`
+      : `${actor} liked your article`;
+  }
+  if (n.type === NotifType.Dislike) {
+    return n.target_type === NotifTargetType.Reply
+      ? `${actor} disliked your comment`
+      : `${actor} disliked your article`;
+  }
+  return `${actor} replied to your comment`;
+}
+
 export default function ProfilePage() {
   const { slug } = useParams<{ slug: string }>();
-  const [tab, setTab] = useState<"posts" | "drafts" | "files" | "settings">("posts");
+  const [tab, setTab] = useState<"posts" | "drafts" | "files" | "notifications" | "settings">("posts");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const isOwnProfile = !slug;
 
   // Fetch profile for other users
@@ -211,6 +237,32 @@ export default function ProfilePage() {
   const photoFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Photo), [allFiles]);
   const audioFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Audio), [allFiles]);
 
+  // Notifications for own profile
+  const [notifications, setNotifications] = useState<ApiNotification[]>([]);
+  const [notifsLoading, setNotifsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOwnProfile) return;
+    setNotifsLoading(true);
+    getNotifications(50)
+      .then((res) => setNotifications(res.notifications))
+      .catch(() => {})
+      .finally(() => setNotifsLoading(false));
+  }, [isOwnProfile]);
+
+  const handleMarkAllRead = async () => {
+    await markAllNotificationsRead().catch(() => {});
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleNotifClick = async (n: ApiNotification) => {
+    if (!n.read) {
+      markNotificationRead(n.id).catch(() => {});
+      setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, read: true } : x));
+    }
+    navigate(`/article/${n.article_id}`);
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate("/");
@@ -247,10 +299,10 @@ export default function ProfilePage() {
     );
   }
 
-  const name = profile?.profile_name ?? "Anonymous";
+  const name = profile?.profile_name ?? t("profile.anonymous");
   const email = profile?.email ?? "";
   const joined = profile?.created_at
-    ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    ? new Date(profile.created_at).toLocaleDateString(language === "fi" ? "fi-FI" : "en-US", { month: "long", year: "numeric" })
     : "";
 
   return (
@@ -270,7 +322,7 @@ export default function ProfilePage() {
           {isOwnProfile ? (
             <button className="profile-logout" onClick={handleLogout}>
               <LogOut size={16} />
-              <span>Log out</span>
+              <span>{t("profile.logout")}</span>
             </button>
           ) : user && (
             <button
@@ -279,7 +331,7 @@ export default function ProfilePage() {
               disabled={followBusy}
             >
               {isFollowing ? <UserCheck size={16} /> : <UserPlus size={16} />}
-              <span>{isFollowing ? "Following" : "Follow"}</span>
+              <span>{isFollowing ? t("profile.following") : t("profile.follow")}</span>
             </button>
           )}
         </div>
@@ -291,11 +343,11 @@ export default function ProfilePage() {
           </div>
           <div className="profile-stat">
             <span className="profile-stat__value">{followCnts.followers}</span>
-            <span className="profile-stat__label">Followers</span>
+            <span className="profile-stat__label">{t("profile.followers")}</span>
           </div>
           <div className="profile-stat">
             <span className="profile-stat__value">{followCnts.following}</span>
-            <span className="profile-stat__label">Following</span>
+            <span className="profile-stat__label">{t("profile.following")}</span>
           </div>
           {isOwnProfile && (
             <div className="profile-stat">
@@ -336,16 +388,65 @@ export default function ProfilePage() {
           )}
           {isOwnProfile && (
             <button
+              className={`profile-tab ${tab === "notifications" ? "profile-tab--active" : ""}`}
+              onClick={() => setTab("notifications")}
+            >
+              <Bell size={14} />
+              Notifications
+              {notifications.filter((n) => !n.read).length > 0 && (
+                <span className="profile-tab__badge">{notifications.filter((n) => !n.read).length}</span>
+              )}
+            </button>
+          )}
+          {isOwnProfile && (
+            <button
               className={`profile-tab ${tab === "settings" ? "profile-tab--active" : ""}`}
               onClick={() => setTab("settings")}
             >
-              Settings
+              {t("profile.settings")}
             </button>
           )}
         </div>
 
         {tab === "settings" ? (
           <AccountSettings />
+        ) : tab === "notifications" ? (
+          notifsLoading ? (
+            <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
+              <Loader2 size={24} className="animate-spin" />
+            </div>
+          ) : notifications.length > 0 ? (
+            <div className="profile-notifications">
+              {notifications.some((n) => !n.read) && (
+                <button className="profile-notifs__mark-all" onClick={handleMarkAllRead}>
+                  Mark all as read
+                </button>
+              )}
+              <ul className="profile-notifs__list">
+                {notifications.map((n) => (
+                  <li
+                    key={n.id}
+                    className={`profile-notif ${!n.read ? "profile-notif--unread" : ""}`}
+                    onClick={() => handleNotifClick(n)}
+                  >
+                    <div className={`profile-notif__icon profile-notif__icon--${n.type === NotifType.Like ? "like" : n.type === NotifType.Dislike ? "dislike" : "reply"}`}>
+                      <NotificationIcon type={n.type} />
+                    </div>
+                    <div className="profile-notif__body">
+                      <span className="profile-notif__text">{notifText(n)}</span>
+                      <span className="profile-notif__article">{n.article_title}</span>
+                      <span className="profile-notif__time">{timeAgo(n.created_at)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="profile-empty">
+              <div className="profile-empty__icon"><Bell size={32} /></div>
+              <p className="profile-empty__text">No notifications yet</p>
+            </div>
+          )
         ) : tab === "files" ? (
           filesLoading ? (
             <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
@@ -388,7 +489,7 @@ export default function ProfilePage() {
               <p className="profile-empty__text">{t("profile.noFiles")}</p>
               {isOwnProfile && (
                 <Link to="/post" className="profile-empty__cta">
-                  Write your first story
+                  {t("profile.writeFirst")}
                 </Link>
               )}
             </div>
@@ -419,7 +520,7 @@ export default function ProfilePage() {
             </p>
             {isOwnProfile && (
               <Link to="/post" className="profile-empty__cta">
-                Write your first story
+                {t("profile.writeFirst")}
               </Link>
             )}
           </div>

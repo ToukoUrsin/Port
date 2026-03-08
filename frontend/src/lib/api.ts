@@ -14,6 +14,7 @@ import type {
   FollowStatus,
   FollowCounts,
   FileListResponse,
+  ApiNotification,
 } from "@/lib/types.ts";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -281,11 +282,23 @@ export async function appealSubmission(
 
 export function getLocations(params?: {
   country?: string;
-  level?: number;
+  level?: number[];
+  south?: number;
+  west?: number;
+  north?: number;
+  east?: number;
+  limit?: number;
+  min_articles?: number;
 }): Promise<{ locations: ApiLocation[] }> {
   const qs = new URLSearchParams();
   if (params?.country) qs.set("country", params.country);
-  if (params?.level != null) qs.set("level", String(params.level));
+  if (params?.level?.length) qs.set("level", params.level.join(","));
+  if (params?.south != null) qs.set("south", String(params.south));
+  if (params?.west != null) qs.set("west", String(params.west));
+  if (params?.north != null) qs.set("north", String(params.north));
+  if (params?.east != null) qs.set("east", String(params.east));
+  if (params?.limit != null) qs.set("limit", String(params.limit));
+  if (params?.min_articles != null) qs.set("min_articles", String(params.min_articles));
   const query = qs.toString();
   return apiFetch<{ locations: ApiLocation[] }>(
     `/api/locations${query ? `?${query}` : ""}`,
@@ -385,6 +398,12 @@ export function createReply(
   });
 }
 
+export function deleteReply(replyId: string): Promise<void> {
+  return apiFetch<void>(`/api/replies/${replyId}`, {
+    method: "DELETE",
+  });
+}
+
 // --- Flagging ---
 
 export function flagArticle(id: string, reason: string): Promise<{ status: string }> {
@@ -436,14 +455,15 @@ export function getReplyReactions(articleId: string): Promise<{ reactions: Reply
   return apiFetch<{ reactions: ReplyReactionMap }>(`/api/articles/${articleId}/replies/reactions`);
 }
 
-export function reactReply(replyId: string): Promise<{ likes: number; user_liked: number }> {
-  return apiFetch<{ likes: number; user_liked: number }>(`/api/replies/${replyId}/react`, {
+export function reactReply(replyId: string, kind: 1 | -1 = 1): Promise<ReactionCounts> {
+  return apiFetch<ReactionCounts>(`/api/replies/${replyId}/react`, {
     method: "POST",
+    body: JSON.stringify({ kind }),
   });
 }
 
-export function unreactReply(replyId: string): Promise<{ likes: number; user_liked: number }> {
-  return apiFetch<{ likes: number; user_liked: number }>(`/api/replies/${replyId}/react`, {
+export function unreactReply(replyId: string): Promise<ReactionCounts> {
+  return apiFetch<ReactionCounts>(`/api/replies/${replyId}/react`, {
     method: "DELETE",
   });
 }
@@ -493,4 +513,22 @@ export function fileToMediaUrl(name: string): string {
 
 export function getFollowCounts(profileId: string): Promise<FollowCounts> {
   return apiFetch<FollowCounts>(`/api/profiles/${profileId}/follow-counts`);
+}
+
+// --- Notifications ---
+
+export function getNotifications(limit = 30): Promise<{ notifications: ApiNotification[] }> {
+  return apiFetch<{ notifications: ApiNotification[] }>(`/api/notifications?limit=${limit}`);
+}
+
+export function getUnreadCount(): Promise<{ count: number }> {
+  return apiFetch<{ count: number }>("/api/notifications/unread-count");
+}
+
+export function markAllNotificationsRead(): Promise<void> {
+  return apiFetch<void>("/api/notifications/read", { method: "PUT" });
+}
+
+export function markNotificationRead(id: string): Promise<void> {
+  return apiFetch<void>(`/api/notifications/${id}/read`, { method: "PUT" });
 }

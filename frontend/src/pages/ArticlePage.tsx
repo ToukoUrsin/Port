@@ -1,11 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Heart, Reply as ReplyIcon } from "lucide-react";
+import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Reply as ReplyIcon, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
-import { getArticle, getSimilarArticles, getReplies, createReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
+import { getArticle, getSimilarArticles, getReplies, createReply, deleteReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
 import { apiToArticle, timeAgo, computeOverallScore } from "@/lib/types";
 import type { ApiSubmission, ApiReply, ReactionCounts, ReplyReactionMap } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,17 +16,19 @@ import Modal from "@/components/Modal";
 import "./ArticlePage.css";
 
 function ArticleReactions({ articleId }: { articleId: string }) {
-  const { isAuthenticated } = useAuth();
+  const { t } = useLanguage();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [counts, setCounts] = useState<ReactionCounts>({ likes: 0, dislikes: 0 });
   const [userReaction, setUserReaction] = useState<number>(0);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     getArticleReactions(articleId).then((data) => {
       setCounts({ likes: data.likes, dislikes: data.dislikes });
       if (data.user_reaction !== undefined) setUserReaction(data.user_reaction);
     }).catch(() => {});
-  }, [articleId]);
+  }, [articleId, authLoading]);
 
   const total = counts.likes + counts.dislikes;
   const likePercent = total > 0 ? Math.round((counts.likes / total) * 100) : 0;
@@ -76,35 +78,39 @@ function ArticleReactions({ articleId }: { articleId: string }) {
           <div className="article-reactions__bar">
             <div className="article-reactions__bar-fill" style={{ width: `${likePercent}%` }} />
           </div>
-          <span className="article-reactions__percent">{likePercent}% liked</span>
+          <span className="article-reactions__percent">{likePercent}% {t("article.liked")}</span>
         </div>
       )}
     </div>
   );
 }
 
-function CommentLikeButton({ replyId, initialLikes, initialLiked }: {
+function CommentReactions({ replyId, initialLikes, initialDislikes, initialReaction }: {
   replyId: string;
   initialLikes: number;
-  initialLiked: boolean;
+  initialDislikes: number;
+  initialReaction: number; // 1 = like, -1 = dislike, 0 = none
 }) {
   const { isAuthenticated } = useAuth();
   const [likes, setLikes] = useState(initialLikes);
-  const [liked, setLiked] = useState(initialLiked);
+  const [dislikes, setDislikes] = useState(initialDislikes);
+  const [userReaction, setUserReaction] = useState(initialReaction);
   const [busy, setBusy] = useState(false);
 
-  const handleToggle = async () => {
+  const handleReact = async (kind: 1 | -1) => {
     if (busy || !isAuthenticated) return;
     setBusy(true);
     try {
-      if (liked) {
+      if (userReaction === kind) {
         const data = await unreactReply(replyId);
         setLikes(data.likes);
-        setLiked(false);
+        setDislikes(data.dislikes);
+        setUserReaction(0);
       } else {
-        const data = await reactReply(replyId);
+        const data = await reactReply(replyId, kind);
         setLikes(data.likes);
-        setLiked(true);
+        setDislikes(data.dislikes);
+        setUserReaction(kind);
       }
     } catch {
       // ignore
@@ -114,14 +120,24 @@ function CommentLikeButton({ replyId, initialLikes, initialLiked }: {
   };
 
   return (
-    <button
-      className={`comment__like ${liked ? "comment__like--active" : ""}`}
-      onClick={handleToggle}
-      disabled={!isAuthenticated || busy}
-    >
-      <Heart size={12} fill={liked ? "currentColor" : "none"} />
-      {likes > 0 && <span>{likes}</span>}
-    </button>
+    <div className="comment__reactions">
+      <button
+        className={`comment__react-btn ${userReaction === 1 ? "comment__react-btn--active" : ""}`}
+        onClick={() => handleReact(1)}
+        disabled={!isAuthenticated || busy}
+      >
+        <ThumbsUp size={12} />
+        {likes > 0 && <span>{likes}</span>}
+      </button>
+      <button
+        className={`comment__react-btn comment__react-btn--dislike ${userReaction === -1 ? "comment__react-btn--active" : ""}`}
+        onClick={() => handleReact(-1)}
+        disabled={!isAuthenticated || busy}
+      >
+        <ThumbsDown size={12} />
+        {dislikes > 0 && <span>{dislikes}</span>}
+      </button>
+    </div>
   );
 }
 
@@ -131,6 +147,7 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
   onSubmitted: (reply: ApiReply) => void;
   onCancel: () => void;
 }) {
+  const { t } = useLanguage();
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -160,7 +177,7 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
         <textarea
           ref={inputRef}
           className="input comment-form__input"
-          placeholder="Write a reply..."
+          placeholder={t("article.writeReply")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -173,7 +190,7 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
           rows={1}
         />
         <div className="comment-reply-form__actions">
-          <button className="comment-reply-form__cancel" onClick={onCancel}>Cancel</button>
+          <button className="comment-reply-form__cancel" onClick={onCancel}>{t("article.cancel")}</button>
           <button
             className="comment-reply-form__submit"
             onClick={handleSubmit}
@@ -187,16 +204,36 @@ function InlineReplyForm({ articleId, parentId, onSubmitted, onCancel }: {
   );
 }
 
-function CommentItem({ reply, depth, replyReactions, articleId, onNewReply }: {
+function CommentItem({ reply, depth, replyReactions, articleId, onNewReply, onDelete }: {
   reply: ApiReply;
   depth: number;
   replyReactions: ReplyReactionMap;
   articleId: string;
   onNewReply: (reply: ApiReply) => void;
+  onDelete: (replyId: string) => void;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { t } = useLanguage();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const rxn = replyReactions[reply.id];
+  const isDeleted = reply.status === 2;
+  const isOwner = user?.id === reply.profile_id;
+
+  if (isDeleted) {
+    return (
+      <div className={`comment comment--deleted ${depth > 0 ? "comment--nested" : ""}`}>
+        {depth > 0 && (
+          <div className="comment__thread-line" />
+        )}
+        <div className="comment__avatar">
+          <User size={depth > 0 ? 12 : 14} />
+        </div>
+        <div className="comment__body">
+          <p className="comment__text comment__text--deleted">{t("article.commentRemoved")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`comment ${depth > 0 ? "comment--nested" : ""}`}>
@@ -213,10 +250,11 @@ function CommentItem({ reply, depth, replyReactions, articleId, onNewReply }: {
         </div>
         <p className="comment__text">{reply.body}</p>
         <div className="comment__actions">
-          <CommentLikeButton
+          <CommentReactions
             replyId={reply.id}
             initialLikes={rxn?.likes ?? reply.meta?.reactions?.like ?? 0}
-            initialLiked={!!rxn?.user_liked}
+            initialDislikes={rxn?.dislikes ?? reply.meta?.reactions?.dislike ?? 0}
+            initialReaction={rxn?.user_reaction ?? 0}
           />
           {isAuthenticated && depth < 3 && (
             <button
@@ -224,7 +262,16 @@ function CommentItem({ reply, depth, replyReactions, articleId, onNewReply }: {
               onClick={() => setShowReplyForm((v) => !v)}
             >
               <ReplyIcon size={12} />
-              Reply
+              {t("article.reply")}
+            </button>
+          )}
+          {isOwner && (
+            <button
+              className="comment__reply-btn comment__delete-btn"
+              onClick={() => onDelete(reply.id)}
+            >
+              <Trash2 size={12} />
+              {t("article.deleteComment")}
             </button>
           )}
         </div>
@@ -255,13 +302,14 @@ function buildThread(replies: ApiReply[]): Map<string | null, ApiReply[]> {
   return map;
 }
 
-function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onNewReply }: {
+function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onNewReply, onDelete }: {
   parentId: string | null;
   tree: Map<string | null, ApiReply[]>;
   depth: number;
   replyReactions: ReplyReactionMap;
   articleId: string;
   onNewReply: (reply: ApiReply) => void;
+  onDelete: (replyId: string) => void;
 }) {
   const children = tree.get(parentId);
   if (!children || children.length === 0) return null;
@@ -276,6 +324,7 @@ function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onN
             replyReactions={replyReactions}
             articleId={articleId}
             onNewReply={onNewReply}
+            onDelete={onDelete}
           />
           <ThreadedReplies
             parentId={reply.id}
@@ -284,6 +333,7 @@ function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onN
             replyReactions={replyReactions}
             articleId={articleId}
             onNewReply={onNewReply}
+            onDelete={onDelete}
           />
         </div>
       ))}
@@ -293,7 +343,7 @@ function ThreadedReplies({ parentId, tree, depth, replyReactions, articleId, onN
 
 function Comments({ articleId }: { articleId: string }) {
   const { t } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const fetchReplies = useCallback(() => getReplies(articleId), [articleId]);
   const { data: repliesData, isLoading } = useApi(fetchReplies, [articleId]);
   const [localReplies, setLocalReplies] = useState<ApiReply[]>([]);
@@ -301,15 +351,19 @@ function Comments({ articleId }: { articleId: string }) {
   const [showAll, setShowAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [replyReactions, setReplyReactions] = useState<ReplyReactionMap>({});
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     getReplyReactions(articleId).then((data) => {
       setReplyReactions(data.reactions || {});
     }).catch(() => {});
-  }, [articleId]);
+  }, [articleId, authLoading]);
 
-  const allReplies = [...(repliesData?.replies ?? []), ...localReplies];
+  const allReplies = [...(repliesData?.replies ?? []), ...localReplies].map((r) =>
+    deletedIds.has(r.id) ? { ...r, status: 2, body: "" } : r
+  );
   const tree = buildThread(allReplies);
   const topLevel = tree.get(null) ?? [];
 
@@ -332,6 +386,15 @@ function Comments({ articleId }: { articleId: string }) {
   const handleNewReply = (reply: ApiReply) => {
     setLocalReplies((prev) => [...prev, reply]);
     setShowAll(true);
+  };
+
+  const handleDelete = async (replyId: string) => {
+    try {
+      await deleteReply(replyId);
+      setDeletedIds((prev) => new Set(prev).add(replyId));
+    } catch {
+      // Could show error toast
+    }
   };
 
   const visibleTop = showAll ? topLevel : topLevel.slice(0, 3);
@@ -392,6 +455,7 @@ function Comments({ articleId }: { articleId: string }) {
                 replyReactions={replyReactions}
                 articleId={articleId}
                 onNewReply={handleNewReply}
+                onDelete={handleDelete}
               />
               <ThreadedReplies
                 parentId={reply.id}
@@ -400,6 +464,7 @@ function Comments({ articleId }: { articleId: string }) {
                 replyReactions={replyReactions}
                 articleId={articleId}
                 onNewReply={handleNewReply}
+                onDelete={handleDelete}
               />
             </div>
           ))}
@@ -476,7 +541,7 @@ export default function ArticlePage() {
       <div className="article-content">
         <div className="article-meta">
           <Link to={`/tag/${article.category}`} className={`badge badge--clickable ${BADGE_CLASS[article.category] || "badge-community"}`}>
-            {article.category}
+            {t("tag." + article.category)}
           </Link>
           <span className="article-meta__time">
             <Clock size={12} />
@@ -522,7 +587,7 @@ export default function ArticlePage() {
           </div>
           {apiData?.meta?.article_metadata?.category && (
             <Link to={`/tag/${apiData.meta.article_metadata.category}`} className={`badge badge--clickable ${BADGE_CLASS[apiData.meta.article_metadata.category] || "badge-community"}`}>
-              {apiData.meta.article_metadata.category}
+              {t("tag." + apiData.meta.article_metadata.category)}
             </Link>
           )}
         </div>
@@ -533,13 +598,13 @@ export default function ArticlePage() {
           <div className="report-section">
             {!showReport ? (
               <button className="report-trigger" onClick={() => setShowReport(true)}>
-                <Flag size={14} /> Report this article
+                <Flag size={14} /> {t("article.reportArticle")}
               </button>
             ) : (
               <div className="report-form">
                 <textarea
                   className="input"
-                  placeholder="Why are you reporting this article?"
+                  placeholder={t("article.reportPlaceholder")}
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
                   rows={3}
@@ -561,10 +626,10 @@ export default function ArticlePage() {
                       }
                     }}
                   >
-                    {reportSubmitting ? <Loader2 size={14} className="animate-spin" /> : "Submit report"}
+                    {reportSubmitting ? <Loader2 size={14} className="animate-spin" /> : t("article.submitReport")}
                   </button>
                   <button className="btn btn-secondary" onClick={() => setShowReport(false)}>
-                    Cancel
+                    {t("article.cancel")}
                   </button>
                 </div>
               </div>
@@ -573,7 +638,7 @@ export default function ArticlePage() {
         )}
         {reportDone && (
           <p style={{ color: "var(--color-text-tertiary)", fontSize: "var(--text-sm)", fontFamily: "var(--font-sans)", marginTop: "var(--space-4)" }}>
-            Thank you for your report. Our team will review it.
+            {t("article.reportThanks")}
           </p>
         )}
 
@@ -610,7 +675,7 @@ export default function ArticlePage() {
                           navigate(`/tag/${a.category}`);
                         }}
                       >
-                        {a.category}
+                        {t("tag." + a.category)}
                       </span>
                       <h3 className="similar-card__title">{a.title}</h3>
                       <div className="similar-card__meta">
@@ -646,11 +711,11 @@ export default function ArticlePage() {
                   className={`badge badge--clickable ${BADGE_CLASS[a.category] || "badge-community"}`}
                   onClick={() => setModalArticle(null)}
                 >
-                  {a.category}
+                  {t("tag." + a.category)}
                 </Link>
                 <h2 className="article-modal__title">{a.title}</h2>
                 <p className="article-modal__author">
-                  By{" "}
+                  {t("article.by")}{" "}
                   <Link
                     to={`/profile/${a.authorId}`}
                     className="article-author__link"
@@ -668,7 +733,7 @@ export default function ArticlePage() {
                   className="btn btn-secondary article-modal__cta"
                   onClick={() => setModalArticle(null)}
                 >
-                  Read full article
+                  {t("article.readFull")}
                 </Link>
               </div>
             </>

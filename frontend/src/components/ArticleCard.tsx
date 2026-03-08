@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, MapPin } from "lucide-react";
 import { BADGE_CLASS, type Article } from "@/data/articles";
+import { useLanguage } from "@/contexts/LanguageContext";
 import "./ArticleCard.css";
 
 export default function ArticleCard({ article, featured }: { article: Article; featured?: boolean }) {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   return (
     <Link
@@ -32,7 +34,7 @@ export default function ArticleCard({ article, featured }: { article: Article; f
               navigate(`/tag/${article.category}`);
             }}
           >
-            {article.category}
+            {t("tag." + article.category)}
           </span>
         </div>
         <h2 className="article-card__title">

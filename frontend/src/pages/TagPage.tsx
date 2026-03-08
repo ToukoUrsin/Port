@@ -55,7 +55,7 @@ export default function TagPage() {
   const visibleLocal = localExpanded ? localArticles : localArticles.slice(0, INITIAL_COUNT);
   const visibleOther = otherExpanded ? otherArticles : otherArticles.slice(0, INITIAL_COUNT);
 
-  const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+  const categoryLabel = t("tag." + category);
 
   return (
     <>
@@ -70,7 +70,7 @@ export default function TagPage() {
               <span className={`badge ${badgeClass}`}>{categoryLabel}</span>
             </h1>
             <p className="tag-header__count">
-              {allArticles.length} {allArticles.length === 1 ? "article" : "articles"}
+              {allArticles.length} {allArticles.length === 1 ? t("tag.article") : t("tag.articles")}
             </p>
           </div>
         </div>
@@ -86,16 +86,16 @@ export default function TagPage() {
         ) : allArticles.length === 0 ? (
           <div className="tag-empty">
             <Tag size={32} />
-            <p>No articles tagged <strong>{categoryLabel}</strong> yet.</p>
+            <p>{t("tag.noArticles")} <strong>{categoryLabel}</strong> {t("tag.yet")}</p>
             <Link to="/" className="btn btn-secondary">
-              Back to home
+              {t("tag.backHome")}
             </Link>
           </div>
         ) : (
           <>
             {localArticles.length > 0 && (
               <section className="tag-section">
-                <h2 className="tag-section__title">From your places</h2>
+                <h2 className="tag-section__title">{t("tag.fromYourPlaces")}</h2>
                 <div className="tag-grid">
                   {visibleLocal.map((article) => (
                     <ArticleCard key={article.id} article={article} />
@@ -104,7 +104,7 @@ export default function TagPage() {
                 {localArticles.length > INITIAL_COUNT && !localExpanded && (
                   <div className="tag-section__more">
                     <button className="home-show-more" onClick={() => setLocalExpanded(true)}>
-                      Show all {localArticles.length} articles
+                      {t("tag.showAll").replace("{count}", String(localArticles.length))}
                       <ChevronDown size={16} />
                     </button>
                   </div>
@@ -115,7 +115,7 @@ export default function TagPage() {
             {otherArticles.length > 0 && (
               <section className="tag-section">
                 <h2 className="tag-section__title">
-                  {localArticles.length > 0 ? "From elsewhere" : "All articles"}
+                  {localArticles.length > 0 ? t("tag.fromElsewhere") : t("tag.allArticles")}
                 </h2>
                 <div className="tag-grid">
                   {visibleOther.map((article) => (
@@ -125,7 +125,7 @@ export default function TagPage() {
                 {otherArticles.length > INITIAL_COUNT && !otherExpanded && (
                   <div className="tag-section__more">
                     <button className="home-show-more" onClick={() => setOtherExpanded(true)}>
-                      Show all {otherArticles.length} articles
+                      {t("tag.showAll").replace("{count}", String(otherArticles.length))}
                       <ChevronDown size={16} />
                     </button>
                   </div>

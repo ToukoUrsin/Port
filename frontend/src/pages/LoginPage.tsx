@@ -109,7 +109,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="auth-divider">or</div>
+        <div className="auth-divider">{t("login.or")}</div>
 
         <button
           type="button"
@@ -121,16 +121,16 @@ export default function LoginPage() {
             setIsSubmitting(true);
             try {
               await login("antti@localnews.dev", "editor123");
-              toast("Signed in as guest", "success");
+              toast(t("login.guestSuccess"), "success");
               navigate("/");
             } catch {
-              setError("Guest login failed. Is the backend running?");
+              setError(t("login.guestFailed"));
             } finally {
               setIsSubmitting(false);
             }
           }}
         >
-          Sign in as Guest
+          {t("login.guestSignIn")}
         </button>
 
         <div className="auth-footer">

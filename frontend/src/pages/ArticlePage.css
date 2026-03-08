@@ -593,7 +593,13 @@
   gap: var(--space-3);
 }
 
-.comment__like {
+.comment__reactions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.comment__react-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -607,16 +613,24 @@
   transition: color var(--transition-fast);
 }
 
-.comment__like:hover {
+.comment__react-btn:hover:not(:disabled) {
   color: var(--color-text-secondary);
 }
 
-.comment__like--active {
+.comment__react-btn--active {
   color: var(--color-primary);
 }
 
-.comment__like--active:hover {
+.comment__react-btn--active:hover:not(:disabled) {
   color: var(--color-primary-hover);
+}
+
+.comment__react-btn--dislike.comment__react-btn--active {
+  color: var(--color-text-secondary);
+}
+
+.comment__react-btn:disabled {
+  cursor: default;
 }
 
 .comment__reply-btn {
@@ -634,6 +648,19 @@
 }
 .comment__reply-btn:hover {
   color: var(--color-text-secondary);
+}
+
+.comment__delete-btn:hover {
+  color: var(--color-danger, #dc2626);
+}
+
+.comment--deleted {
+  opacity: 0.6;
+}
+
+.comment__text--deleted {
+  font-style: italic;
+  color: var(--color-text-tertiary);
 }
 
 /* Nested / threaded comments */

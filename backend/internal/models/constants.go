@@ -75,6 +75,14 @@ const (
 	ReactionDislike int16 = -1
 )
 
+// --- Notification types ---
+
+const (
+	NotifLike    int16 = 1
+	NotifDislike int16 = 2
+	NotifReply   int16 = 3
+)
+
 // --- Reply status ---
 
 const (
