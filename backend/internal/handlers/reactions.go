@@ -61,7 +61,7 @@ func (h *Handler) ReactArticle(c *gin.Context) {
 	if req.Kind == models.ReactionDislike {
 		notifType = models.NotifDislike
 	}
-	go h.createNotification(sub.OwnerID, actor.ProfileID, notifType, subID, models.ReactionTargetSubmission, subID)
+	go h.notifSvc.Notify(h.db, sub.OwnerID, actor.ProfileID, notifType, subID, models.ReactionTargetSubmission, subID)
 
 	counts["user_reaction"] = int(req.Kind)
 	c.JSON(http.StatusOK, counts)
@@ -162,7 +162,7 @@ func (h *Handler) ReactReply(c *gin.Context) {
 	if req.Kind == models.ReactionDislike {
 		notifType = models.NotifDislike
 	}
-	go h.createNotification(reply.ProfileID, actor.ProfileID, notifType, replyID, models.ReactionTargetReply, reply.SubmissionID)
+	go h.notifSvc.Notify(h.db, reply.ProfileID, actor.ProfileID, notifType, replyID, models.ReactionTargetReply, reply.SubmissionID)
 
 	counts["user_reaction"] = int(req.Kind)
 	c.JSON(http.StatusOK, counts)

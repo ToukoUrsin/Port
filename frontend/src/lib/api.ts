@@ -550,8 +550,19 @@ export function getFollowing(profileId: string): Promise<FollowListResponse> {
 
 // --- Notifications ---
 
-export function getNotifications(limit = 30): Promise<{ notifications: ApiNotification[] }> {
-  return apiFetch<{ notifications: ApiNotification[] }>(`/api/notifications?limit=${limit}`);
+export function getNotifications(params?: {
+  limit?: number;
+  cursor?: string;
+  type?: string;
+}): Promise<{ notifications: ApiNotification[]; next_cursor?: string; has_more: boolean }> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  if (params?.cursor) searchParams.set("cursor", params.cursor);
+  if (params?.type) searchParams.set("type", params.type);
+  const qs = searchParams.toString();
+  return apiFetch<{ notifications: ApiNotification[]; next_cursor?: string; has_more: boolean }>(
+    `/api/notifications${qs ? `?${qs}` : ""}`,
+  );
 }
 
 export function getUnreadCount(): Promise<{ count: number }> {
@@ -564,4 +575,12 @@ export function markAllNotificationsRead(): Promise<void> {
 
 export function markNotificationRead(id: string): Promise<void> {
   return apiFetch<void>(`/api/notifications/${id}/read`, { method: "PUT" });
+}
+
+export function deleteNotification(id: string): Promise<void> {
+  return apiFetch<void>(`/api/notifications/${id}`, { method: "DELETE" });
+}
+
+export function deleteReadNotifications(): Promise<void> {
+  return apiFetch<void>("/api/notifications/read", { method: "DELETE" });
 }

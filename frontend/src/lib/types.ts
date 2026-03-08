@@ -485,6 +485,8 @@ export const NotifType = {
   Like: 1,
   Dislike: 2,
   Reply: 3,
+  NewArticle: 4,
+  NewFollower: 5,
 } as const;
 
 export const NotifTargetType = {
@@ -499,9 +501,9 @@ export interface ApiNotification {
   type: number;
   target_id: string;
   target_type: number;
-  article_id: string;
+  article_id?: string;
   read: boolean;
   created_at: string;
   actor_name: string;
-  article_title: string;
+  article_title?: string;
 }

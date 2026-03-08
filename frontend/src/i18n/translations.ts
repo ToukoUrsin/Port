@@ -418,6 +418,19 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "quality.flaggedForReview": "merkitty tarkistettavaksi",
     "quality.verifiedAgainst": "Vahvistettu lähteitä vasten",
 
+    // Notifications
+    "notifications.title": "Ilmoitukset",
+    "notifications.markAllRead": "Merkitse kaikki luetuiksi",
+    "notifications.seeAll": "Näytä kaikki",
+    "notifications.empty": "Ei ilmoituksia vielä",
+    "notifications.likedArticle": "piti artikkelistasi",
+    "notifications.dislikedArticle": "ei pitänyt artikkelistasi",
+    "notifications.likedReply": "piti kommentistasi",
+    "notifications.dislikedReply": "ei pitänyt kommentistasi",
+    "notifications.repliedToComment": "vastasi kommenttiisi",
+    "notifications.publishedArticle": "julkaisi uuden artikkelin",
+    "notifications.followedYou": "alkoi seurata sinua",
+
     // Coaching panel
     "coaching.supported": "Tuettu",
     "coaching.notInSource": "Ei lähteessä",
@@ -853,6 +866,19 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "quality.claimsVerified": "claims verified",
     "quality.flaggedForReview": "flagged for review",
     "quality.verifiedAgainst": "Verified against",
+
+    // Notifications
+    "notifications.title": "Notifications",
+    "notifications.markAllRead": "Mark all read",
+    "notifications.seeAll": "See all",
+    "notifications.empty": "No notifications yet",
+    "notifications.likedArticle": "liked your article",
+    "notifications.dislikedArticle": "disliked your article",
+    "notifications.likedReply": "liked your comment",
+    "notifications.dislikedReply": "disliked your comment",
+    "notifications.repliedToComment": "replied to your comment",
+    "notifications.publishedArticle": "published a new article",
+    "notifications.followedYou": "followed you",
 
     // Coaching panel
     "coaching.supported": "Supported",

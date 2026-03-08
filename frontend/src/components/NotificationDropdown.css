@@ -1,0 +1,224 @@
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  max-height: 480px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.12));
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notif-dropdown__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.notif-dropdown__title {
+  font-family: var(--font-heading, inherit);
+  font-size: var(--text-base, 16px);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.notif-dropdown__mark-read {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--text-sm, 14px);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.notif-dropdown__mark-read:hover {
+  background: var(--color-primary-light);
+}
+
+.notif-dropdown__list {
+  overflow-y: auto;
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notif-dropdown__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 12px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-gray-100);
+  transition: background 0.15s;
+}
+
+.notif-dropdown__item:hover {
+  background: var(--color-surface-hover);
+}
+
+.notif-dropdown__item--unread {
+  background: var(--color-primary-light);
+}
+
+.notif-dropdown__item--unread:hover {
+  background: #dce8df;
+}
+
+.notif-dropdown__icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.notif-dropdown__icon--like {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.notif-dropdown__icon--dislike {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.notif-dropdown__icon--reply {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.notif-dropdown__icon--article {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.notif-dropdown__icon--follow {
+  background: #E0E8F5;
+  color: #4A6FA5;
+}
+
+.notif-dropdown__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-dropdown__text {
+  font-size: var(--text-sm, 14px);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.notif-dropdown__actor {
+  font-weight: 600;
+}
+
+.notif-dropdown__article-title {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.notif-dropdown__time {
+  font-size: var(--text-xs, 12px);
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+.notif-dropdown__empty {
+  padding: var(--space-8, 32px) var(--space-4, 16px);
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm, 14px);
+}
+
+.notif-dropdown__footer {
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.notif-dropdown__footer a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: var(--text-sm, 14px);
+  font-weight: 500;
+}
+
+.notif-dropdown__footer a:hover {
+  text-decoration: underline;
+}
+
+.notif-dropdown__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+/* Bell badge */
+.notif-bell {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.notif-bell:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.notif-bell__badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  background: var(--color-error);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* Wrapper for bell + dropdown positioning */
+.notif-bell-wrapper {
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .notif-dropdown {
+    position: fixed;
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 70vh;
+    border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+  }
+}

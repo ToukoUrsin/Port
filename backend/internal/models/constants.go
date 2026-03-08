@@ -78,9 +78,11 @@ const (
 // --- Notification types ---
 
 const (
-	NotifLike    int16 = 1
-	NotifDislike int16 = 2
-	NotifReply   int16 = 3
+	NotifLike        int16 = 1
+	NotifDislike     int16 = 2
+	NotifReply       int16 = 3
+	NotifNewArticle  int16 = 4 // someone you follow published
+	NotifNewFollower int16 = 5 // someone followed you
 )
 
 // --- Reply status ---

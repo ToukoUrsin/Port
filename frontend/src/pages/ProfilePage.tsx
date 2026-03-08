@@ -327,7 +327,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!isOwnProfile) return;
     setNotifsLoading(true);
-    getNotifications(50)
+    getNotifications({ limit: 50 })
       .then((res) => setNotifications(res.notifications))
       .catch(() => {})
       .finally(() => setNotifsLoading(false));

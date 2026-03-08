@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -150,8 +151,11 @@ func main() {
 	geoResolver := services.NewGeoIPResolver()
 	statsSvc := services.NewStatsService(c)
 
+	// Notification service
+	notifSvc := services.NewNotificationService(c)
+
 	// Handler
-	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc, batchSvc, statsSvc)
+	h := handlers.NewHandler(db, c, cfg, authSvc, accessSvc, mediaSvc, pipelineSvc, searchSvc, batchSvc, statsSvc, notifSvc)
 
 	// Router
 	r := gin.New()
@@ -272,8 +276,11 @@ func main() {
 		// Notifications
 		authed.GET("/notifications", h.ListNotifications)
 		authed.GET("/notifications/unread-count", h.UnreadCount)
+		authed.GET("/notifications/stream", h.StreamNotifications)
 		authed.PUT("/notifications/read", h.MarkAllRead)
 		authed.PUT("/notifications/:id/read", h.MarkNotificationRead)
+		authed.DELETE("/notifications/read", h.DeleteReadNotifications)
+		authed.DELETE("/notifications/:id", h.DeleteNotification)
 
 		// Flagging
 		authed.POST("/articles/:id/flag", h.FlagSubmission)
@@ -312,6 +319,17 @@ func main() {
 			adminAPI.POST("/media/:id", h.AdminUploadMedia)
 		}
 	}
+
+	// Notification cleanup: delete notifications older than 90 days, every 24 hours
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		for range ticker.C {
+			result := db.Where("created_at < ?", time.Now().Add(-90*24*time.Hour)).Delete(&models.Notification{})
+			if result.RowsAffected > 0 {
+				log.Printf("Cleaned up %d old notifications", result.RowsAffected)
+			}
+		}
+	}()
 
 	log.Printf("Starting server on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
