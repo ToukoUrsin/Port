@@ -135,6 +135,11 @@
   color: var(--color-text-tertiary);
 }
 
+/* Location picker row */
+.compose-location {
+  border-top: 1px solid var(--color-gray-100);
+}
+
 /* Soft tips below form */
 .compose-tips {
   list-style: none;

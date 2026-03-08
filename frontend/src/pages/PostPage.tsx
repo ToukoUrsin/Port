@@ -35,6 +35,7 @@ import { VoiceRecorder, AudioPlayer } from "@/components/editor/VoiceRecorder";
 import type { GeneralRefinement } from "@/components/editor/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import PublicProfileModal from "@/components/PublicProfileModal";
+import LocationPicker from "@/components/LocationPicker";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
@@ -48,6 +49,8 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [locationId, setLocationId] = useState("");
+  const [locationName, setLocationName] = useState("");
   const [showPublicModal, setShowPublicModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -87,7 +90,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       }
       if (text.trim()) formData.append("notes", text);
       if (anonymous) formData.append("anonymous", "true");
-      formData.append("location_id", user?.location_id || "a0000000-0000-0000-0000-000000000004");
+      if (locationId) formData.append("location_id", locationId);
 
       const res = await createSubmission(formData);
       onSubmit(res.submission_id);
@@ -174,6 +177,15 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
           onChange={(e) => setText(e.target.value)}
           disabled={isSubmitting}
         />
+
+        <div className="compose-location">
+          <LocationPicker
+            value={locationId}
+            onChange={(id, name) => { setLocationId(id); setLocationName(name); }}
+            defaultName={locationName}
+            placeholder={t("post.whereHappened") || "Where did this happen?"}
+          />
+        </div>
 
         <div className="compose-toolbar">
           <div className="compose-actions">

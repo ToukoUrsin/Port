@@ -322,6 +322,7 @@ export async function appealSubmission(
 // --- Location endpoints ---
 
 export function getLocations(params?: {
+  q?: string;
   country?: string;
   level?: number[];
   south?: number;
@@ -332,6 +333,7 @@ export function getLocations(params?: {
   min_articles?: number;
 }): Promise<{ locations: ApiLocation[] }> {
   const qs = new URLSearchParams();
+  if (params?.q) qs.set("q", params.q);
   if (params?.country) qs.set("country", params.country);
   if (params?.level?.length) qs.set("level", params.level.join(","));
   if (params?.south != null) qs.set("south", String(params.south));
