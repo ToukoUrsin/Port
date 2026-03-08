@@ -243,14 +243,12 @@ func (h *Handler) ListSubmissions(c *gin.Context) {
 
 	query := h.db.Model(&models.Submission{})
 
-	if actor.IsEditor() {
-		// Editors see all submissions
-	} else {
-		query = query.Where(
-			"owner_id = ? OR (status = ? AND id IN (SELECT submission_id FROM submission_contributors WHERE profile_id = ?))",
-			actor.ProfileID, models.StatusPublished, actor.ProfileID,
-		)
-	}
+	// All users (including editors) see their own submissions + published contributor submissions.
+	// Editors can use admin endpoints for full moderation access.
+	query = query.Where(
+		"owner_id = ? OR (status = ? AND id IN (SELECT submission_id FROM submission_contributors WHERE profile_id = ?))",
+		actor.ProfileID, models.StatusPublished, actor.ProfileID,
+	)
 
 	var total int64
 	query.Count(&total)
