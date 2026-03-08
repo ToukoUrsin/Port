@@ -57,7 +57,7 @@ TARGETS_FI = {
             "Ravintola Noki julkaisi viikon lounasmenun",
             "Tarvitaanko Karkkilassa lisaa livemusiikkia?",
         ],
-        "site_url": "https://port.news/explore?town=karkkila",
+        "site_url": "https://news.minir.ai/explore?town=karkkila",
         "lang": "fi",
     },
     "loviisa": {
@@ -73,7 +73,7 @@ TARGETS_FI = {
             "Vanhus sai parkkisakon kiekkokoneelta",
             "LoviSavi avaa keramiikkapajan ovet",
         ],
-        "site_url": "https://port.news/explore?town=loviisa",
+        "site_url": "https://news.minir.ai/explore?town=loviisa",
         "lang": "fi",
     },
     "kemi": {
@@ -89,7 +89,7 @@ TARGETS_FI = {
             "Flunssa-aalto jyllaa Meri-Lapissa",
             "Tuulivoimaloiden purkaminen huolettaa",
         ],
-        "site_url": "https://port.news/explore?town=kemi",
+        "site_url": "https://news.minir.ai/explore?town=kemi",
         "lang": "fi",
     },
     "turku": {
@@ -105,7 +105,7 @@ TARGETS_FI = {
             "Ratikka-aanestys kuumentaa tunteita Turussa",
             "Aggressiivinen kaytos Turun kauppakeskuksen pihalla",
         ],
-        "site_url": "https://port.news/explore?town=turku",
+        "site_url": "https://news.minir.ai/explore?town=turku",
         "lang": "fi",
     },
     "kauhajoki": {
@@ -121,7 +121,7 @@ TARGETS_FI = {
             "Kauhajoen kunnanvaltuusto hyvaksyi uuden liikuntahallin suunnitelman",
             "Hyypanjokilaakson kevattulvat jaivat odotettua pienemmiksi",
         ],
-        "site_url": "https://port.news/explore?town=kauhajoki",
+        "site_url": "https://news.minir.ai/explore?town=kauhajoki",
         "lang": "fi",
     },
     "salla": {
@@ -137,7 +137,7 @@ TARGETS_FI = {
             "Sallatunturin hiihtokeskus investoi lumetusjarjestelmaan",
             "Sallan kunnanvaltuusto kasitteli palveluverkon tulevaisuutta",
         ],
-        "site_url": "https://port.news/explore?town=salla",
+        "site_url": "https://news.minir.ai/explore?town=salla",
         "lang": "fi",
     },
     "enontekio": {
@@ -153,7 +153,7 @@ TARGETS_FI = {
             "Kasivarren eramaa-alueelle uusi varaustupa retkeilijöille",
             "Enontekion kunta selvittaa tuulivoimahankkeen vaikutuksia porotalouteen",
         ],
-        "site_url": "https://port.news/explore?town=enontekio",
+        "site_url": "https://news.minir.ai/explore?town=enontekio",
         "lang": "fi",
     },
 }
@@ -173,7 +173,7 @@ TARGETS_US = {
             "Bloomstead Bakery draws crowds as local farm stand scene thrives",
             "Local cat rescue Chevy2.0 seeks forever homes in Porter County",
         ],
-        "site_url": "https://port.news/explore?town=chesterton",
+        "site_url": "https://news.minir.ai/explore?town=chesterton",
         "lang": "en",
     },
     "chesterton_2": {
@@ -190,7 +190,7 @@ TARGETS_US = {
             "Feed the Region serves free community meals",
             "Bloomstead Bakery draws crowds as farm stand scene thrives",
         ],
-        "site_url": "https://port.news/explore?town=chesterton",
+        "site_url": "https://news.minir.ai/explore?town=chesterton",
         "lang": "en",
     },
     "claremont": {
@@ -207,7 +207,7 @@ TARGETS_US = {
             "Girl Scout cookie season brings community together at The Apiary",
             "Abenaki Nation seeks grant writer to support tribal programs in NH",
         ],
-        "site_url": "https://port.news/explore?town=claremont",
+        "site_url": "https://news.minir.ai/explore?town=claremont",
         "lang": "en",
     },
     "laurel": {
@@ -224,7 +224,7 @@ TARGETS_US = {
             "Little Light Children's Consignment draws families to Fair grounds",
             "Taylorsville Flea Market makes the newspaper as community rallies",
         ],
-        "site_url": "https://port.news/explore?town=laurel",
+        "site_url": "https://news.minir.ai/explore?town=laurel",
         "lang": "en",
     },
     "spencer": {
@@ -241,7 +241,7 @@ TARGETS_US = {
             "Eaglettes rally community for white-out Substate basketball showdown",
             "Van Buren County student Lyla McCoy shines at statewide conference",
         ],
-        "site_url": "https://port.news/explore?town=spencer",
+        "site_url": "https://news.minir.ai/explore?town=spencer",
         "lang": "en",
     },
     "harlan": {
@@ -257,7 +257,7 @@ TARGETS_US = {
             "Auto body shop in Pound offers spring paint specials",
             "New house cleaning service launches in Harlan County",
         ],
-        "site_url": "https://port.news/explore?town=harlan",
+        "site_url": "https://news.minir.ai/explore?town=harlan",
         "lang": "en",
     },
     "mcdowell": {
@@ -273,7 +273,7 @@ TARGETS_US = {
             "Specialty Tropicals greenhouse opens for spring season in Marion",
             "Indoor plant workshops coming to Marion",
         ],
-        "site_url": "https://port.news/explore?town=marion-nc",
+        "site_url": "https://news.minir.ai/explore?town=marion-nc",
         "lang": "en",
     },
     "sussex": {
@@ -290,7 +290,7 @@ TARGETS_US = {
             "Mobile addiction recovery vehicle seeks staff in Sussex County",
             "Fire safety alert: residents urged to clean dryer vents",
         ],
-        "site_url": "https://port.news/explore?town=georgetown-de",
+        "site_url": "https://news.minir.ai/explore?town=georgetown-de",
         "lang": "en",
     },
     "clayton": {
@@ -307,7 +307,7 @@ TARGETS_US = {
             "Teen entrepreneur builds beauty clientele through social media",
             "DeKalb County 'Achieve the Dream' event rescheduled for March",
         ],
-        "site_url": "https://port.news/explore?town=jonesboro-ga",
+        "site_url": "https://news.minir.ai/explore?town=jonesboro-ga",
         "lang": "en",
     },
     "glendive": {
@@ -323,7 +323,7 @@ TARGETS_US = {
             "New pediatric telehealth practice opens in Glendive",
             "Walk-in sports physicals offered at $30 as fall season approaches",
         ],
-        "site_url": "https://port.news/explore?town=glendive",
+        "site_url": "https://news.minir.ai/explore?town=glendive",
         "lang": "en",
     },
     "hamlin": {
@@ -338,7 +338,7 @@ TARGETS_US = {
         "sample_articles": [
             "Lincoln County businesses turn to social media as traditional advertising vanishes",
         ],
-        "site_url": "https://port.news/explore?town=hamlin-wv",
+        "site_url": "https://news.minir.ai/explore?town=hamlin-wv",
         "lang": "en",
     },
     "chesterfield_va": {
@@ -353,7 +353,7 @@ TARGETS_US = {
         "sample_articles": [
             "Local cleaning service expands in Chesterfield County as demand grows",
         ],
-        "site_url": "https://port.news/explore?town=chesterfield-va",
+        "site_url": "https://news.minir.ai/explore?town=chesterfield-va",
         "lang": "en",
     },
     "perry_tn": {
@@ -370,7 +370,7 @@ TARGETS_US = {
             "Perry County Schools celebrate state reading achievement recognition",
             "Mousetail Landing State Park campground reopens after winter upgrades",
         ],
-        "site_url": "https://port.news/explore?town=linden-tn",
+        "site_url": "https://news.minir.ai/explore?town=linden-tn",
         "lang": "en",
     },
     "pike_ky": {
@@ -387,7 +387,7 @@ TARGETS_US = {
             "Pikeville Cut-Through anniversary celebration planned for spring",
             "Pikeville Medical Center adds telehealth services for rural patients",
         ],
-        "site_url": "https://port.news/explore?town=pikeville-ky",
+        "site_url": "https://news.minir.ai/explore?town=pikeville-ky",
         "lang": "en",
     },
     "white_tn": {
@@ -404,7 +404,7 @@ TARGETS_US = {
             "White County High School Warriors advance in regional basketball tournament",
             "Downtown Sparta mural project seeks community input on designs",
         ],
-        "site_url": "https://port.news/explore?town=sparta-tn",
+        "site_url": "https://news.minir.ai/explore?town=sparta-tn",
         "lang": "en",
     },
     # --- Additional US groups from scraped data ---
@@ -421,7 +421,7 @@ TARGETS_US = {
             "New pediatric telehealth practice opens in Glendive",
             "Walk-in sports physicals offered at $30 as fall season approaches",
         ],
-        "site_url": "https://port.news/explore?town=glendive",
+        "site_url": "https://news.minir.ai/explore?town=glendive",
         "lang": "en",
     },
     "lincoln_wv": {
@@ -436,7 +436,7 @@ TARGETS_US = {
         "sample_articles": [
             "Lincoln County businesses turn to social media as traditional advertising vanishes",
         ],
-        "site_url": "https://port.news/explore?town=hamlin-wv",
+        "site_url": "https://news.minir.ai/explore?town=hamlin-wv",
         "lang": "en",
     },
     "madison_fl": {
@@ -453,7 +453,7 @@ TARGETS_US = {
             "Madison County historical society opens exhibit on Bellamy Road heritage",
             "Suwannee River water levels stable as spring dry season begins",
         ],
-        "site_url": "https://port.news/explore?town=madison-fl",
+        "site_url": "https://news.minir.ai/explore?town=madison-fl",
         "lang": "en",
     },
     "bardstown_ky": {
@@ -470,7 +470,7 @@ TARGETS_US = {
             "Nelson County Schools announce new vocational training partnership",
             "My Old Kentucky Home state park opens renovated visitor center",
         ],
-        "site_url": "https://port.news/explore?town=bardstown-ky",
+        "site_url": "https://news.minir.ai/explore?town=bardstown-ky",
         "lang": "en",
     },
     "centralia_wa": {
@@ -487,7 +487,7 @@ TARGETS_US = {
             "Centralia College launches cybersecurity certificate program",
             "Centralia Tigers baseball opens spring season with roster of returning starters",
         ],
-        "site_url": "https://port.news/explore?town=centralia-wa",
+        "site_url": "https://news.minir.ai/explore?town=centralia-wa",
         "lang": "en",
     },
     "elkin_nc": {
@@ -504,7 +504,7 @@ TARGETS_US = {
             "Surry County considers expanding broadband to underserved rural areas",
             "Yadkin Valley wineries prepare for spring open house weekend",
         ],
-        "site_url": "https://port.news/explore?town=elkin-nc",
+        "site_url": "https://news.minir.ai/explore?town=elkin-nc",
         "lang": "en",
     },
     "ely_nv": {
@@ -521,7 +521,7 @@ TARGETS_US = {
             "White Pine County School District seeks input on budget priorities",
             "Great Basin National Park reports high snowpack ahead of spring season",
         ],
-        "site_url": "https://port.news/explore?town=ely-nv",
+        "site_url": "https://news.minir.ai/explore?town=ely-nv",
         "lang": "en",
     },
     "galax_va": {
@@ -538,7 +538,7 @@ TARGETS_US = {
             "New River Trail State Park sees record early-season trail use",
             "Galax city council discusses incentives for manufacturing site reuse",
         ],
-        "site_url": "https://port.news/explore?town=galax-va",
+        "site_url": "https://news.minir.ai/explore?town=galax-va",
         "lang": "en",
     },
     "millinocket_me": {
@@ -555,7 +555,7 @@ TARGETS_US = {
             "Stearns High School robotics team qualifies for state competition",
             "Katahdin region trail crews begin spring maintenance ahead of hiking season",
         ],
-        "site_url": "https://port.news/explore?town=millinocket-me",
+        "site_url": "https://news.minir.ai/explore?town=millinocket-me",
         "lang": "en",
     },
     "orangeburg_sc": {
@@ -572,7 +572,7 @@ TARGETS_US = {
             "Edisto Memorial Gardens to host spring plant sale and garden festival",
             "Downtown Orangeburg streetscape project enters final phase",
         ],
-        "site_url": "https://port.news/explore?town=orangeburg-sc",
+        "site_url": "https://news.minir.ai/explore?town=orangeburg-sc",
         "lang": "en",
     },
     "cairo_il": {
@@ -589,7 +589,7 @@ TARGETS_US = {
             "Alexander County food pantry sees 40% increase in families served",
             "Spring flooding watch issued for Cairo as rivers rise",
         ],
-        "site_url": "https://port.news/explore?town=cairo-il",
+        "site_url": "https://news.minir.ai/explore?town=cairo-il",
         "lang": "en",
     },
     "paintsville_ky": {
@@ -606,7 +606,7 @@ TARGETS_US = {
             "Paintsville Lake State Park prepares for busy spring fishing season",
             "Johnson County Schools receive grant for after-school STEM program",
         ],
-        "site_url": "https://port.news/explore?town=paintsville-ky",
+        "site_url": "https://news.minir.ai/explore?town=paintsville-ky",
         "lang": "en",
     },
     "up_michigan": {
@@ -623,7 +623,7 @@ TARGETS_US = {
             "Presque Isle Park trail restoration begins as snow recedes in Marquette",
             "UP Health System adds mental health providers to address regional shortage",
         ],
-        "site_url": "https://port.news/explore?town=upper-peninsula-mi",
+        "site_url": "https://news.minir.ai/explore?town=upper-peninsula-mi",
         "lang": "en",
     },
     "vinton_oh": {
@@ -640,7 +640,7 @@ TARGETS_US = {
             "Vinton County Local Schools launch free breakfast program for all students",
             "Volunteers clear trails in Wayne National Forest ahead of spring hiking",
         ],
-        "site_url": "https://port.news/explore?town=mcarthur-oh",
+        "site_url": "https://news.minir.ai/explore?town=mcarthur-oh",
         "lang": "en",
     },
     "wauchula_fl": {
@@ -657,7 +657,7 @@ TARGETS_US = {
             "Peace River water levels drop as dry season takes hold in Hardee County",
             "Hardee County Schools seek bilingual staff as student demographics shift",
         ],
-        "site_url": "https://port.news/explore?town=wauchula-fl",
+        "site_url": "https://news.minir.ai/explore?town=wauchula-fl",
         "lang": "en",
     },
     "owsley_ky": {
@@ -674,7 +674,7 @@ TARGETS_US = {
             "Owsley County students explore careers through Daniel Boone Forest partnership",
             "South Fork of Kentucky River draws spring kayakers to Owsley County",
         ],
-        "site_url": "https://port.news/explore?town=booneville-ky",
+        "site_url": "https://news.minir.ai/explore?town=booneville-ky",
         "lang": "en",
     },
     "washington_me": {
@@ -691,7 +691,7 @@ TARGETS_US = {
             "Wild blueberry growers in Washington County prepare for uncertain season",
             "Machias River salmon restoration effort enters new phase",
         ],
-        "site_url": "https://port.news/explore?town=machias-me",
+        "site_url": "https://news.minir.ai/explore?town=machias-me",
         "lang": "en",
     },
 }
