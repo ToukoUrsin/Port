@@ -13,12 +13,16 @@ const BLOCK_NODES = new Set([
   "image",
 ]);
 
+const HANDLE_GUTTER = 40;
+const VIEWPORT_GUTTER = 8;
+
 function createHandle(): HTMLDivElement {
   const el = document.createElement("div");
   el.className = "drag-handle";
   el.setAttribute("role", "button");
   el.setAttribute("aria-label", "Drag to reorder");
   el.setAttribute("draggable", "true");
+  el.setAttribute("tabindex", "0");
   // 6-dot grip icon
   el.innerHTML = `<svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor">
     <circle cx="5" cy="4" r="1.8"/><circle cx="11" cy="4" r="1.8"/>
@@ -54,11 +58,20 @@ function findBlockAtY(
   return null;
 }
 
+function dragMoves(view: EditorView, event: DragEvent) {
+  const dragCopyModifier = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
+    ? event.altKey
+    : event.ctrlKey;
+  const moves = view.someProp("dragCopies", (test) => !test(event));
+  return moves != null ? moves : !dragCopyModifier;
+}
+
 export const DragHandle = Extension.create({
   name: "dragHandle",
 
   addProseMirrorPlugins() {
     let handle: HTMLDivElement | null = null;
+    let wrapper: HTMLElement | null = null;
     let currentBlock: { pos: number; index: number } | null = null;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
     let isOverHandle = false;
@@ -73,6 +86,8 @@ export const DragHandle = Extension.create({
       hideTimer = setTimeout(() => {
         if (!isOverHandle && handle) {
           handle.style.display = "none";
+          handle.classList.remove("drag-handle--dragging");
+          wrapper?.classList.remove("drag-handle-active");
           currentBlock = null;
         }
       }, 200);
@@ -84,7 +99,7 @@ export const DragHandle = Extension.create({
         view(view) {
           handle = createHandle();
 
-          const wrapper = view.dom.parentElement;
+          wrapper = (view.dom.closest(".article-preview") as HTMLElement | null) ?? view.dom.parentElement;
           if (wrapper) {
             wrapper.style.position = "relative";
             wrapper.appendChild(handle);
@@ -93,29 +108,47 @@ export const DragHandle = Extension.create({
           // --- hover bookkeeping ---
           handle.addEventListener("mouseenter", () => { isOverHandle = true; show(); });
           handle.addEventListener("mouseleave", () => { isOverHandle = false; hideSoon(); });
+          handle.addEventListener("mousedown", (e) => {
+            if (!currentBlock || e.button !== 0) return;
+            const selection = NodeSelection.create(view.state.doc, currentBlock.pos);
+            view.dispatch(view.state.tr.setSelection(selection));
+            view.focus();
+          });
+          handle.addEventListener("click", (e) => {
+            if (!currentBlock) return;
+            e.preventDefault();
+            const selection = NodeSelection.create(view.state.doc, currentBlock.pos);
+            view.dispatch(view.state.tr.setSelection(selection));
+            view.focus();
+          });
 
           // --- drag start: set up ProseMirror dragging state ---
           handle.addEventListener("dragstart", (e) => {
             if (!currentBlock || !e.dataTransfer) { e.preventDefault(); return; }
 
-            // Select the node so ProseMirror serialises it
-            const { state } = view;
-            const node = state.doc.nodeAt(currentBlock.pos);
-            if (!node) { e.preventDefault(); return; }
+            const mouseDown = (view as any).input?.mouseDown;
+            if (mouseDown?.done) mouseDown.done();
 
-            const tr = state.tr.setSelection(
-              NodeSelection.create(state.doc, currentBlock.pos),
-            );
-            view.dispatch(tr);
+            // Select the node so ProseMirror serialises it
+            const selection = NodeSelection.create(view.state.doc, currentBlock.pos);
+            const node = view.state.doc.nodeAt(currentBlock.pos);
+            if (!node) { e.preventDefault(); return; }
+            view.dispatch(view.state.tr.setSelection(selection));
 
             // Let ProseMirror's built-in drop handling work
-            const slice = view.state.selection.content();
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", "");
+            const slice = selection.content();
+            try {
+              e.dataTransfer.clearData();
+            } catch {
+              // Some browsers may reject clearData in restricted contexts.
+            }
+            e.dataTransfer.effectAllowed = "copyMove";
 
             // Ghost image: clone the block DOM
             const blockDom = view.nodeDOM(currentBlock.pos);
             if (blockDom instanceof HTMLElement) {
+              e.dataTransfer.setData("text/html", blockDom.outerHTML);
+              e.dataTransfer.setData("text/plain", blockDom.innerText || blockDom.textContent || "");
               const ghost = blockDom.cloneNode(true) as HTMLElement;
               ghost.style.width = `${blockDom.offsetWidth}px`;
               ghost.style.opacity = "0.7";
@@ -124,17 +157,32 @@ export const DragHandle = Extension.create({
               document.body.appendChild(ghost);
               e.dataTransfer.setDragImage(ghost, 0, 0);
               requestAnimationFrame(() => ghost.remove());
+            } else {
+              e.dataTransfer.setData("text/plain", node.textContent || "");
             }
 
             // Tell ProseMirror this is its drag
-            (view as any).dragging = { slice, move: true };
+            (view as any).dragging = {
+              slice,
+              move: dragMoves(view, e),
+              node: selection,
+            };
+            handle?.classList.add("drag-handle--dragging");
+            wrapper?.classList.add("drag-handle-active");
+          });
+          handle.addEventListener("dragend", () => {
+            handle?.classList.remove("drag-handle--dragging");
+            wrapper?.classList.remove("drag-handle-active");
+            hideSoon();
           });
 
           return {
             destroy() {
               if (hideTimer) clearTimeout(hideTimer);
+              wrapper?.classList.remove("drag-handle-active");
               handle?.remove();
               handle = null;
+              wrapper = null;
             },
           };
         },
@@ -142,7 +190,8 @@ export const DragHandle = Extension.create({
         props: {
           handleDOMEvents: {
             mousemove(view, event) {
-              if (!handle) return false;
+              const handleEl = handle;
+              if (!handleEl) return false;
 
               const rect = view.dom.getBoundingClientRect();
               const { clientX, clientY } = event;
@@ -160,12 +209,15 @@ export const DragHandle = Extension.create({
               if (!hit) { hideSoon(); return false; }
 
               currentBlock = { pos: hit.pos, index: hit.index };
-              const parentRect = view.dom.parentElement!.getBoundingClientRect();
+              const parentRect = (wrapper ?? view.dom.parentElement!)?.getBoundingClientRect();
               const blockRect = hit.dom.getBoundingClientRect();
+              const handleLeft = Math.max(-HANDLE_GUTTER, VIEWPORT_GUTTER - parentRect.left);
+              const handleTop =
+                blockRect.top - parentRect.top + Math.max(0, (blockRect.height - 28) / 2);
 
               show();
-              handle.style.top = `${blockRect.top - parentRect.top + 2}px`;
-              handle.style.left = "-32px";
+              handleEl.style.top = `${handleTop}px`;
+              handleEl.style.left = `${handleLeft}px`;
 
               return false;
             },
@@ -175,8 +227,25 @@ export const DragHandle = Extension.create({
               return false;
             },
 
+            dragover(_view, event) {
+              const topEdge = 120;
+              const bottomEdge = window.innerHeight - 120;
+
+              if (event.clientY < topEdge) {
+                window.scrollBy(0, -Math.max(10, Math.round((topEdge - event.clientY) / 6)));
+              } else if (event.clientY > bottomEdge) {
+                window.scrollBy(0, Math.max(10, Math.round((event.clientY - bottomEdge) / 6)));
+              }
+
+              return false;
+            },
+
             // ProseMirror needs to see the drop — make sure we don't block it
-            drop() { return false; },
+            drop() {
+              handle?.classList.remove("drag-handle--dragging");
+              wrapper?.classList.remove("drag-handle-active");
+              return false;
+            },
           },
         },
       }),

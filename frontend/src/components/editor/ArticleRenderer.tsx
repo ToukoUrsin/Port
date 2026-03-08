@@ -133,10 +133,12 @@ export function ArticleEditor({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { headline: initHeadline, body: initBody } = splitHeadline(markdown);
   const headlineRef = useRef(initHeadline);
+  const headlineInputRef = useRef<HTMLTextAreaElement>(null);
   const isExternalUpdate = useRef(false);
   // Track the last markdown we sent up to avoid re-setting content from our own edits
   const lastEmittedMarkdown = useRef(markdown);
 
+  const [headline, setHeadline] = useState(initHeadline);
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [aiInstruction, setAiInstruction] = useState("");
@@ -195,9 +197,18 @@ export function ArticleEditor({
     isExternalUpdate.current = true;
     editor.commands.setContent(newBody);
     headlineRef.current = headline;
+    setHeadline(headline);
     lastEmittedMarkdown.current = markdown;
     isExternalUpdate.current = false;
   }, [editor, markdown]);
+
+  useEffect(() => {
+    const element = headlineInputRef.current;
+    if (!element) return;
+
+    element.style.height = "0px";
+    element.style.height = `${element.scrollHeight}px`;
+  }, [headline]);
 
   // Click handler for annotation decorations
   const handleEditorClick = useCallback(
@@ -266,11 +277,13 @@ export function ArticleEditor({
   }, [highlightParagraph, editor]);
 
   const handleHeadlineChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      headlineRef.current = e.target.value;
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const nextHeadline = e.target.value;
+      headlineRef.current = nextHeadline;
+      setHeadline(nextHeadline);
       if (!editor) return;
       const bodyMd = (editor.storage as any).markdown.getMarkdown();
-      onContentChange(joinHeadlineBody(e.target.value, bodyMd));
+      onContentChange(joinHeadlineBody(nextHeadline, bodyMd));
     },
     [editor, onContentChange],
   );
@@ -329,11 +342,14 @@ export function ArticleEditor({
 
   return (
     <div className="article-preview" ref={wrapperRef}>
-      <input
+      <textarea
+        ref={headlineInputRef}
         className="article-headline-input"
-        defaultValue={initHeadline}
+        value={headline}
         onChange={handleHeadlineChange}
         placeholder={t("editor.headline")}
+        rows={1}
+        spellCheck={false}
       />
       <div className="article-byline">
         By {userName} &middot; {new Date().toLocaleDateString()}
