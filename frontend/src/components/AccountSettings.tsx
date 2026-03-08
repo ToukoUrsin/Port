@@ -167,8 +167,14 @@ function ProfileSettings({
       toast(t("settings.profileUpdated"), "success");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setNameStatus("taken");
-        toast(t("settings.usernameTaken"), "error");
+        const msg = err.message;
+        if (msg === "has_published_articles") {
+          setIsPublic(true);
+          toast("You can't go private while you have published articles", "error");
+        } else {
+          setNameStatus("taken");
+          toast(t("settings.usernameTaken"), "error");
+        }
       } else {
         toast(t("settings.updateFailed"), "error");
       }
