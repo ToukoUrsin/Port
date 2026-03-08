@@ -17,8 +17,5 @@ var ReviewSystem string
 //go:embed photo_vision.txt
 var PhotoVision string
 
-//go:embed town_context.txt
-var TownContext string
-
 //go:embed research_system.txt
 var ResearchSystem string

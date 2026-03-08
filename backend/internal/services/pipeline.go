@@ -18,7 +18,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
-	"github.com/localnews/backend/internal/services/prompts"
 	"gorm.io/gorm"
 )
 
@@ -95,6 +94,9 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		return
 	}
 
+	// Build town context from location hierarchy
+	townContext := p.buildTownContext(sub.LocationID)
+
 	var transcript string
 	var photoDescs []string
 	var photoFileURLs []string
@@ -154,7 +156,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 			Transcript:        transcript,
 			Notes:             sub.Description,
 			PhotoDescriptions: photoDescs,
-			TownContext:       prompts.TownContext,
+			TownContext:       townContext,
 		})
 		if researchErr != nil {
 			log.Printf("research failed for submission %s: %v", submissionID, researchErr)
@@ -176,7 +178,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		Transcript:        transcript,
 		Notes:             sub.Description,
 		PhotoDescriptions: photoDescs,
-		TownContext:       prompts.TownContext,
+		TownContext:       townContext,
 		ResearchContext:   researchContext,
 	}
 
@@ -377,6 +379,69 @@ func (p *PipelineService) gather(ctx context.Context, sub *models.Submission, su
 	}
 
 	return transcript, photoDescs, photoFileURLs, nil
+}
+
+// buildTownContext loads the submission's location and its parent hierarchy
+// to produce a dynamic context string for article generation and research.
+func (p *PipelineService) buildTownContext(locationID uuid.UUID) string {
+	var locations []models.Location
+	currentID := &locationID
+
+	// Walk up the hierarchy: city -> region -> country -> continent
+	for currentID != nil {
+		var loc models.Location
+		if err := p.db.First(&loc, "id = ?", *currentID).Error; err != nil {
+			break
+		}
+		locations = append(locations, loc)
+		currentID = loc.ParentID
+	}
+
+	if len(locations) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+
+	// Primary location (most specific — usually city)
+	primary := locations[0]
+	b.WriteString(primary.Name)
+
+	// Add parent names for geographic context: "City, Region, Country"
+	if len(locations) > 1 {
+		for _, loc := range locations[1:] {
+			b.WriteString(", ")
+			b.WriteString(loc.Name)
+		}
+	}
+	b.WriteString(".")
+
+	// Add description if available
+	if primary.Description != nil && *primary.Description != "" {
+		b.WriteString(" ")
+		b.WriteString(*primary.Description)
+	}
+
+	// Add meta.about for richer context
+	meta := primary.Meta.V
+	if meta.About != "" {
+		b.WriteString(" ")
+		b.WriteString(meta.About)
+	}
+
+	// Population
+	if meta.Population > 0 {
+		b.WriteString(fmt.Sprintf(" Population approximately %d.", meta.Population))
+	}
+
+	// Highlights (landmarks, key features)
+	if len(meta.Highlights) > 0 {
+		b.WriteString(" Key features: ")
+		b.WriteString(strings.Join(meta.Highlights, ", "))
+		b.WriteString(".")
+	}
+
+	return b.String()
 }
 
 func ExtractHeadline(markdown string) string {
