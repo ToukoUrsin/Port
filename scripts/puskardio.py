@@ -76,14 +76,29 @@ def get_locations():
     return resp.json().get("locations", [])
 
 
-def pick_location(locations):
-    """Pick a target location (configured or random city-level)."""
+def get_finnish_cities(locations):
+    """Return city-level locations under Finland."""
+    return [
+        loc for loc in locations
+        if loc.get("level", 0) >= 3
+        and "finland" in loc.get("path", "").lower()
+    ]
+
+
+def pick_location(locations, language="fi"):
+    """Pick a target location. If configured, use that. Otherwise random Finnish city."""
     if PUSKARDIO_LOCATION_ID:
         for loc in locations:
             if loc["id"] == PUSKARDIO_LOCATION_ID:
                 return loc
         print(f"  WARNING: configured location {PUSKARDIO_LOCATION_ID} not found, picking random")
 
+    # For Finnish content, pick Finnish cities
+    finnish = get_finnish_cities(locations)
+    if finnish:
+        return random.choice(finnish)
+
+    # Fallback: any city
     cities = [loc for loc in locations if loc.get("level", 0) >= 3]
     if not cities:
         cities = locations
@@ -192,25 +207,29 @@ def fetch_reddit_ideas(subs, limit=25):
     return ideas
 
 
-def fetch_gemini_ideas(client, location_name, count=10):
-    """Use Gemini with Google Search to brainstorm trending local topics."""
+def fetch_gemini_ideas(client, city_names, count=10):
+    """Use Gemini with Google Search to brainstorm trending local topics for specific cities."""
+    cities_str = ", ".join(city_names)
     prompt = f"""You are a Finnish tabloid journalist brainstorming story ideas.
 
-Find {count} interesting, funny, surprising, or heartwarming things happening in Finland right now
-that would make great tabloid-style local news articles. Think Iltalehti/Iltasanomat style.
+Find {count} interesting, funny, surprising, or heartwarming things happening RIGHT NOW
+in or near these Finnish towns: {cities_str}.
 
-Focus on topics near {location_name} if possible, but all of Finland works.
+Each story MUST be specifically about one of those towns. Think Iltalehti/Iltasanomat style.
 
 Topics should be:
-- Real and verifiable (based on actual events, trends, or phenomena)
+- Real and verifiable (based on actual events, trends, or phenomena in that specific town)
 - Fun, engaging, relatable — not boring government reports
 - Mix of: community drama, feel-good stories, weird happenings, local heroes, food/culture, seasonal events, sports moments
+- Tied to the specific town — mention what makes it relevant THERE
 
 Respond with a JSON array:
 [
-  {{"topic": "Short headline-style topic", "context": "2-3 sentences of background", "language": "fi"}},
+  {{"topic": "Short headline-style topic", "context": "2-3 sentences of background", "city": "CityName", "language": "fi"}},
   ...
 ]
+
+The "city" field MUST be one of: {cities_str}
 
 Return ONLY the JSON array, no markdown fences."""
 
@@ -224,7 +243,6 @@ Return ONLY the JSON array, no markdown fences."""
             ),
         )
         text = response.text.strip()
-        # Strip markdown fences if present
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
@@ -237,6 +255,7 @@ Return ONLY the JSON array, no markdown fences."""
                 "source": "gemini",
                 "source_url": "",
                 "language": item.get("language", "fi"),
+                "city": item.get("city", ""),
             })
         print(f"  Gemini brainstorm: {len(ideas)} ideas")
         return ideas
@@ -258,7 +277,7 @@ STYLE RULES:
 - Paragraphs: SHORT. 1-3 sentences max. Readers scroll fast.
 - Word count: 300-500 words. Quality over quantity.
 - Include at least one quote (attributed to "a local" / "paikallinen asukas" or a named person if the source mentions one)
-- Make readers feel connected to the place and community
+- Make readers feel connected to the SPECIFIC TOWN — mention the town by name multiple times
 - Finnish by default unless the source is in English
 - NO corporate speak, NO boring government report language
 - YES to personality, emotion, storytelling, and a touch of drama
@@ -266,31 +285,67 @@ STYLE RULES:
 
 CONTENT RULES:
 - Base the article on the provided topic and context
+- The article MUST be about the specified town — localize the story there
 - You may embellish and dramatize the FRAMING but don't invent false facts
 - If the topic is lighthearted, be funny. If serious, be empathetic.
-- Always localize — mention the town, neighborhood, or region
+- Always localize — mention the town, neighborhood, or region by name
 - Categories: council, schools, business, events, sports, community, culture, safety, health, environment
 
 OUTPUT: Respond with valid JSON only (no markdown fences):
 {
-  "headline": "Dramatic Finnish headline (max 80 chars)",
+  "headline": "Dramatic Finnish headline mentioning the town (max 80 chars)",
   "article_markdown": "# Headline\\n\\nFull article in markdown...",
   "summary": "1-2 sentence hook for article cards",
   "category": "community",
   "tags": ["community", "culture"],
-  "image_prompt": "A photorealistic photograph of [scene described vividly]. Natural lighting, taken with a DSLR camera. No text, no watermarks, no graphics."
+  "image_prompt": "A photorealistic photograph of [scene in the specific town]. Natural lighting, taken with a DSLR camera. No text, no watermarks, no graphics."
 }"""
 
 
+def assign_city_to_idea(client, idea, city_names):
+    """Use Gemini to pick the most fitting city for a Reddit/external idea."""
+    cities_str = ", ".join(city_names)
+    prompt = f"""Pick the most fitting Finnish town for this news topic. The article will be localized to that town.
+
+TOPIC: {idea['topic']}
+CONTEXT: {idea.get('context', '')[:500]}
+
+Available towns: {cities_str}
+
+Pick the town where this topic is most relevant or could realistically happen. If it's a general Finland topic, pick any town where it would feel natural.
+
+Respond with ONLY the town name (one of the available towns), nothing else."""
+
+    try:
+        response = client.models.generate_content(
+            model=GENERATION_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.3),
+        )
+        city = response.text.strip()
+        # Validate it's one of our cities
+        for name in city_names:
+            if name.lower() == city.lower():
+                return name
+        # Fuzzy match
+        for name in city_names:
+            if name.lower() in city.lower() or city.lower() in name.lower():
+                return name
+        return random.choice(city_names)
+    except Exception:
+        return random.choice(city_names)
+
+
 def generate_article(client, idea, location_name):
-    """Generate a puskardio article from an idea seed."""
+    """Generate a puskardio article from an idea seed, localized to a specific town."""
     user_prompt = f"""LOCATION: {location_name}, Finland
 TOPIC: {idea['topic']}
 CONTEXT: {idea.get('context', 'No additional context.')}
 SOURCE: {idea['source']}
 LANGUAGE: {"Finnish" if idea.get('language', 'fi') == 'fi' else "English"}
 
-Write a puskardio tabloid article about this topic. Make it engaging, fun, and authentic."""
+Write a puskardio tabloid article about this topic, specifically localized to {location_name}.
+The article must feel like it's genuinely about {location_name} — mention the town, local landmarks, and community."""
 
     try:
         response = client.models.generate_content(
@@ -302,7 +357,6 @@ Write a puskardio tabloid article about this topic. Make it engaging, fun, and a
             ),
         )
         text = response.text.strip()
-        # Strip markdown fences
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
@@ -382,17 +436,22 @@ def main():
 
     # Get locations
     locations = []
-    location = None
+    finnish_cities = []
+    city_name_to_loc = {}
     if not dry_run:
         locations = get_locations()
-        location = pick_location(locations)
-        if not location:
-            print("ERROR: No locations found in database")
+        finnish_cities = get_finnish_cities(locations)
+        if not finnish_cities:
+            print("ERROR: No Finnish city locations found in database")
             sys.exit(1)
-        print(f"  Location: {location['name']} ({location['id']})")
+        city_name_to_loc = {loc["name"]: loc for loc in finnish_cities}
+        print(f"  Finnish cities: {', '.join(c['name'] for c in finnish_cities)}")
     else:
-        location = {"name": "Kirkkonummi", "id": "00000000-0000-0000-0000-000000000000"}
-        print(f"  Location: {location['name']} (dry-run)")
+        finnish_cities = [{"name": "Kirkkonummi", "id": "00000000-0000-0000-0000-000000000000"}]
+        city_name_to_loc = {"Kirkkonummi": finnish_cities[0]}
+        print(f"  Location: Kirkkonummi (dry-run)")
+
+    city_names = [c["name"] for c in finnish_cities]
 
     # --- Phase 1: Fetch ideas ---
     print(f"\n{'='*60}")
@@ -403,7 +462,7 @@ def main():
     if "reddit" in PUSKARDIO_SOURCES:
         all_ideas.extend(fetch_reddit_ideas(PUSKARDIO_REDDIT_SUBS))
     if "gemini" in PUSKARDIO_SOURCES:
-        all_ideas.extend(fetch_gemini_ideas(client, location["name"], count=PUSKARDIO_COUNT))
+        all_ideas.extend(fetch_gemini_ideas(client, city_names, count=PUSKARDIO_COUNT))
 
     if not all_ideas:
         print("ERROR: No ideas sourced. Check your sources config.")
@@ -414,6 +473,15 @@ def main():
     selected_ideas = all_ideas[:PUSKARDIO_COUNT]
     print(f"\n  Selected {len(selected_ideas)} ideas from {len(all_ideas)} total")
 
+    # --- Phase 1.5: Assign cities to ideas that don't have one ---
+    print(f"\n  Assigning cities to ideas...")
+    for idea in selected_ideas:
+        if idea.get("city") and idea["city"] in city_name_to_loc:
+            continue  # Gemini brainstorm already assigned a valid city
+        # Use Gemini to pick the best city for this topic
+        idea["city"] = assign_city_to_idea(client, idea, city_names)
+        print(f"    '{idea['topic'][:40]}...' -> {idea['city']}")
+
     # --- Phase 2: Generate articles ---
     print(f"\n{'='*60}")
     print("Phase 2: Generating articles")
@@ -421,9 +489,11 @@ def main():
 
     generated = []
     for i, idea in enumerate(selected_ideas):
-        print(f"\n  [{i+1}/{len(selected_ideas)}] {idea['topic'][:60]}...")
+        city_name = idea.get("city", city_names[0])
+        city_loc = city_name_to_loc.get(city_name, finnish_cities[0])
+        print(f"\n  [{i+1}/{len(selected_ideas)}] {idea['topic'][:50]}... [{city_name}]")
 
-        article_data = generate_article(client, idea, location["name"])
+        article_data = generate_article(client, idea, city_name)
         if not article_data:
             print("    SKIP: generation failed")
             continue
@@ -474,7 +544,7 @@ def main():
         generated.append({
             "title": headline,
             "content": markdown,
-            "location_id": location["id"],
+            "location_id": city_loc["id"],
             "owner_id": PUSKARDIO_OWNER_ID,
             "category": article_data.get("category", "community"),
             "tags": tag_bits,
