@@ -46,30 +46,42 @@ func (s *Service) SimilarArticles(ctx context.Context, articleID uuid.UUID, limi
 		Score    float64 `gorm:"column:score"`
 	}
 
-	// Fetch extra hits to allow dedup (multiple chunks per article).
-	// Run inside a transaction to increase HNSW ef_search — filtered queries
-	// can cause the graph traversal to miss high-scoring results.
+	// Use raw SQL for correct ORDER BY with pgvector operator binding.
+	// SET LOCAL hnsw.ef_search ensures thorough graph exploration with filters.
 	fetchLimit := limit * 3
-	var hits []entityHit
+	type simHit struct {
+		EntityID string  `gorm:"column:entity_id"`
+		Score    float64 `gorm:"column:score"`
+	}
+	var hits []simHit
 	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		tx.Exec("SET LOCAL hnsw.ef_search = 400")
 
-		q := tx.
-			Table("embeddings e").
-			Select("e.entity_id, 1 - (e.embedding <=> ?) AS score", centroidVec).
-			Joins("JOIN submissions s ON s.id = e.entity_id").
-			Where("e.entity_category = ? AND s.status = ? AND e.entity_id != ?",
-				models.EntitySubmission, models.StatusPublished, articleID)
-
 		if countryPath != "" {
-			q = q.Joins("JOIN locations l ON l.id = s.location_id").
-				Where("l.path LIKE ? OR l.path = ?", countryPath+"/%", countryPath)
+			return tx.Raw(`
+				SELECT e.entity_id, 1 - (e.embedding <=> ?) AS score
+				FROM embeddings e
+				JOIN submissions s ON s.id = e.entity_id
+				JOIN locations l ON l.id = s.location_id
+				WHERE e.entity_category = ? AND s.status = ? AND e.entity_id != ?
+				  AND (l.path LIKE ? OR l.path = ?)
+				ORDER BY e.embedding <=> ?
+				LIMIT ?`,
+				centroidVec, models.EntitySubmission, models.StatusPublished, articleID,
+				countryPath+"/%", countryPath,
+				centroidVec, fetchLimit,
+			).Scan(&hits).Error
 		}
-
-		return q.
-			Order(tx.Raw("e.embedding <=> ?", centroidVec)).
-			Limit(fetchLimit).
-			Find(&hits).Error
+		return tx.Raw(`
+			SELECT e.entity_id, 1 - (e.embedding <=> ?) AS score
+			FROM embeddings e
+			JOIN submissions s ON s.id = e.entity_id
+			WHERE e.entity_category = ? AND s.status = ? AND e.entity_id != ?
+			ORDER BY e.embedding <=> ?
+			LIMIT ?`,
+			centroidVec, models.EntitySubmission, models.StatusPublished, articleID,
+			centroidVec, fetchLimit,
+		).Scan(&hits).Error
 	}); err != nil {
 		return nil, fmt.Errorf("similar search: %w", err)
 	}
@@ -79,24 +91,21 @@ func (s *Service) SimilarArticles(ctx context.Context, articleID uuid.UUID, limi
 	}
 
 	// Deduplicate by entity_id, keeping the best score per article
-	type bestHit struct {
-		score float64
-	}
-	seen := make(map[string]bestHit)
+	seen := make(map[string]float64)
 	var orderedIDs []string
 	for _, h := range hits {
 		existing, ok := seen[h.EntityID]
-		if !ok || h.Score > existing.score {
+		if !ok || h.Score > existing {
 			if !ok {
 				orderedIDs = append(orderedIDs, h.EntityID)
 			}
-			seen[h.EntityID] = bestHit{score: h.Score}
+			seen[h.EntityID] = h.Score
 		}
 	}
 
 	// Sort by score descending and take top N
 	sort.Slice(orderedIDs, func(i, j int) bool {
-		return seen[orderedIDs[i]].score > seen[orderedIDs[j]].score
+		return seen[orderedIDs[i]] > seen[orderedIDs[j]]
 	})
 	if len(orderedIDs) > limit {
 		orderedIDs = orderedIDs[:limit]
