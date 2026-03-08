@@ -32,29 +32,29 @@ func (m *mockTranscription) Transcribe(_ context.Context, audioPath string) (str
 
 type mockGeneration struct {
 	called bool
-	input  GenerationInput
+	input  *PipelineContext
 	result *GenerationOutput
 	err    error
 }
 
 func (m *mockGeneration) ModelName() string { return "mock" }
 
-func (m *mockGeneration) Generate(_ context.Context, input GenerationInput) (*GenerationOutput, error) {
+func (m *mockGeneration) Generate(_ context.Context, pctx *PipelineContext) (*GenerationOutput, error) {
 	m.called = true
-	m.input = input
+	m.input = pctx
 	return m.result, m.err
 }
 
 type mockReview struct {
 	called bool
-	input  ReviewInput
+	input  *PipelineContext
 	result *models.ReviewResult
 	err    error
 }
 
-func (m *mockReview) Review(_ context.Context, input ReviewInput) (*models.ReviewResult, error) {
+func (m *mockReview) Review(_ context.Context, pctx *PipelineContext) (*models.ReviewResult, error) {
 	m.called = true
-	m.input = input
+	m.input = pctx
 	return m.result, m.err
 }
 
@@ -73,14 +73,14 @@ func (m *mockPhotoDescription) Describe(_ context.Context, photoPath string) (st
 
 type mockResearch struct {
 	called bool
-	input  ResearchInput
+	input  *PipelineContext
 	result *models.ResearchResult
 	err    error
 }
 
-func (m *mockResearch) Research(_ context.Context, input ResearchInput) (*models.ResearchResult, error) {
+func (m *mockResearch) Research(_ context.Context, pctx *PipelineContext) (*models.ResearchResult, error) {
 	m.called = true
-	m.input = input
+	m.input = pctx
 	return m.result, m.err
 }
 
@@ -233,20 +233,27 @@ func collectEvents(events chan PipelineEvent) []PipelineEvent {
 	return result
 }
 
+// mockQuestioning returns no questions so the pipeline continues without pausing.
+type mockQuestioning struct{}
+
+func (m *mockQuestioning) Analyze(ctx context.Context, pctx *PipelineContext) (*QuestioningOutput, error) {
+	return &QuestioningOutput{Questions: []string{}}, nil
+}
+
 func defaultResearchResult() *models.ResearchResult {
 	return &models.ResearchResult{
 		Context: "Background: The council met on March 4.",
-		Sources: []models.WebSource{{Title: "Kirkkonummi Council", URL: "https://kirkkonummi.fi"}},
-		Queries: []string{"kirkkonummi council"},
+		Sources: []models.WebSource{{Title: "Local Council", URL: "https://example.com/council"}},
+		Queries: []string{"local council meeting"},
 	}
 }
 
 func buildPipeline(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription) *PipelineService {
-	return NewPipelineService(db, trans, gen, rev, photo, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()})
+	return NewPipelineService(db, trans, gen, rev, photo, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()}, &mockQuestioning{})
 }
 
 func buildPipelineWithEmbedding(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription, chunker *mockChunker, emb *mockEmbedding) *PipelineService {
-	return NewPipelineService(db, trans, gen, rev, photo, chunker, emb, &mockResearch{result: defaultResearchResult()})
+	return NewPipelineService(db, trans, gen, rev, photo, chunker, emb, &mockResearch{result: defaultResearchResult()}, &mockQuestioning{})
 }
 
 // --- Pipeline tests ---
@@ -922,7 +929,7 @@ func TestPipeline_ResearchStep_EventEmitted(t *testing.T) {
 	rev := &mockReview{result: defaultReviewResult()}
 	research := &mockResearch{result: defaultResearchResult()}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 
@@ -967,7 +974,7 @@ func TestPipeline_ResearchFailure_NonFatal(t *testing.T) {
 	rev := &mockReview{result: defaultReviewResult()}
 	research := &mockResearch{err: fmt.Errorf("Google Search API down")}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 
@@ -999,16 +1006,207 @@ func TestPipeline_ResearchContext_PassedToGeneration(t *testing.T) {
 	research := &mockResearch{result: &models.ResearchResult{
 		Context: "The council budget is EUR 245 million.",
 		Sources: []models.WebSource{{Title: "Budget", URL: "https://example.com"}},
-		Queries: []string{"kirkkonummi budget"},
+		Queries: []string{"council budget"},
 	}}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 	collectEvents(events)
 
 	if gen.input.ResearchContext != "The council budget is EUR 245 million." {
 		t.Errorf("ResearchContext = %q, want research result context", gen.input.ResearchContext)
+	}
+}
+
+// --- Multi-call mocks for auto-fix tests ---
+
+type mockGenerationMulti struct {
+	calls   int
+	results []*GenerationOutput
+}
+
+func (m *mockGenerationMulti) ModelName() string { return "mock-multi" }
+
+func (m *mockGenerationMulti) Generate(_ context.Context, pctx *PipelineContext) (*GenerationOutput, error) {
+	idx := m.calls
+	m.calls++
+	if idx < len(m.results) {
+		return m.results[idx], nil
+	}
+	return m.results[len(m.results)-1], nil
+}
+
+type mockReviewMulti struct {
+	calls   int
+	results []*models.ReviewResult
+}
+
+func (m *mockReviewMulti) Review(_ context.Context, pctx *PipelineContext) (*models.ReviewResult, error) {
+	idx := m.calls
+	m.calls++
+	if idx < len(m.results) {
+		return m.results[idx], nil
+	}
+	return m.results[len(m.results)-1], nil
+}
+
+func TestPipeline_AutoFix_FixesRedTriggers(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "AutoFix", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGenerationMulti{results: []*GenerationOutput{
+		defaultGenOutput(),
+		defaultGenOutput(),
+	}}
+	rev := &mockReviewMulti{results: []*models.ReviewResult{
+		{
+			Gate: "RED",
+			RedTriggers: []models.RedTrigger{
+				{Dimension: "EVIDENCE", Trigger: "hallucinated_claim", Paragraph: 2, Sentence: "The budget was 5 million.", FixOptions: []string{"Remove claim"}},
+			},
+			YellowFlags: []models.YellowFlag{},
+			Scores:      models.QualityScores{Evidence: 0.4, Perspectives: 0.5, Representation: 0.5, EthicalFraming: 0.8, CulturalContext: 0.8, Manipulation: 0.9},
+			Coaching:    models.Coaching{Celebration: "Good start.", Suggestions: []string{}},
+		},
+		defaultReviewResult(), // GREEN on second round
+	}}
+
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()}, &mockQuestioning{})
+	events := make(chan PipelineEvent, 40)
+	pipeline.Run(context.Background(), sub.ID, events)
+	evts := collectEvents(events)
+
+	// gen called 2x, rev called 2x
+	if gen.calls != 2 {
+		t.Errorf("generation calls = %d, want 2", gen.calls)
+	}
+	if rev.calls != 2 {
+		t.Errorf("review calls = %d, want 2", rev.calls)
+	}
+
+	// auto_fixing event emitted
+	hasAutoFix := false
+	for _, ev := range evts {
+		if ev.Step == "auto_fixing" {
+			hasAutoFix = true
+		}
+	}
+	if !hasAutoFix {
+		t.Error("expected auto_fixing event")
+	}
+
+	// Final status is Ready
+	var updated models.Submission
+	db.First(&updated, "id = ?", sub.ID)
+	if updated.Status != models.StatusReady {
+		t.Errorf("status = %d, want StatusReady (%d)", updated.Status, models.StatusReady)
+	}
+}
+
+func TestPipeline_AutoFix_NonFixableTriggers_NoLoop(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "NonFixable", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	gen := &mockGenerationMulti{results: []*GenerationOutput{defaultGenOutput()}}
+	rev := &mockReviewMulti{results: []*models.ReviewResult{
+		{
+			Gate: "RED",
+			RedTriggers: []models.RedTrigger{
+				{Dimension: "ETHICAL_FRAMING", Trigger: "hate_speech", Paragraph: 1, Sentence: "Offensive content.", FixOptions: []string{"Remove"}},
+			},
+			YellowFlags: []models.YellowFlag{},
+			Scores:      models.QualityScores{Evidence: 0.8, Perspectives: 0.5, Representation: 0.5, EthicalFraming: 0.2, CulturalContext: 0.8, Manipulation: 0.9},
+			Coaching:    models.Coaching{Celebration: "Some good elements.", Suggestions: []string{}},
+		},
+	}}
+
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()}, &mockQuestioning{})
+	events := make(chan PipelineEvent, 40)
+	pipeline.Run(context.Background(), sub.ID, events)
+	evts := collectEvents(events)
+
+	if gen.calls != 1 {
+		t.Errorf("generation calls = %d, want 1", gen.calls)
+	}
+	if rev.calls != 1 {
+		t.Errorf("review calls = %d, want 1", rev.calls)
+	}
+
+	for _, ev := range evts {
+		if ev.Step == "auto_fixing" {
+			t.Error("should NOT have auto_fixing event for non-fixable triggers")
+		}
+	}
+
+	// Pipeline still completes
+	last := evts[len(evts)-1]
+	if last.Event != "complete" {
+		t.Errorf("last event = %q, want 'complete'", last.Event)
+	}
+}
+
+func TestPipeline_AutoFix_MaxRoundsExceeded(t *testing.T) {
+	db := setupTestDB(t)
+	sub := models.Submission{
+		ID: uuid.New(), OwnerID: uuid.New(), LocationID: uuid.New(),
+		Title: "MaxRounds", Status: models.StatusDraft, Description: "notes",
+	}
+	insertSubmission(t, db, &sub)
+
+	redReview := &models.ReviewResult{
+		Gate: "RED",
+		RedTriggers: []models.RedTrigger{
+			{Dimension: "EVIDENCE", Trigger: "fabricated_quote", Paragraph: 3, Sentence: "She said it was wonderful.", FixOptions: []string{"Remove quote"}},
+		},
+		YellowFlags: []models.YellowFlag{},
+		Scores:      models.QualityScores{Evidence: 0.3, Perspectives: 0.5, Representation: 0.5, EthicalFraming: 0.8, CulturalContext: 0.8, Manipulation: 0.9},
+		Coaching:    models.Coaching{Celebration: "Interesting story.", Suggestions: []string{}},
+	}
+
+	gen := &mockGenerationMulti{results: []*GenerationOutput{
+		defaultGenOutput(), defaultGenOutput(), defaultGenOutput(),
+	}}
+	rev := &mockReviewMulti{results: []*models.ReviewResult{
+		redReview, redReview, redReview, // always RED
+	}}
+
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()}, &mockQuestioning{})
+	events := make(chan PipelineEvent, 60)
+	pipeline.Run(context.Background(), sub.ID, events)
+	evts := collectEvents(events)
+
+	// 1 initial + 2 auto-fix = 3 total
+	if gen.calls != 3 {
+		t.Errorf("generation calls = %d, want 3", gen.calls)
+	}
+	if rev.calls != 3 {
+		t.Errorf("review calls = %d, want 3", rev.calls)
+	}
+
+	// Pipeline completes with RED result
+	last := evts[len(evts)-1]
+	if last.Event != "complete" {
+		t.Errorf("last event = %q, want 'complete'", last.Event)
+	}
+	data, ok := last.Data.(map[string]any)
+	if !ok {
+		t.Fatalf("complete data type = %T, want map[string]any", last.Data)
+	}
+	review, ok := data["review"].(*models.ReviewResult)
+	if !ok {
+		t.Fatalf("review type = %T, want *ReviewResult", data["review"])
+	}
+	if review.Gate != "RED" {
+		t.Errorf("final gate = %q, want RED", review.Gate)
 	}
 }
 
@@ -1033,7 +1231,7 @@ func TestPipeline_Refinement_SkipsResearch(t *testing.T) {
 	rev := &mockReview{result: defaultReviewResult()}
 	research := &mockResearch{result: defaultResearchResult()}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 	collectEvents(events)

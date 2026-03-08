@@ -694,6 +694,95 @@
 }
 
 /* ========================================
+   TRENDING SECTION (Global)
+   ======================================== */
+.trending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--space-2) 0;
+}
+
+.trending-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.trending-card:last-child {
+  border-bottom: none;
+}
+
+.trending-card:hover {
+  background: var(--color-surface-hover);
+}
+
+.trending-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.trending-card__title {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-secondary);
+  line-height: var(--leading-tight);
+}
+
+.trending-card:hover .trending-card__title {
+  text-decoration: underline;
+}
+
+.trending-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  flex-wrap: wrap;
+}
+
+.trending-card__thumb {
+  width: 80px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-gray-100);
+}
+
+.trending-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (min-width: 768px) {
+  .trending-card {
+    padding: var(--space-4) var(--space-4);
+  }
+
+  .trending-card__title {
+    font-size: var(--text-lg);
+  }
+
+  .trending-card__thumb {
+    width: 100px;
+    height: 72px;
+  }
+}
+
+/* ========================================
    OPINION CARDS
    ======================================== */
 .opinion-grid {

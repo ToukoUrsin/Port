@@ -152,7 +152,7 @@ func TestReviewFallback(t *testing.T) {
 
 func TestStubReviewService_ReturnsValidOutput(t *testing.T) {
 	svc := NewStubReviewService()
-	result, err := svc.Review(context.Background(), ReviewInput{
+	result, err := svc.Review(context.Background(), &PipelineContext{
 		ArticleMarkdown: "# Test\n\nBody.",
 		Transcript:      "test",
 	})

@@ -13,15 +13,8 @@ import (
 	"github.com/localnews/backend/internal/models"
 )
 
-type ResearchInput struct {
-	Transcript        string
-	Notes             string
-	PhotoDescriptions []string
-	TownContext       string
-}
-
 type ResearchService interface {
-	Research(ctx context.Context, input ResearchInput) (*models.ResearchResult, error)
+	Research(ctx context.Context, pctx *PipelineContext) (*models.ResearchResult, error)
 }
 
 type StubResearchService struct{}
@@ -30,7 +23,7 @@ func NewStubResearchService() *StubResearchService {
 	return &StubResearchService{}
 }
 
-func (s *StubResearchService) Research(ctx context.Context, input ResearchInput) (*models.ResearchResult, error) {
+func (s *StubResearchService) Research(ctx context.Context, pctx *PipelineContext) (*models.ResearchResult, error) {
 	time.Sleep(1 * time.Second)
 	return &models.ResearchResult{
 		Context: "",

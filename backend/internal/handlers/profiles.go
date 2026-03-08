@@ -111,6 +111,15 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		updates["profile_name"] = *req.ProfileName
 	}
 	if req.Public != nil {
+		if !*req.Public && profile.Public {
+			// Block going private if the user has published articles
+			var pubCount int64
+			h.db.Model(&models.Submission{}).Where("owner_id = ? AND status = ?", profile.ID, models.StatusPublished).Count(&pubCount)
+			if pubCount > 0 {
+				c.JSON(http.StatusConflict, gin.H{"error": "has_published_articles"})
+				return
+			}
+		}
 		updates["public"] = *req.Public
 	}
 	if req.Meta != nil {

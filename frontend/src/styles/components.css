@@ -138,6 +138,12 @@ textarea.input {
   border-radius: var(--radius-sm);
 }
 
+.badge--sm {
+  font-size: 9px;
+  padding: 1px var(--space-1);
+  letter-spacing: 0.04em;
+}
+
 .badge-council   { background: #1C332010; color: var(--color-cat-council); }
 .badge-schools   { background: #16354510; color: var(--color-cat-schools); }
 .badge-business  { background: #2E361E10; color: var(--color-cat-business); }

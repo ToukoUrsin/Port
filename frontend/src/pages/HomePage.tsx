@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
@@ -9,12 +9,12 @@ import ArticleCard from "@/components/ArticleCard";
 import FilterChips from "@/components/FilterChips";
 import type { FilterChip } from "@/components/FilterChips";
 import { useApi } from "@/hooks/useApi.ts";
-import { getArticles, getLocations } from "@/lib/api.ts";
+import { getArticles, getLocations, getLocation } from "@/lib/api.ts";
 import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse, ApiLocation } from "@/lib/types.ts";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BADGE_CLASS, type Article } from "@/data/articles";
-import { getSavedLocationIds } from "@/pages/ExplorePage";
+import { getSavedLocationIds, getSavedLocationNames } from "@/pages/ExplorePage";
 import "./HomePage.css";
 
 
@@ -62,6 +62,40 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
         <div className="ranked-card__footer">
           <span>{article.author}</span>
           <span>&middot;</span>
+          <Clock size={11} />
+          <span>{article.timeAgo}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function TrendingCard({ article }: { article: Article }) {
+  const { t } = useLanguage();
+  return (
+    <Link
+      to={`/article/${article.id}`}
+      className="trending-card"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      {article.image && (
+        <div className="trending-card__thumb">
+          <img src={article.image} alt={article.title} />
+        </div>
+      )}
+      <div className="trending-card__body">
+        <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          {t("tag." + article.category)}
+        </span>
+        <h3 className="trending-card__title">{article.title}</h3>
+        <div className="trending-card__meta">
+          {article.area && (
+            <>
+              <MapPin size={11} />
+              <span>{article.area}</span>
+              <span>&middot;</span>
+            </>
+          )}
           <Clock size={11} />
           <span>{article.timeAgo}</span>
         </div>
@@ -242,6 +276,22 @@ function BestOfWeekSection({ articles, t }: { articles: Article[]; t: (key: stri
   );
 }
 
+function TrendingSection({ articles, t }: { articles: Article[]; t: (key: string) => string }) {
+  if (articles.length === 0) return null;
+  return (
+    <section className="home-section">
+      <div className="home-section__header">
+        <h2 className="home-section__title">{t("home.trending")}</h2>
+      </div>
+      <div className="trending-list">
+        {articles.map((article) => (
+          <TrendingCard key={article.id} article={article} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function OpinionSection({ articles, t }: { articles: Article[]; t: (key: string) => string }) {
   if (articles.length === 0) return null;
   return (
@@ -302,11 +352,34 @@ function NewsSection({
 }
 
 export default function HomePage() {
-  const { language, t } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const { language, setLanguage, t } = useLanguage();
+  const locationSlug = searchParams.get("location");
+
+  // --- Shared link handling ---
+  // Track the shared location separately so it doesn't pollute localStorage.
+  // null = no shared link, undefined = resolving, ApiLocation = resolved
+  const [sharedLoc, setSharedLoc] = useState<ApiLocation | null | undefined>(
+    locationSlug ? undefined : null,
+  );
+  const langDetected = useRef(false);
+  useEffect(() => {
+    if (!locationSlug || langDetected.current) return;
+    langDetected.current = true;
+    getLocation(locationSlug).then((loc) => {
+      const path = loc.path.toLowerCase();
+      if (path.includes("finland") && language !== "fi") {
+        setLanguage("fi");
+      } else if (path.includes("united-states") && language !== "en") {
+        setLanguage("en");
+      }
+      setSharedLoc(loc);
+    }).catch(() => { setSharedLoc(null); });
+  }, [locationSlug, language, setLanguage]);
 
   // Fetch locations from API, filtered by language/country
   const country = language === "fi" ? "finland" : "united-states";
-  const fetchLocations = useCallback(() => getLocations({ country, level: [3] }), [country]);
+  const fetchLocations = useCallback(() => getLocations({ country, level: [3], min_articles: 1 }), [country]);
   const { data: locData } = useApi<{ locations: ApiLocation[] }>(fetchLocations, [country]);
   const allLocations = useMemo(
     () => (locData?.locations ?? []).sort((a, b) => a.name.localeCompare(b.name)),
@@ -343,7 +416,7 @@ export default function HomePage() {
   // Selected location IDs — from city bar toggles + explore map
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(getSavedLocationIds()));
 
-  // Sync to localStorage when selectedIds changes
+  // Sync to localStorage when selectedIds changes (but NOT the shared link location)
   useEffect(() => {
     localStorage.setItem("selected_locations", JSON.stringify(Array.from(selectedIds)));
   }, [selectedIds]);
@@ -357,71 +430,142 @@ export default function HomePage() {
     });
   }
 
-  // "All" means no filter
-  const isAllSelected = selectedIds.size === 0;
+  // When viewing via shared link, filter to that town only
+  const isSharedLink = sharedLoc !== null;
+  const isAllSelected = !isSharedLink && selectedIds.size === 0;
 
   function selectAll() {
+    setSharedLoc(null); // clear shared link filter when user taps "All"
     setSelectedIds(new Set());
   }
 
+  // Merge selected IDs + shared location for article fetching
+  const effectiveIds = useMemo(() => {
+    const ids = Array.from(selectedIds);
+    if (sharedLoc) ids.push(sharedLoc.id);
+    return ids;
+  }, [selectedIds, sharedLoc]);
+
   // Fetch articles filtered by selected locations
-  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const fetchArticles = useCallback(
     () => {
-      if (selectedIdsArray.length > 0) {
-        return getArticles({ limit: 100, location_ids: selectedIdsArray });
+      // Still resolving shared link — don't fetch yet
+      if (sharedLoc === undefined) {
+        return Promise.resolve({ articles: [], total: 0 } as ArticleListResponse);
       }
-      return getArticles({ limit: 100, country });
+      if (effectiveIds.length > 0) {
+        return getArticles({ limit: 100, location_ids: effectiveIds, sort: "ranked" });
+      }
+      return getArticles({ limit: 100, country, sort: "ranked" });
     },
-    [selectedIdsArray, country],
+    [effectiveIds, country, sharedLoc],
   );
-  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedIdsArray, country]);
+  const isResolvingSharedLink = sharedLoc === undefined;
+  const { data: apiData, isLoading: isLoadingArticles, error } = useApi<ArticleListResponse>(fetchArticles, [effectiveIds, country, sharedLoc]);
+  const isLoading = isResolvingSharedLink || isLoadingArticles;
   const allArticles = useMemo(
     () => (apiData?.articles ?? []).map((a) => apiToArticle(a, t)),
     [apiData, t],
   );
 
-  // Build filter chips: show chips for cities selected from explore map that aren't in the nearby bar
+  // Fetch global trending articles (no country/location filter)
+  const fetchTrending = useCallback(
+    () => getArticles({ limit: 10, sort: "ranked" }),
+    [],
+  );
+  const { data: trendingData } = useApi<ArticleListResponse>(fetchTrending, []);
+  const trendingArticles = useMemo(
+    () => (trendingData?.articles ?? []).map((a) => apiToArticle(a, t)).slice(0, 5),
+    [trendingData, t],
+  );
+
+  // Saved location names from explore map picks
+  const savedNames = useMemo(() => getSavedLocationNames(), []);
+
+  // Build filter chips
   const nearbyIdSet = useMemo(() => new Set(nearbyCities.map((l) => l.id)), [nearbyCities]);
   const filterChips = useMemo(() => {
     const chips: FilterChip[] = [];
+    // Show shared link location as a chip
+    if (sharedLoc) {
+      chips.push({ type: "location", id: sharedLoc.id, label: sharedLoc.name });
+    }
     for (const locId of selectedIds) {
-      // Always show chip for non-nearby selections; also show for nearby ones
+      if (sharedLoc && locId === sharedLoc.id) continue; // avoid duplicate
+      if (nearbyIdSet.has(locId)) continue; // nearby cities shown in bar
       const loc = allLocations.find((l) => l.id === locId);
-      if (loc && !nearbyIdSet.has(locId)) {
-        chips.push({ type: "location", id: loc.id, label: loc.name });
+      const name = loc?.name ?? savedNames[locId];
+      if (name) {
+        chips.push({ type: "location", id: locId, label: name });
       }
     }
     return chips;
-  }, [selectedIds, allLocations, nearbyIdSet]);
+  }, [selectedIds, allLocations, nearbyIdSet, sharedLoc, savedNames]);
 
   const handleRemoveChip = useCallback((chip: FilterChip) => {
+    // If removing the shared link chip, clear it
+    if (sharedLoc && chip.id === sharedLoc.id) {
+      setSharedLoc(null);
+      return;
+    }
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.delete(chip.id);
       return next;
     });
-  }, []);
+  }, [sharedLoc]);
 
   const handleClearAll = useCallback(() => {
+    setSharedLoc(null);
     setSelectedIds(new Set());
   }, []);
 
-  const recentArticles = allArticles.slice(0, 10);
-  const bestOfWeek = useMemo(
-    () => [...allArticles]
-      .filter((a) => a.image)
-      .sort((a, b) => b.title.localeCompare(a.title))
-      .slice(0, 5),
-    [allArticles],
-  );
-  const opinionArticles = allArticles.filter((a) => a.category === "opinion");
-  const eventArticles = allArticles.filter((a) => a.category === "events");
-  const newsCategories = ["council", "news", "community"];
-  const newsHeadlines = allArticles.filter((a) => newsCategories.includes(a.category) && !a.image);
-  const newsFeatured = allArticles.filter((a) => newsCategories.includes(a.category) && !!a.image);
+  // Deduplicate: each article appears in at most one section
+  const { recentArticles, bestOfWeek, opinionArticles, eventArticles, newsHeadlines, newsFeatured } = useMemo(() => {
+    const used = new Set<string>();
 
-  const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
+    // 1. Trending gets first pick (from separate fetch — mark those IDs)
+    for (const a of trendingArticles) used.add(a.id);
+
+    // 2. Recent: top 10 from ranked feed, excluding trending
+    const recent: Article[] = [];
+    for (const a of allArticles) {
+      if (recent.length >= 10) break;
+      if (!used.has(a.id)) {
+        recent.push(a);
+        used.add(a.id);
+      }
+    }
+
+    // 3. Best of Week: image articles from last 7 days, excluding used
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const bow: Article[] = [];
+    for (const a of allArticles) {
+      if (bow.length >= 5) break;
+      if (!used.has(a.id) && a.image && a.createdAt && new Date(a.createdAt).getTime() > weekAgo) {
+        bow.push(a);
+        used.add(a.id);
+      }
+    }
+
+    // 4. Category sections: only unused articles
+    const opinions = allArticles.filter((a) => !used.has(a.id) && a.category === "opinion");
+    opinions.forEach((a) => used.add(a.id));
+
+    const events = allArticles.filter((a) => !used.has(a.id) && a.category === "events");
+    events.forEach((a) => used.add(a.id));
+
+    const newsCategories = ["council", "news", "community"];
+    const headlines = allArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !a.image);
+    const featured = allArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !!a.image);
+
+    return { recentArticles: recent, bestOfWeek: bow, opinionArticles: opinions, eventArticles: events, newsHeadlines: headlines, newsFeatured: featured };
+  }, [allArticles, trendingArticles]);
+
+  // Skip onboarding when arriving via shared town link
+  const [showOnboarding, setShowOnboarding] = useState(() =>
+    locationSlug ? false : shouldShowOnboarding()
+  );
 
   return (
     <>
@@ -435,15 +579,18 @@ export default function HomePage() {
           >
             {t("home.all")}
           </button>
-          {nearbyCities.map((loc) => (
-            <button
-              key={loc.id}
-              className={`city-bar__item ${selectedIds.has(loc.id) ? "city-bar__item--active" : ""}`}
-              onClick={() => toggleCity(loc.id)}
-            >
-              {loc.name}
-            </button>
-          ))}
+          {nearbyCities.map((loc) => {
+            const isActive = selectedIds.has(loc.id) || (sharedLoc?.id === loc.id);
+            return (
+              <button
+                key={loc.id}
+                className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
+                onClick={() => toggleCity(loc.id)}
+              >
+                {loc.name}
+              </button>
+            );
+          })}
         </div>
       </nav>
       <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
@@ -466,6 +613,12 @@ export default function HomePage() {
             <RecentSection articles={recentArticles} t={t} />
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
+            {trendingArticles.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <TrendingSection articles={trendingArticles} t={t} />
+              </>
+            )}
             {bestOfWeek.length > 0 && (
               <>
                 <img src="/Line 1.svg" alt="" className="line-divider" />

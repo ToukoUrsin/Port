@@ -94,6 +94,12 @@ type EditEntry struct {
 	Previous string    `json:"previous"`
 }
 
+type ClarificationQA struct {
+	Question string `json:"question"`
+	Answer   string `json:"answer,omitempty"`
+	Skipped  bool   `json:"skipped,omitempty"`
+}
+
 type SubmissionMeta struct {
 	ArticleMarkdown string           `json:"article_markdown,omitempty"`
 	ArticleMetadata *ArticleMetadata `json:"article_metadata,omitempty"`
@@ -103,6 +109,9 @@ type SubmissionMeta struct {
 	Research        *ResearchResult  `json:"research,omitempty"`
 	Summary         string           `json:"summary,omitempty"`
 	Category        string           `json:"category,omitempty"`
+	Questions     []ClarificationQA `json:"questions,omitempty"`
+	PhotoDescs    []string           `json:"photo_descs,omitempty"`
+	PhotoFileURLs []string           `json:"photo_file_urls,omitempty"`
 	Model       string        `json:"model,omitempty"`
 	GeneratedAt *time.Time    `json:"generated_at,omitempty"`
 	Slug        string        `json:"slug,omitempty"`
@@ -143,6 +152,7 @@ type Submission struct {
 	SearchVector string                `gorm:"type:tsvector" json:"-"`
 	LocationName string                `gorm:"-" json:"location_name,omitempty"`
 	OwnerName    string                `gorm:"-" json:"owner_name,omitempty"`
+	ReplyCount   int                   `gorm:"-" json:"reply_count,omitempty"`
 	Timestamps
 }
 

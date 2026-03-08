@@ -85,6 +85,12 @@ export interface ArticleVersion {
 
 // --- Submission ---
 
+export interface ClarificationQA {
+  question: string;
+  answer?: string;
+  skipped?: boolean;
+}
+
 export interface SubmissionMeta {
   // New article engine fields
   article_markdown?: string;
@@ -97,6 +103,9 @@ export interface SubmissionMeta {
 
   // Research context from pre-generation web search
   research?: ResearchResult;
+
+  // Clarification questions
+  questions?: ClarificationQA[];
 
   // Kept from before
   summary?: string;
@@ -290,6 +299,7 @@ export const SubmissionStatus = {
   Refining: 7,
   Appealed: 8,
   Researching: 9,
+  Questioning: 10,
 } as const;
 
 // --- Tag bitmask constants ---
@@ -390,6 +400,7 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     image: s.meta.featured_img || "",
     area: s.location_name || s.meta.place_name,
     views: s.views,
+    createdAt: s.created_at,
   };
 }
 

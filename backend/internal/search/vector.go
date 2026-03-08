@@ -6,6 +6,7 @@ import (
 
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services"
+	"gorm.io/gorm"
 )
 
 func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
@@ -16,7 +17,6 @@ func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
 
-	// Determine which entity categories to search
 	type entityHit struct {
 		EntityID       string  `gorm:"column:entity_id"`
 		EntityCategory int16   `gorm:"column:entity_category"`
@@ -24,70 +24,76 @@ func (s *Service) Semantic(ctx context.Context, p Params) (*Result, error) {
 		Score          float64 `gorm:"column:score"`
 	}
 
-	// Cosine similarity search via pgvector
+	// Run vector searches inside a transaction so we can increase ef_search.
+	// The HNSW index with filtered queries (JOIN + WHERE) can miss high-scoring
+	// results because the graph traversal terminates too early when many nodes
+	// are filtered out. SET LOCAL scopes the change to this transaction only.
 	var hits []entityHit
-	if p.LocationID != "" {
-		// Pre-filter submissions by location via JOIN
-		if p.Type == "" || p.Type == "submissions" {
-			var subHits []entityHit
-			if err := s.db.WithContext(ctx).
-				Table("embeddings e").
-				Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-				Joins("JOIN submissions s ON s.id = e.entity_id").
-				Where("e.entity_category = ? AND s.status = ? AND s.location_id = ?", models.EntitySubmission, models.StatusPublished, p.LocationID).
-				Order(s.db.Raw("e.embedding <=> ?", queryVec)).
-				Limit(p.Limit).
-				Find(&subHits).Error; err != nil {
-				return nil, fmt.Errorf("vector search submissions: %w", err)
+	if txErr := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		tx.Exec("SET LOCAL hnsw.ef_search = 400")
+
+		if p.LocationID != "" {
+			if p.Type == "" || p.Type == "submissions" {
+				var subHits []entityHit
+				if err := tx.
+					Table("embeddings e").
+					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
+					Joins("JOIN submissions s ON s.id = e.entity_id").
+					Where("e.entity_category = ? AND s.status = ? AND s.location_id = ?", models.EntitySubmission, models.StatusPublished, p.LocationID).
+					Order(tx.Raw("e.embedding <=> ?", queryVec)).
+					Limit(p.Limit).
+					Find(&subHits).Error; err != nil {
+					return fmt.Errorf("vector search submissions: %w", err)
+				}
+				hits = append(hits, subHits...)
 			}
-			hits = append(hits, subHits...)
-		}
-		// Profile embeddings: no location filter, but filter by public
-		if p.Type == "" || p.Type == "profiles" {
-			var profHits []entityHit
-			if err := s.db.WithContext(ctx).
-				Table("embeddings e").
-				Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-				Joins("JOIN profiles p ON p.id = e.entity_id").
-				Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
-				Order(s.db.Raw("e.embedding <=> ?", queryVec)).
-				Limit(p.Limit).
-				Find(&profHits).Error; err != nil {
-				return nil, fmt.Errorf("vector search profiles: %w", err)
+			if p.Type == "" || p.Type == "profiles" {
+				var profHits []entityHit
+				if err := tx.
+					Table("embeddings e").
+					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
+					Joins("JOIN profiles p ON p.id = e.entity_id").
+					Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
+					Order(tx.Raw("e.embedding <=> ?", queryVec)).
+					Limit(p.Limit).
+					Find(&profHits).Error; err != nil {
+					return fmt.Errorf("vector search profiles: %w", err)
+				}
+				hits = append(hits, profHits...)
 			}
-			hits = append(hits, profHits...)
-		}
-	} else {
-		// Submissions: JOIN to enforce published-only
-		if p.Type == "" || p.Type == "submissions" {
-			var subHits []entityHit
-			if err := s.db.WithContext(ctx).
-				Table("embeddings e").
-				Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-				Joins("JOIN submissions s ON s.id = e.entity_id").
-				Where("e.entity_category = ? AND s.status = ?", models.EntitySubmission, models.StatusPublished).
-				Order(s.db.Raw("e.embedding <=> ?", queryVec)).
-				Limit(p.Limit).
-				Find(&subHits).Error; err != nil {
-				return nil, fmt.Errorf("vector search submissions: %w", err)
+		} else {
+			if p.Type == "" || p.Type == "submissions" {
+				var subHits []entityHit
+				if err := tx.
+					Table("embeddings e").
+					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
+					Joins("JOIN submissions s ON s.id = e.entity_id").
+					Where("e.entity_category = ? AND s.status = ?", models.EntitySubmission, models.StatusPublished).
+					Order(tx.Raw("e.embedding <=> ?", queryVec)).
+					Limit(p.Limit).
+					Find(&subHits).Error; err != nil {
+					return fmt.Errorf("vector search submissions: %w", err)
+				}
+				hits = append(hits, subHits...)
 			}
-			hits = append(hits, subHits...)
-		}
-		// Profiles: filter by public
-		if p.Type == "" || p.Type == "profiles" {
-			var profHits []entityHit
-			if err := s.db.WithContext(ctx).
-				Table("embeddings e").
-				Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
-				Joins("JOIN profiles p ON p.id = e.entity_id").
-				Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
-				Order(s.db.Raw("e.embedding <=> ?", queryVec)).
-				Limit(p.Limit).
-				Find(&profHits).Error; err != nil {
-				return nil, fmt.Errorf("vector search profiles: %w", err)
+			if p.Type == "" || p.Type == "profiles" {
+				var profHits []entityHit
+				if err := tx.
+					Table("embeddings e").
+					Select("e.entity_id, e.entity_category, e.chunk_text, 1 - (e.embedding <=> ?) AS score", queryVec).
+					Joins("JOIN profiles p ON p.id = e.entity_id").
+					Where("e.entity_category = ? AND p.public = ?", models.EntityProfile, true).
+					Order(tx.Raw("e.embedding <=> ?", queryVec)).
+					Limit(p.Limit).
+					Find(&profHits).Error; err != nil {
+					return fmt.Errorf("vector search profiles: %w", err)
+				}
+				hits = append(hits, profHits...)
 			}
-			hits = append(hits, profHits...)
 		}
+		return nil
+	}); txErr != nil {
+		return nil, txErr
 	}
 
 	// Deduplicate by entity_id, keeping the best chunk per entity

@@ -36,6 +36,8 @@ func (h *Handler) BookmarkArticle(c *gin.Context) {
 		DoNothing: true,
 	}).Create(&bm)
 
+	h.cache.Delete(c.Request.Context(), "feed:perso:"+actor.ProfileID.String())
+
 	c.JSON(http.StatusOK, gin.H{"bookmarked": true})
 }
 
@@ -50,6 +52,8 @@ func (h *Handler) UnbookmarkArticle(c *gin.Context) {
 
 	h.db.Where("profile_id = ? AND article_id = ?", actor.ProfileID, subID).
 		Delete(&models.Bookmark{})
+
+	h.cache.Delete(c.Request.Context(), "feed:perso:"+actor.ProfileID.String())
 
 	c.JSON(http.StatusOK, gin.H{"bookmarked": false})
 }

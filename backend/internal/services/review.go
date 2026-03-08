@@ -13,15 +13,8 @@ import (
 	"github.com/localnews/backend/internal/models"
 )
 
-type ReviewInput struct {
-	ArticleMarkdown   string
-	Transcript        string
-	Notes             string
-	PhotoDescriptions []string
-}
-
 type ReviewService interface {
-	Review(ctx context.Context, input ReviewInput) (*models.ReviewResult, error)
+	Review(ctx context.Context, pctx *PipelineContext) (*models.ReviewResult, error)
 }
 
 type StubReviewService struct{}
@@ -30,11 +23,11 @@ func NewStubReviewService() *StubReviewService {
 	return &StubReviewService{}
 }
 
-func (s *StubReviewService) Review(ctx context.Context, input ReviewInput) (*models.ReviewResult, error) {
+func (s *StubReviewService) Review(ctx context.Context, pctx *PipelineContext) (*models.ReviewResult, error) {
 	time.Sleep(2 * time.Second)
 	return &models.ReviewResult{
 		Verification: []models.VerificationEntry{
-			{Claim: "council convened Tuesday evening", Evidence: "contributor mentioned council meeting", Status: "SUPPORTED"},
+			{Claim: "[Stub] community meeting held", Evidence: "[Stub] contributor mentioned meeting", Status: "SUPPORTED"},
 		},
 		Scores: models.QualityScores{
 			Evidence:        0.75,
@@ -47,11 +40,11 @@ func (s *StubReviewService) Review(ctx context.Context, input ReviewInput) (*mod
 		Gate:        "GREEN",
 		RedTriggers: []models.RedTrigger{},
 		YellowFlags: []models.YellowFlag{
-			{Dimension: "PERSPECTIVES", Description: "Only one side of the budget debate is represented", Suggestion: "Did anyone speak in favor of the budget?"},
+			{Dimension: "PERSPECTIVES", Description: "[Stub] Only one side of the discussion is represented", Suggestion: "[Stub] Did anyone speak with a different viewpoint?"},
 		},
 		Coaching: models.Coaching{
-			Celebration: "The quote from Korhonen really captures the tension of the vote. Strong opening that leads with the news.",
-			Suggestions: []string{"Do you know what the budget specifically cuts?"},
+			Celebration: "[Stub] Good contribution with clear firsthand account.",
+			Suggestions: []string{"[Stub] Consider adding more specific details about what was discussed."},
 		},
 	}, nil
 }

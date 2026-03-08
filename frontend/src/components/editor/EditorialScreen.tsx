@@ -9,6 +9,7 @@ import { InstructionBar } from "./InstructionBar";
 import { StoryStrength } from "./StoryStrength";
 import { PublishButton } from "./PublishButton";
 import { VersionInfo } from "./VersionInfo";
+import { QualityGateBanner } from "./QualityGateBanner";
 import { useParagraphTap } from "./hooks/useParagraphTap";
 import type { EditorialScreenProps, ActiveAnnotation } from "./types";
 import type { RedTrigger } from "@/lib/types";
@@ -320,9 +321,17 @@ export function EditorialScreen({
         <div className="editorial-header-right">
           {statusLabel && <span className={statusClass}>{statusLabel}</span>}
           <StoryStrength scores={review.scores} />
-          <PublishButton gate={review.gate} onPublish={onPublish} />
+          <PublishButton gate={review.gate} onPublish={onPublish} scores={review.scores} />
         </div>
       </div>
+
+      {/* Quality gate banner */}
+      <QualityGateBanner
+        gate={review.gate}
+        scores={review.scores}
+        redTriggerCount={review.red_triggers.length}
+        yellowFlagCount={review.yellow_flags.length}
+      />
 
       {/* Two-column body */}
       <div ref={bodyRef} className="editorial-body">

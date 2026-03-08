@@ -63,11 +63,6 @@ function PostItem({ post, status }: { post: Article; status?: number }) {
     </>
   );
 
-  // Drafts without a title are not clickable
-  if (isDraft && !post.title) {
-    return <div className="profile-post profile-post--disabled">{inner}</div>;
-  }
-
   // Drafts link to the editor; published articles link to the article page
   const href = isDraft ? `/post/${post.id}` : `/article/${post.id}`;
 

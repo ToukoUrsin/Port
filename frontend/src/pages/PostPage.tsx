@@ -3,7 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUp, X, Loader2,
   CheckCircle, Camera, EyeOff,
-  Mic, ImageIcon, Search, PenTool, ShieldCheck, Type,
+  Mic, ImageIcon, Search, PenTool, ShieldCheck, Type, MessageCircleQuestion, Send,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useToast } from "@/components/Toast.tsx";
@@ -14,6 +15,7 @@ import {
   refineSubmission,
   appealSubmission,
   updateSubmissionMarkdown,
+  submitAnswers,
   getToken,
 } from "@/lib/api.ts";
 import { streamPipeline } from "@/lib/sse.ts";
@@ -237,14 +239,16 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
 
 // --- Step 2: Processing with SSE (live data feed) ---
 
-const STEP_ORDER = ["transcribing", "describing_photos", "researching", "generating", "reviewing"];
+const STEP_ORDER = ["transcribing", "describing_photos", "researching", "questioning", "generating", "reviewing", "auto_fixing"];
 
 const STEP_ICONS: Record<string, React.ReactNode> = {
   transcribing: <Mic size={16} />,
   describing_photos: <ImageIcon size={16} />,
   researching: <Search size={16} />,
+  questioning: <MessageCircleQuestion size={16} />,
   generating: <PenTool size={16} />,
   reviewing: <ShieldCheck size={16} />,
+  auto_fixing: <RefreshCw size={16} />,
 };
 
 const SCORE_KEYS = ["evidence", "perspectives", "representation", "ethical_framing", "cultural_context", "manipulation"];
@@ -296,8 +300,10 @@ function ProcessingStep({
     transcribing: t("post.stepListening"),
     describing_photos: t("post.stepPhotos"),
     researching: language === "fi" ? "Tutkitaan taustaa" : "Researching background",
+    questioning: language === "fi" ? "Tarkentavat kysymykset" : "Follow-up questions",
     generating: t("post.stepWriting"),
     reviewing: t("post.stepReviewing"),
+    auto_fixing: language === "fi" ? "Korjataan ongelmia" : "Fixing issues",
   };
   const [stepKeys, setStepKeys] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState<string>("");
@@ -309,6 +315,12 @@ function ProcessingStep({
   const [photoDescs, setPhotoDescs] = useState<string[]>([]);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>("");
+
+  // Questions flow
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [isAnswering, setIsAnswering] = useState(false);
+  const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false);
 
   // Research data
   const [researchContext, setResearchContext] = useState<string>("");
@@ -323,7 +335,31 @@ function ProcessingStep({
 
   const feedRef = useRef<HTMLDivElement>(null);
 
+  // Cold-start: load stored questions from DB when navigating to a questioning submission
   useEffect(() => {
+    getSubmission(submissionId).then((sub) => {
+      if (sub.status === SubmissionStatus.Questioning && sub.meta.questions?.length) {
+        const qs = sub.meta.questions.map((q) => q.question);
+        setQuestions(qs);
+        setIsAnswering(true);
+        setStepKeys(["questioning"]);
+        setCurrentStep("questioning");
+        // Pre-fill any existing answers
+        const existing: Record<number, string> = {};
+        sub.meta.questions.forEach((q, i) => {
+          if (q.answer) existing[i] = q.answer;
+        });
+        if (Object.keys(existing).length > 0) setAnswers(existing);
+      }
+    }).catch(() => {
+      // Non-fatal: pipeline stream will handle it
+    });
+  }, [submissionId]);
+
+  useEffect(() => {
+    // Skip SSE stream if we're already in answering mode (cold-start)
+    if (isAnswering) return;
+
     const token = getToken();
     if (!token) {
       onError("Not authenticated");
@@ -373,6 +409,23 @@ function ProcessingStep({
       onError(event) {
         onError(event.message);
       },
+      onQuestions(qs) {
+        setQuestions(qs);
+        setIsAnswering(true);
+        // Record step timing for "questioning"
+        const now = Date.now();
+        setCurrentStep((prev) => {
+          if (prev && prev !== "questioning") {
+            const elapsed = Math.round((now - stepStartRef.current) / 1000);
+            setStepTimes((t) => ({ ...t, [prev]: elapsed }));
+          }
+          stepStartRef.current = now;
+          return "questioning";
+        });
+        setStepKeys((prev) =>
+          prev.includes("questioning") ? prev : [...prev, "questioning"],
+        );
+      },
     });
 
     return () => controller.abort();
@@ -383,7 +436,98 @@ function ProcessingStep({
     if (feedRef.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
-  }, [stepKeys, transcript, photoDescs, researchContext, genData, reviewData, currentStep]);
+  }, [stepKeys, transcript, photoDescs, researchContext, genData, reviewData, currentStep, questions]);
+
+  async function handleSubmitAnswers() {
+    setIsSubmittingAnswers(true);
+    try {
+      const answerPayload = questions.map((q, i) => ({
+        question: q,
+        answer: answers[i] || "",
+        skipped: !answers[i]?.trim(),
+      }));
+      await submitAnswers(submissionId, answerPayload);
+      setIsAnswering(false);
+      // Record questioning step time
+      const now = Date.now();
+      const elapsed = Math.round((now - stepStartRef.current) / 1000);
+      setStepTimes((t) => ({ ...t, questioning: elapsed }));
+      stepStartRef.current = now;
+      // Open a new SSE stream to resume the pipeline
+      const token = getToken();
+      if (!token) { onError("Not authenticated"); return; }
+      streamPipeline(submissionId, token, {
+        onStatus(event: SSEStatusEvent) {
+          const now2 = Date.now();
+          setCurrentStep((prev) => {
+            if (prev && prev !== event.step) {
+              const elapsed2 = Math.round((now2 - stepStartRef.current) / 1000);
+              setStepTimes((t) => ({ ...t, [prev]: elapsed2 }));
+            }
+            stepStartRef.current = now2;
+            return event.step;
+          });
+          setStepKeys((prev) =>
+            prev.includes(event.step) ? prev : [...prev, event.step],
+          );
+          if (event.step === "generated" && event.data) {
+            setGenData(event.data as SSEGeneratedData);
+          }
+          if (event.step === "reviewed" && event.data) {
+            setReviewData(event.data as SSEReviewedData);
+          }
+        },
+        onComplete(event) { onDone(event.article, event.review, event.metadata); },
+        onError(event) { onError(event.message); },
+      });
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to submit answers");
+    } finally {
+      setIsSubmittingAnswers(false);
+    }
+  }
+
+  async function handleSkipQuestions() {
+    setIsSubmittingAnswers(true);
+    try {
+      await submitAnswers(submissionId, [], true);
+      setIsAnswering(false);
+      const now = Date.now();
+      const elapsed = Math.round((now - stepStartRef.current) / 1000);
+      setStepTimes((t) => ({ ...t, questioning: elapsed }));
+      stepStartRef.current = now;
+      const token = getToken();
+      if (!token) { onError("Not authenticated"); return; }
+      streamPipeline(submissionId, token, {
+        onStatus(event: SSEStatusEvent) {
+          const now2 = Date.now();
+          setCurrentStep((prev) => {
+            if (prev && prev !== event.step) {
+              const elapsed2 = Math.round((now2 - stepStartRef.current) / 1000);
+              setStepTimes((t) => ({ ...t, [prev]: elapsed2 }));
+            }
+            stepStartRef.current = now2;
+            return event.step;
+          });
+          setStepKeys((prev) =>
+            prev.includes(event.step) ? prev : [...prev, event.step],
+          );
+          if (event.step === "generated" && event.data) {
+            setGenData(event.data as SSEGeneratedData);
+          }
+          if (event.step === "reviewed" && event.data) {
+            setReviewData(event.data as SSEReviewedData);
+          }
+        },
+        onComplete(event) { onDone(event.article, event.review, event.metadata); },
+        onError(event) { onError(event.message); },
+      });
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to skip questions");
+    } finally {
+      setIsSubmittingAnswers(false);
+    }
+  }
 
   const isDone = (step: string) => stepKeys.includes(step) && currentStep !== step;
   const isActive = (step: string) => currentStep === step;
@@ -481,6 +625,57 @@ function ProcessingStep({
                       </ul>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* QUESTIONING — interactive question cards */}
+              {key === "questioning" && isAnswering && (
+                <div className="pl-step-body">
+                  <div className="pl-questions">
+                    <p className="pl-questions-intro">
+                      {language === "fi"
+                        ? "Muutama kysymys, jotka voisivat vahvistaa artikkeliasi:"
+                        : "A few questions that could strengthen your article:"}
+                    </p>
+                    {questions.map((q, i) => (
+                      <div key={i} className="pl-question-card">
+                        <p className="pl-question-text">{q}</p>
+                        <textarea
+                          className="pl-question-input"
+                          placeholder={language === "fi" ? "Vastauksesi..." : "Your answer..."}
+                          value={answers[i] || ""}
+                          onChange={(e) => setAnswers((prev) => ({ ...prev, [i]: e.target.value }))}
+                          disabled={isSubmittingAnswers}
+                          rows={2}
+                        />
+                      </div>
+                    ))}
+                    <div className="pl-questions-actions">
+                      <button
+                        type="button"
+                        className="pl-questions-skip"
+                        onClick={handleSkipQuestions}
+                        disabled={isSubmittingAnswers}
+                      >
+                        {language === "fi" ? "Ohita ja luo artikkeli" : "Skip & generate anyway"}
+                      </button>
+                      <button
+                        type="button"
+                        className="pl-questions-submit"
+                        onClick={handleSubmitAnswers}
+                        disabled={isSubmittingAnswers}
+                      >
+                        {isSubmittingAnswers ? (
+                          <Loader2 size={16} className="spin" />
+                        ) : (
+                          <>
+                            <Send size={14} />
+                            {language === "fi" ? "Jatka" : "Continue"}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -644,6 +839,9 @@ export default function PostPage() {
         setCurrentRound(meta.versions?.length ?? 0);
         setIsRefining(sub.status === SubmissionStatus.Refining);
         setStep("preview");
+      } else if (sub.status === SubmissionStatus.Questioning) {
+        // Questioning — show questions from meta for cold-start
+        setStep("processing");
       } else if (
         sub.status === SubmissionStatus.Transcribing ||
         sub.status === SubmissionStatus.Generating ||
@@ -787,7 +985,15 @@ export default function PostPage() {
           await updateSubmissionMarkdown(submissionId, articleMarkdown);
         }
       }
-      await publishArticle(submissionId);
+      const result = await publishArticle(submissionId);
+      if (result && "error" in result && result.error === "quality_below_threshold") {
+        const failed = result.failed_scores || [];
+        toast(
+          `Cannot publish: ${failed.join(", ")} score${failed.length > 1 ? "s" : ""} below 60%`,
+          "error",
+        );
+        return;
+      }
       toast(pt("post.published"), "success");
       navigate("/");
     } catch (err) {

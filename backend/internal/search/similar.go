@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
 	"github.com/pgvector/pgvector-go"
+	"gorm.io/gorm"
 )
 
 // SimilarArticles returns published articles most similar to the given article
@@ -45,26 +46,31 @@ func (s *Service) SimilarArticles(ctx context.Context, articleID uuid.UUID, limi
 		Score    float64 `gorm:"column:score"`
 	}
 
-	// Fetch extra hits to allow dedup (multiple chunks per article)
+	// Fetch extra hits to allow dedup (multiple chunks per article).
+	// Run inside a transaction to increase HNSW ef_search — filtered queries
+	// can cause the graph traversal to miss high-scoring results.
 	fetchLimit := limit * 3
 	var hits []entityHit
-	q := s.db.WithContext(ctx).
-		Table("embeddings e").
-		Select("e.entity_id, 1 - (e.embedding <=> ?) AS score", centroidVec).
-		Joins("JOIN submissions s ON s.id = e.entity_id").
-		Where("e.entity_category = ? AND s.status = ? AND e.entity_id != ?",
-			models.EntitySubmission, models.StatusPublished, articleID)
+	if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		tx.Exec("SET LOCAL hnsw.ef_search = 400")
 
-	// Restrict to same country when path is provided
-	if countryPath != "" {
-		q = q.Joins("JOIN locations l ON l.id = s.location_id").
-			Where("l.path LIKE ? OR l.path = ?", countryPath+"/%", countryPath)
-	}
+		q := tx.
+			Table("embeddings e").
+			Select("e.entity_id, 1 - (e.embedding <=> ?) AS score", centroidVec).
+			Joins("JOIN submissions s ON s.id = e.entity_id").
+			Where("e.entity_category = ? AND s.status = ? AND e.entity_id != ?",
+				models.EntitySubmission, models.StatusPublished, articleID)
 
-	if err := q.
-		Order(s.db.Raw("e.embedding <=> ?", centroidVec)).
-		Limit(fetchLimit).
-		Find(&hits).Error; err != nil {
+		if countryPath != "" {
+			q = q.Joins("JOIN locations l ON l.id = s.location_id").
+				Where("l.path LIKE ? OR l.path = ?", countryPath+"/%", countryPath)
+		}
+
+		return q.
+			Order(tx.Raw("e.embedding <=> ?", centroidVec)).
+			Limit(fetchLimit).
+			Find(&hits).Error
+	}); err != nil {
 		return nil, fmt.Errorf("similar search: %w", err)
 	}
 

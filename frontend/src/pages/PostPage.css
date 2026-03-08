@@ -757,6 +757,105 @@
   font-style: italic;
 }
 
+/* --- Questioning cards --- */
+.pl-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.pl-questions-intro {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--leading-relaxed);
+}
+.pl-question-card {
+  background: var(--color-gray-50, #fafafa);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.pl-question-text {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+  margin: 0;
+  line-height: var(--leading-relaxed);
+}
+.pl-question-input {
+  width: 100%;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text);
+  background: var(--color-surface, #fff);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.pl-question-input:focus {
+  border-color: var(--color-primary);
+}
+.pl-question-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+.pl-questions-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+.pl-questions-skip {
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--transition-fast);
+}
+.pl-questions-skip:hover {
+  color: var(--color-text-secondary);
+}
+.pl-questions-skip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pl-questions-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+.pl-questions-submit:hover {
+  opacity: 0.9;
+}
+.pl-questions-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* --- Shared keyframes --- */
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

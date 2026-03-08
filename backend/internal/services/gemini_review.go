@@ -1,21 +1,72 @@
 // Gemini-backed article review service.
-//
-// Plan: 1_what/article_engine/spec/build/PROMPTS_SPEC.md
-//
-// Changes:
-// - 2026-03-07: Initial implementation
 package services
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services/prompts"
 	"google.golang.org/genai"
 )
+
+var reviewTool = &genai.Tool{
+	FunctionDeclarations: []*genai.FunctionDeclaration{{
+		Name:        "submit_review",
+		Description: "Submit the complete editorial review",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+			Properties: map[string]*genai.Schema{
+				"verification": {Type: genai.TypeArray, Items: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"claim":    {Type: genai.TypeString},
+						"evidence": {Type: genai.TypeString},
+						"status":   {Type: genai.TypeString, Enum: []string{"SUPPORTED", "NOT_IN_SOURCE", "POSSIBLE_HALLUCINATION", "FABRICATED_QUOTE"}},
+					},
+					Required: []string{"claim", "evidence", "status"},
+				}},
+				"scores": {Type: genai.TypeObject, Properties: map[string]*genai.Schema{
+					"evidence":        {Type: genai.TypeNumber},
+					"perspectives":    {Type: genai.TypeNumber},
+					"representation":  {Type: genai.TypeNumber},
+					"ethical_framing":  {Type: genai.TypeNumber},
+					"cultural_context": {Type: genai.TypeNumber},
+					"manipulation":    {Type: genai.TypeNumber},
+				}, Required: []string{"evidence", "perspectives", "representation", "ethical_framing", "cultural_context", "manipulation"}},
+				"gate": {Type: genai.TypeString, Enum: []string{"GREEN", "YELLOW", "RED"}},
+				"red_triggers": {Type: genai.TypeArray, Items: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"dimension":   {Type: genai.TypeString},
+						"trigger":     {Type: genai.TypeString},
+						"paragraph":   {Type: genai.TypeInteger},
+						"sentence":    {Type: genai.TypeString},
+						"fix_options": {Type: genai.TypeArray, Items: &genai.Schema{Type: genai.TypeString}},
+					},
+					Required: []string{"dimension", "trigger", "paragraph", "sentence", "fix_options"},
+				}},
+				"yellow_flags": {Type: genai.TypeArray, Items: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"dimension":   {Type: genai.TypeString},
+						"description": {Type: genai.TypeString},
+						"suggestion":  {Type: genai.TypeString},
+					},
+					Required: []string{"dimension", "description", "suggestion"},
+				}},
+				"coaching": {Type: genai.TypeObject, Properties: map[string]*genai.Schema{
+					"celebration": {Type: genai.TypeString},
+					"suggestions": {Type: genai.TypeArray, Items: &genai.Schema{Type: genai.TypeString}},
+				}, Required: []string{"celebration", "suggestions"}},
+			},
+			Required: []string{"verification", "scores", "gate", "red_triggers", "yellow_flags", "coaching"},
+		},
+	}},
+}
 
 type GeminiReviewService struct {
 	client *genai.Client
@@ -29,8 +80,57 @@ func NewGeminiReviewService(client *genai.Client, model string) *GeminiReviewSer
 	return &GeminiReviewService{client: client, model: model}
 }
 
-func (s *GeminiReviewService) Review(ctx context.Context, input ReviewInput) (*models.ReviewResult, error) {
-	userPrompt := buildReviewUserPrompt(input)
+func (s *GeminiReviewService) Review(ctx context.Context, pctx *PipelineContext) (*models.ReviewResult, error) {
+	result, err := s.reviewWithFunctionCall(ctx, pctx)
+	if err != nil {
+		log.Printf("review function calling failed, text parse fallback: %v", err)
+		return s.reviewWithTextParse(ctx, pctx)
+	}
+	return result, nil
+}
+
+func (s *GeminiReviewService) reviewWithFunctionCall(ctx context.Context, pctx *PipelineContext) (*models.ReviewResult, error) {
+	userPrompt := buildReviewUserPrompt(pctx)
+
+	resp, err := s.client.Models.GenerateContent(ctx, s.model,
+		[]*genai.Content{{
+			Role:  "user",
+			Parts: []*genai.Part{genai.NewPartFromText(userPrompt)},
+		}},
+		&genai.GenerateContentConfig{
+			SystemInstruction: &genai.Content{
+				Parts: []*genai.Part{genai.NewPartFromText(prompts.ReviewSystem)},
+			},
+			Tools: []*genai.Tool{reviewTool},
+			ToolConfig: &genai.ToolConfig{
+				FunctionCallingConfig: &genai.FunctionCallingConfig{
+					Mode: genai.FunctionCallingConfigModeAny,
+				},
+			},
+			ThinkingConfig: &genai.ThinkingConfig{
+				ThinkingLevel: genai.ThinkingLevelHigh,
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("gemini review (function call): %w", err)
+	}
+
+	_, args, fcErr := extractFunctionCall(resp)
+	if fcErr != nil {
+		return nil, fmt.Errorf("no function call in review response: %w", fcErr)
+	}
+
+	result, unmarshalErr := unmarshalFunctionArgs[models.ReviewResult](args)
+	if unmarshalErr != nil {
+		return nil, fmt.Errorf("unmarshal review args: %w", unmarshalErr)
+	}
+
+	return result, nil
+}
+
+func (s *GeminiReviewService) reviewWithTextParse(ctx context.Context, pctx *PipelineContext) (*models.ReviewResult, error) {
+	userPrompt := buildReviewUserPrompt(pctx)
 
 	resp, err := s.client.Models.GenerateContent(ctx, s.model,
 		[]*genai.Content{{
@@ -50,30 +150,19 @@ func (s *GeminiReviewService) Review(ctx context.Context, input ReviewInput) (*m
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("gemini review: %w", err)
+		return nil, fmt.Errorf("gemini review (text parse): %w", err)
 	}
 
 	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil || len(resp.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("gemini review: empty response")
 	}
 
-	// Extract web sources from grounding metadata
-	var webSources []models.WebSource
-	if resp.Candidates[0].GroundingMetadata != nil {
-		for _, chunk := range resp.Candidates[0].GroundingMetadata.GroundingChunks {
-			if chunk.Web != nil {
-				webSources = append(webSources, models.WebSource{
-					Title: chunk.Web.Title,
-					URL:   chunk.Web.URI,
-				})
-			}
-		}
-	}
+	webSources := extractGroundingSources(resp)
 
 	raw := resp.Candidates[0].Content.Parts[0].Text
 	result, parseErr := parseReviewJSON(raw)
 	if parseErr != nil {
-		// Retry once with explicit instruction
+		// Retry once
 		retryResp, retryErr := s.client.Models.GenerateContent(ctx, s.model,
 			[]*genai.Content{
 				{Role: "user", Parts: []*genai.Part{genai.NewPartFromText(userPrompt)}},
@@ -101,23 +190,59 @@ func (s *GeminiReviewService) Review(ctx context.Context, input ReviewInput) (*m
 	return result, nil
 }
 
-func buildReviewUserPrompt(input ReviewInput) string {
+func buildReviewUserPrompt(pctx *PipelineContext) string {
 	var b strings.Builder
 
 	b.WriteString("Article:\n")
-	b.WriteString(input.ArticleMarkdown)
+	b.WriteString(pctx.ArticleMarkdown)
 
-	if input.Transcript != "" {
+	if pctx.Transcript != "" {
 		b.WriteString("\n\nSource transcript:\n")
-		b.WriteString(input.Transcript)
+		b.WriteString(pctx.Transcript)
 	}
-	if input.Notes != "" {
+	if pctx.Notes != "" {
 		b.WriteString("\n\nSource notes:\n")
-		b.WriteString(input.Notes)
+		b.WriteString(pctx.Notes)
 	}
-	if len(input.PhotoDescriptions) > 0 {
+	if len(pctx.PhotoDescriptions) > 0 {
 		b.WriteString("\n\nPhoto descriptions:\n")
-		b.WriteString(strings.Join(input.PhotoDescriptions, "\n"))
+		b.WriteString(strings.Join(pctx.PhotoDescriptions, "\n"))
+	}
+
+	// NEW: Research context
+	if pctx.ResearchContext != "" {
+		b.WriteString("\n\nBackground research (web-verified):\n")
+		b.WriteString(pctx.ResearchContext)
+	}
+
+	// NEW: Questions already asked (prevent duplicates in coaching)
+	if len(pctx.QuestionsAsked) > 0 {
+		b.WriteString("\n\nQuestions already asked to contributor (DO NOT repeat in coaching):\n")
+		for i, q := range pctx.QuestionsAsked {
+			b.WriteString(fmt.Sprintf("%d. %s\n", i+1, q))
+		}
+	}
+
+	// NEW: Contributor's answers
+	if pctx.ClarificationAnswers != "" {
+		b.WriteString("\n\nContributor's answers (treat as primary source material):\n")
+		b.WriteString(pctx.ClarificationAnswers)
+	}
+
+	// NEW: Gap annotations from generation
+	if len(pctx.Metadata.MissingContext) > 0 {
+		b.WriteString("\n\nGap annotations from generation (still missing):\n")
+		for _, gap := range pctx.Metadata.MissingContext {
+			b.WriteString("- ")
+			b.WriteString(gap)
+			b.WriteString("\n")
+		}
+	}
+
+	if pctx.Language != "" {
+		b.WriteString("\n\nLanguage: Write coaching output in ")
+		b.WriteString(pctx.Language)
+		b.WriteString(".\n")
 	}
 
 	return b.String()
@@ -128,7 +253,6 @@ func parseReviewJSON(raw string) (*models.ReviewResult, error) {
 
 	var result models.ReviewResult
 	if err := json.Unmarshal([]byte(cleaned), &result); err != nil {
-		// Try to extract JSON object from surrounding text
 		if start := strings.Index(cleaned, "{"); start >= 0 {
 			if end := strings.LastIndex(cleaned, "}"); end > start {
 				if err2 := json.Unmarshal([]byte(cleaned[start:end+1]), &result); err2 != nil {

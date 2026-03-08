@@ -124,7 +124,7 @@ func TestReplacePhotoPlaceholders(t *testing.T) {
 
 func TestStubGenerationService_ReturnsValidOutput(t *testing.T) {
 	svc := NewStubGenerationService()
-	out, err := svc.Generate(context.Background(), GenerationInput{
+	out, err := svc.Generate(context.Background(), &PipelineContext{
 		Transcript: "test transcript",
 		Notes:      "test notes",
 	})

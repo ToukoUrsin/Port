@@ -154,7 +154,7 @@ export function getArticles(params?: {
   category?: string;
   country?: string;
   owner_id?: string;
-  sort?: "recent" | "popular";
+  sort?: "recent" | "popular" | "ranked";
   limit?: number;
   offset?: number;
 }): Promise<ArticleListResponse> {
@@ -225,9 +225,14 @@ export type GateRejection = {
   red_triggers: RedTrigger[];
 };
 
+export type QualityRejection = {
+  error: "quality_below_threshold";
+  failed_scores: string[];
+};
+
 export async function publishArticle(
   id: string,
-): Promise<{ status: string } | GateRejection> {
+): Promise<{ status: string } | GateRejection | QualityRejection> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -242,7 +247,7 @@ export async function publishArticle(
   });
 
   if (res.status === 422) {
-    return res.json() as Promise<GateRejection>;
+    return res.json() as Promise<GateRejection | QualityRejection>;
   }
 
   if (!res.ok) {
@@ -291,6 +296,17 @@ export async function rephraseSubmission(
   return apiFetch<{ options: string[] }>(`/api/submissions/${id}/rephrase`, {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+export function submitAnswers(
+  submissionId: string,
+  answers: Array<{ question: string; answer: string; skipped: boolean }>,
+  skipAll?: boolean,
+): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/submissions/${submissionId}/answers`, {
+    method: "POST",
+    body: JSON.stringify({ answers, skip_all: skipAll }),
   });
 }
 
@@ -583,4 +599,20 @@ export function deleteNotification(id: string): Promise<void> {
 
 export function deleteReadNotifications(): Promise<void> {
   return apiFetch<void>("/api/notifications/read", { method: "DELETE" });
+}
+
+// --- Admin stats (historical) ---
+
+import type { StatsHourlyRow, StatsLocationRow, StatsSummary } from "@/lib/adminStats";
+
+export function getStatsHistory(days: number): Promise<StatsHourlyRow[]> {
+  return apiFetch<StatsHourlyRow[]>(`/api/admin/stats/history?days=${days}`);
+}
+
+export function getStatsLocations(days: number): Promise<StatsLocationRow[]> {
+  return apiFetch<StatsLocationRow[]>(`/api/admin/stats/locations?days=${days}`);
+}
+
+export function getStatsSummary(days: number): Promise<StatsSummary> {
+  return apiFetch<StatsSummary>(`/api/admin/stats/summary?days=${days}`);
 }

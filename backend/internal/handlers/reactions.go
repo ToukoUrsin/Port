@@ -55,6 +55,7 @@ func (h *Handler) ReactArticle(c *gin.Context) {
 	counts := h.updateAndGetSubmissionReactions(subID)
 	h.recalculateKarma(sub.OwnerID)
 	h.cache.Delete(c.Request.Context(), "articles:"+subID.String())
+	h.cache.Delete(c.Request.Context(), "feed:perso:"+actor.ProfileID.String())
 
 	// Notify article owner (async)
 	notifType := models.NotifLike
@@ -88,6 +89,7 @@ func (h *Handler) UnreactArticle(c *gin.Context) {
 
 	counts := h.updateAndGetSubmissionReactions(subID)
 	h.cache.Delete(c.Request.Context(), "articles:"+subID.String())
+	h.cache.Delete(c.Request.Context(), "feed:perso:"+actor.ProfileID.String())
 
 	counts["user_reaction"] = 0
 	c.JSON(http.StatusOK, counts)
