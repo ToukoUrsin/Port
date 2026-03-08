@@ -264,14 +264,16 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 // applyDiversityCap demotes excess system-account articles past maxSystem to the end of the slice.
 func applyDiversityCap(scored []scoredArticle, systemOwnerIDs map[uuid.UUID]bool, maxSystem int) {
 	count := 0
-	for i := 0; i < len(scored); i++ {
+	end := len(scored) // boundary: demoted items live at [end:]
+	for i := 0; i < end; i++ {
 		if systemOwnerIDs[scored[i].article.OwnerID] {
 			count++
 			if count > maxSystem {
 				item := scored[i]
-				copy(scored[i:], scored[i+1:])
-				scored[len(scored)-1] = item
-				i-- // re-check this position
+				copy(scored[i:end-1], scored[i+1:end])
+				scored[end-1] = item
+				end--
+				i-- // re-check this position (now holds the next item)
 			}
 		}
 	}
