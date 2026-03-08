@@ -33,6 +33,7 @@ type ArticleEditorProps = {
   highlightParagraph?: number;
   onContentChange: (markdown: string) => void;
   onAiAction?: (instruction: string, selectedText: string, paragraphIndex: number) => void;
+  changedParagraphs?: number[];
 };
 
 function SuggestionCard({
@@ -128,6 +129,7 @@ export function ArticleEditor({
   highlightParagraph,
   onContentChange,
   onAiAction,
+  changedParagraphs,
 }: ArticleEditorProps) {
   const { t } = useLanguage();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -275,6 +277,23 @@ export function ArticleEditor({
       };
     }
   }, [highlightParagraph, editor]);
+
+  // Highlight changed paragraphs after AI refinement
+  useEffect(() => {
+    if (!changedParagraphs?.length || !editor) return;
+    const blocks = editor.view.dom.querySelectorAll("p, h2, h3, blockquote");
+    changedParagraphs.forEach((idx) => {
+      const el = blocks[idx];
+      if (el) el.classList.add("paragraph--changed");
+    });
+    const timer = setTimeout(() => {
+      blocks.forEach((el) => el.classList.remove("paragraph--changed"));
+    }, 3000);
+    return () => {
+      clearTimeout(timer);
+      blocks.forEach((el) => el.classList.remove("paragraph--changed"));
+    };
+  }, [changedParagraphs, editor]);
 
   const handleHeadlineChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {

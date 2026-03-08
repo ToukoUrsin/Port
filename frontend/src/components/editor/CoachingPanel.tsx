@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { CheckCircle, AlertTriangle, XCircle, HelpCircle, ChevronDown, ChevronUp, MessageCircle, Send } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, HelpCircle, ChevronDown, ChevronUp, MessageCircle, Send, X } from "lucide-react";
 import type { ReviewResult, VerificationEntry } from "@/lib/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import type { CoachingSuggestion, GeneralRefinement } from "./types";
@@ -54,9 +54,12 @@ function QuestionCard({
   onSuggestionClick?: (paragraphRef: number) => void;
 }) {
   const { t } = useLanguage();
+  const [isDismissed, setIsDismissed] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  if (isDismissed) return null;
 
   function handleReply() {
     if (!replyText.trim() || !onReply) return;
@@ -85,6 +88,13 @@ function QuestionCard({
         }
       }}
     >
+      <button
+        className="coaching-question__skip"
+        onClick={(e) => { e.stopPropagation(); setIsDismissed(true); }}
+        title="Skip this question"
+      >
+        <X size={14} />
+      </button>
       <p className="coaching-question__text">{suggestion.text}</p>
       {onReply && !isReplying && (
         <button
@@ -146,6 +156,13 @@ export function CoachingPanel({
 
   return (
     <div className="coaching-panel">
+      {/* 0. Celebration — warm opening */}
+      {review.coaching.celebration && (
+        <div className="coaching-celebration">
+          <p>{review.coaching.celebration}</p>
+        </div>
+      )}
+
       {/* 1. Coaching questions — THE primary content */}
       {suggestions.length > 0 && (
         <div className="coaching-questions">
