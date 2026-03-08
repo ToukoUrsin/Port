@@ -8,6 +8,7 @@
   align-items: stretch;
   justify-content: space-around;
   background: var(--color-bg);
+  border-top: 1px solid var(--color-gray-200);
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 

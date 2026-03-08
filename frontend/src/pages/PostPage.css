@@ -1,7 +1,7 @@
 .post-page {
   max-width: var(--size-container-sm);
   margin: 0 auto;
-  padding: var(--space-4) var(--space-4) var(--space-12);
+  padding: var(--space-4) var(--space-4) calc(56px + var(--space-6));
 }
 .post-page--centered {
   display: flex;
