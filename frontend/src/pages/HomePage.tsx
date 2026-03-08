@@ -284,7 +284,7 @@ function TrendingSection({ articles, t }: { articles: Article[]; t: (key: string
         <h2 className="home-section__title">{t("home.trending")}</h2>
       </div>
       <div className="trending-list">
-        {articles.map((article, i) => (
+        {articles.map((article) => (
           <TrendingCard key={article.id} article={article} />
         ))}
       </div>
