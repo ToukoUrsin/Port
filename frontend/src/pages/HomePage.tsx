@@ -342,7 +342,7 @@ function NewsSection({
         </div>
         {featured.length > 0 && (
           <div className="news-layout__featured">
-            {featured.slice(0, 2).map((article) => (
+            {featured.slice(0, 8).map((article) => (
               <ArticleCard key={article.id} article={article} />
             ))}
           </div>
@@ -674,13 +674,10 @@ export default function HomePage() {
   }, []);
 
   // Deduplicate: each article appears in at most one section
-  const { recentArticles, bestOfWeek, opinionArticles, eventArticles, newsHeadlines, newsFeatured } = useMemo(() => {
+  const { recentArticles, trendingDeduped, bestOfWeek, opinionArticles, eventArticles, newsHeadlines, newsFeatured } = useMemo(() => {
     const used = new Set<string>();
 
-    // 1. Trending gets first pick (from separate fetch — mark those IDs)
-    for (const a of filteredTrending) used.add(a.id);
-
-    // 2. Recent: top 10 from ranked feed, excluding trending
+    // 1. Recent gets first pick: top 10 from ranked feed
     const recent: Article[] = [];
     for (const a of filteredArticles) {
       if (recent.length >= 10) break;
@@ -689,6 +686,10 @@ export default function HomePage() {
         used.add(a.id);
       }
     }
+
+    // 2. Trending: deduplicated against recent
+    const trendingDd = filteredTrending.filter((a) => !used.has(a.id));
+    for (const a of filteredTrending) used.add(a.id);
 
     // 3. Best of Week: image articles from last 7 days, excluding used
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -712,7 +713,7 @@ export default function HomePage() {
     const headlines = filteredArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !a.image);
     const featured = filteredArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !!a.image);
 
-    return { recentArticles: recent, bestOfWeek: bow, opinionArticles: opinions, eventArticles: events, newsHeadlines: headlines, newsFeatured: featured };
+    return { recentArticles: recent, trendingDeduped: trendingDd, bestOfWeek: bow, opinionArticles: opinions, eventArticles: events, newsHeadlines: headlines, newsFeatured: featured };
   }, [filteredArticles, filteredTrending]);
 
   // Skip onboarding when arriving via shared town link
@@ -829,10 +830,10 @@ export default function HomePage() {
             <RecentSection articles={recentArticles} t={t} />
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
-            {filteredTrending.length > 0 && (
+            {trendingDeduped.length > 0 && (
               <>
                 <img src="/Line 1.svg" alt="" className="line-divider" />
-                <TrendingSection articles={filteredTrending} t={t} />
+                <TrendingSection articles={trendingDeduped} t={t} />
               </>
             )}
             {bestOfWeek.length > 0 && (

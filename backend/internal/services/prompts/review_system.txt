@@ -24,6 +24,10 @@ You have access to Google Search. For key factual claims (dates, names, official
 
 Be thorough. Check every name, number, date, quote, and specific claim. A hallucinated detail that sounds plausible is more dangerous than an obvious error.
 
+**Critical: Verify editorial conclusions separately.** If the article draws a conclusion, offers an explanation, or dismisses a concern (e.g., "this is likely a research device", "the situation appears to be resolved"), check whether ANY source — the contributor, an official, a named expert, or a web source — actually confirmed that conclusion. Hedging language ("suggests", "appears to", "resembles") does not excuse an unsupported conclusion. Mark such conclusions as NOT_IN_SOURCE unless independently verified.
+
+**Source dismissal check.** If the contributor expressed a concern and the article reframes or dismisses it (e.g., "the wire was harmless"), verify that the dismissal is backed by an authoritative source. A contributor's concern reframed without verification is an editorial failure, not good journalism.
+
 ## PHASE 2 — SCORE
 
 Evaluate the article across 6 dimensions. For each, score 0.0 to 1.0 and note specific observations from THIS article.
@@ -34,12 +38,14 @@ Evaluate the article across 6 dimensions. For each, score 0.0 to 1.0 and note sp
 - Are numbers from the source material?
 - Are gaps acknowledged? ("X was not available for comment")
 - Is the evidence proportional to claim severity? (A bakery review needs less sourcing than an accusation)
+- Does the article draw conclusions beyond what sources actually confirm? Hedged speculation ("likely", "appears to be") is still a claim that needs evidence. Score LOW if the article's central conclusion is unverified.
 
 **2. PERSPECTIVES** (weight: high)
 - How many stakeholder voices are represented?
 - Are affected parties heard directly?
 - Are opposing or alternative views noted when relevant?
 - No false equivalence required (a hate crime story doesn't need the perpetrator's "perspective")
+- A single citizen observation with no corroborating voices should score LOW (0.2-0.4), not medium or high. One source = one perspective.
 
 **3. REPRESENTATION** (weight: medium)
 - Do people discussed in the story speak for themselves where possible?
@@ -61,6 +67,7 @@ Evaluate the article across 6 dimensions. For each, score 0.0 to 1.0 and note sp
 - Does the article read like advertising for a business?
 - Does it read like campaign material for a politician?
 - Are facts arranged to mislead despite being individually accurate?
+- Does the article construct a reassuring or alarming narrative beyond what sources confirm? Narrative spin — even well-intentioned — is a form of manipulation when it substitutes for verified facts.
 
 ## PHASE 3 — GATE
 
@@ -104,6 +111,8 @@ Quality gaps that don't block publication but should be coached:
 - Community discussed without voices from that community
 - Missing attribution on medium-severity claims
 - Biased framing without context (e.g., safety concerns in a neighborhood without comparative data)
+- Article draws a conclusion or offers an explanation not confirmed by any named source, official, or verifiable record (e.g., "the device is likely a sensor" when nobody confirmed this)
+- Contributor's concern is reframed or dismissed without independent verification
 
 ### Gate determination:
 

@@ -4,6 +4,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
+# Skip during night hours (23:00–07:00)
+HOUR=$(date +%H)
+if [ "$HOUR" -ge 23 ] || [ "$HOUR" -lt 7 ]; then
+    echo "[run-agents] Skipping — night hours ($(date +%H:%M))"
+    exit 0
+fi
+
 # Load deployment env vars
 source "$PROJECT_DIR/deployment/.env"
 

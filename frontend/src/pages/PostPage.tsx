@@ -41,21 +41,45 @@ import BottomBar from "@/components/BottomBar";
 import "./PostPage.css";
 
 // --- Step 1: Input ---
+const DRAFT_KEY = "post_draft";
+
+function loadDraft(): { text: string; anonymous: boolean; locationId: string; locationName: string } {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return { text: "", anonymous: false, locationId: "", locationName: "" };
+}
+
+function saveDraft(draft: { text: string; anonymous: boolean; locationId: string; locationName: string }) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+}
+
 function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
-  const [text, setText] = useState("");
+  const draft = useRef(loadDraft()).current;
+  const [text, setText] = useState(draft.text);
   const [audioFiles, setAudioFiles] = useState<{ blob: Blob; url: string; name: string }[]>([]);
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [anonymous, setAnonymous] = useState(false);
-  const [locationId, setLocationId] = useState("");
-  const [locationName, setLocationName] = useState("");
+  const [anonymous, setAnonymous] = useState(draft.anonymous);
+  const [locationId, setLocationId] = useState(draft.locationId);
+  const [locationName, setLocationName] = useState(draft.locationName);
   const [showPublicModal, setShowPublicModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const audioFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
+
+  // Persist draft on changes
+  useEffect(() => {
+    saveDraft({ text, anonymous, locationId, locationName });
+  }, [text, anonymous, locationId, locationName]);
 
   function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const sel = e.target.files;
@@ -112,6 +136,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
       if (locationId) formData.append("location_id", locationId);
 
       const res = await createSubmission(formData);
+      clearDraft();
       onSubmit(res.submission_id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : t("post.submissionFailed");

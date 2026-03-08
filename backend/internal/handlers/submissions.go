@@ -380,22 +380,22 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 		scores := sub.Meta.V.Review.Scores
 		threshold := 0.6
 		var failedScores []string
-		if scores.Evidence < threshold {
+		if scores.Evidence <= threshold {
 			failedScores = append(failedScores, "evidence")
 		}
-		if scores.Perspectives < threshold {
+		if scores.Perspectives <= threshold {
 			failedScores = append(failedScores, "perspectives")
 		}
-		if scores.Representation < threshold {
+		if scores.Representation <= threshold {
 			failedScores = append(failedScores, "representation")
 		}
-		if scores.EthicalFraming < threshold {
+		if scores.EthicalFraming <= threshold {
 			failedScores = append(failedScores, "ethical_framing")
 		}
-		if scores.CulturalContext < threshold {
+		if scores.CulturalContext <= threshold {
 			failedScores = append(failedScores, "cultural_context")
 		}
-		if scores.Manipulation < threshold {
+		if scores.Manipulation <= threshold {
 			failedScores = append(failedScores, "manipulation")
 		}
 		if len(failedScores) > 0 {

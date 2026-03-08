@@ -28,6 +28,7 @@ func main() {
 	model := flag.String("model", "gemini-2.5-flash", "Gemini model for agents")
 	minAgents := flag.Int("min", 5, "Minimum number of random agents to activate")
 	maxAgents := flag.Int("max", 10, "Maximum number of random agents to activate")
+	delay := flag.Duration("delay", 10*time.Second, "Delay between agents (e.g. 10s, 1m)")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "[agents] ", log.LstdFlags)
@@ -126,7 +127,7 @@ func main() {
 	logger.Printf("Running %d agent(s) sequentially (model=%s, max-iter=%d)", len(setups), *model, *maxIter)
 
 	// Run agents one at a time
-	for _, s := range setups {
+	for i, s := range setups {
 		client := agents.NewAPIClient(*baseURL, s.token, adminToken)
 		agent := agents.NewAgent(s.persona, client, gemClient, *model, *maxIter, logger)
 
@@ -138,6 +139,12 @@ func main() {
 		}
 
 		logger.Printf("--- %s finished in %s ---", s.persona.DisplayName, time.Since(start).Round(time.Second))
+
+		// Delay between agents to avoid rate limits
+		if *delay > 0 && i < len(setups)-1 {
+			logger.Printf("Waiting %s before next agent...", *delay)
+			time.Sleep(*delay)
+		}
 	}
 
 	logger.Println("All agents complete.")
