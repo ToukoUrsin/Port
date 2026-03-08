@@ -45,6 +45,7 @@ func setupHandlerTest(t *testing.T) (*handlers.Handler, *gorm.DB) {
 			error INTEGER DEFAULT 0,
 			views INTEGER DEFAULT 0,
 			share_count INTEGER DEFAULT 0,
+			boost_score REAL DEFAULT 0,
 			reactions BLOB,
 			meta BLOB,
 			search_vector TEXT,

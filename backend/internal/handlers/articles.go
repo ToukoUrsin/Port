@@ -58,9 +58,14 @@ func (h *Handler) ListArticles(c *gin.Context) {
 	var articles []models.Submission
 	switch sort {
 	case "ranked":
-		// Over-fetch 200 candidates for ranking
-		fetchLimit := 200
-		query.Order("created_at DESC").Limit(fetchLimit).Find(&articles)
+		// Two-query candidate fetch: regular + boosted (guarantees old editorial articles in pool)
+		var regular []models.Submission
+		query.Session(&gorm.Session{}).Where("boost_score = 0").
+			Order("created_at DESC").Limit(190).Find(&regular)
+		var boosted []models.Submission
+		query.Session(&gorm.Session{}).Where("boost_score > 0").
+			Order("boost_score DESC, created_at DESC").Limit(10).Find(&boosted)
+		articles = append(regular, boosted...)
 
 		if len(articles) > 0 {
 			// Batch-load reply counts
@@ -106,23 +111,6 @@ func (h *Handler) ListArticles(c *gin.Context) {
 				karmaMap[kr.ID] = kr.Karma
 			}
 
-			// Identify system accounts (e.g. LocalNews) for freshness boost + diversity cap
-			type profileNameRow struct {
-				ID          uuid.UUID
-				ProfileName string
-			}
-			var pnRows []profileNameRow
-			h.db.Model(&models.Profile{}).
-				Select("id, profile_name").
-				Where("id IN ?", ownerIDs).
-				Scan(&pnRows)
-			systemOwnerIDs := make(map[uuid.UUID]bool)
-			for _, pn := range pnRows {
-				if systemAccountNames[pn.ProfileName] {
-					systemOwnerIDs[pn.ID] = true
-				}
-			}
-
 			// Load personalization if user is logged in
 			var perso *FeedPersonalization
 			if pidRaw, exists := c.Get("profile_id"); exists {
@@ -133,7 +121,7 @@ func (h *Handler) ListArticles(c *gin.Context) {
 				}
 			}
 
-			h.rankArticles(articles, karmaMap, replyCountMap, perso, systemOwnerIDs)
+			h.rankArticles(articles, karmaMap, replyCountMap, perso)
 		}
 
 		// Apply pagination after ranking

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -413,9 +414,21 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 	meta.PublishedAt = &now
 	meta.PublishedBy = &actor.ProfileID
 
+	// Check if this is a system-account article eligible for boost
+	var boostScore float64
+	var ownerProfile models.Profile
+	if h.db.Select("profile_name").First(&ownerProfile, "id = ?", sub.OwnerID).Error == nil {
+		img := meta.FeaturedImg
+		if models.IsSystemAccount(ownerProfile.ProfileName) && img != "" &&
+			!strings.Contains(img, "picsum") {
+			boostScore = 0.3
+		}
+	}
+
 	h.db.Model(&sub).Updates(map[string]any{
-		"status": models.StatusPublished,
-		"meta":   models.JSONB[models.SubmissionMeta]{V: meta},
+		"status":      models.StatusPublished,
+		"boost_score": boostScore,
+		"meta":        models.JSONB[models.SubmissionMeta]{V: meta},
 	})
 
 	// Invalidate caches

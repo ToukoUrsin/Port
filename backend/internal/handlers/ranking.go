@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,25 +19,6 @@ const (
 	wKarma      = 0.15
 	wFreshness  = 0.25
 )
-
-// --- LocalNews freshness boost ---
-const boostFreshness = 0.3
-
-// boostCutoff: only boost articles created before this date (the original editorial batch)
-var boostCutoff = time.Date(2026, 3, 8, 0, 0, 0, 0, time.UTC)
-
-var systemAccountNames = map[string]bool{"LocalNews": true}
-
-func isBoostTarget(article *models.Submission, systemOwnerIDs map[uuid.UUID]bool) bool {
-	if !systemOwnerIDs[article.OwnerID] {
-		return false
-	}
-	if !article.CreatedAt.Before(boostCutoff) {
-		return false
-	}
-	img := article.Meta.V.FeaturedImg
-	return img != "" && !strings.Contains(img, "picsum")
-}
 
 // --- Personalization boost constants ---
 const (
@@ -227,18 +207,17 @@ func (h *Handler) loadPersonalization(c *gin.Context, profileID uuid.UUID) *Feed
 
 // rankArticles scores articles and sorts them in-place by descending score.
 // If profileID is non-nil, personalization boosts are applied.
-// systemOwnerIDs identifies system accounts for freshness boost + diversity cap.
-func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[uuid.UUID]int, replyCountMap map[uuid.UUID]int, perso *FeedPersonalization, systemOwnerIDs map[uuid.UUID]bool) {
+func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[uuid.UUID]int, replyCountMap map[uuid.UUID]int, perso *FeedPersonalization) {
 	scored := make([]scoredArticle, len(articles))
 	for i := range articles {
 		karma := authorKarmaMap[articles[i].OwnerID]
 		replies := replyCountMap[articles[i].ID]
 		base := computeBaseScore(&articles[i], karma, replies)
 
-		// Override freshness for boosted LocalNews articles
-		if isBoostTarget(&articles[i], systemOwnerIDs) {
+		// Override freshness for boosted articles (uses pre-computed BoostScore)
+		if articles[i].BoostScore > 0 {
 			actualFreshness := computeFreshness(articles[i].CreatedAt)
-			base = base - wFreshness*actualFreshness + wFreshness*boostFreshness
+			base = base - wFreshness*actualFreshness + wFreshness*articles[i].BoostScore
 		}
 
 		personalBoost := computePersonalBoost(&articles[i], perso)
@@ -251,7 +230,7 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 		return scored[i].score > scored[j].score
 	})
 
-	applyDiversityCap(scored, systemOwnerIDs, 2)
+	scored = applyDiversityCap(scored, 2)
 
 	// Reorder articles slice in-place
 	reordered := make([]models.Submission, len(scored))
@@ -261,22 +240,23 @@ func (h *Handler) rankArticles(articles []models.Submission, authorKarmaMap map[
 	copy(articles, reordered)
 }
 
-// applyDiversityCap demotes excess system-account articles past maxSystem to the end of the slice.
-func applyDiversityCap(scored []scoredArticle, systemOwnerIDs map[uuid.UUID]bool, maxSystem int) {
+// applyDiversityCap demotes excess boosted articles past maxBoosted to the end.
+// Single-pass O(n) implementation.
+func applyDiversityCap(scored []scoredArticle, maxBoosted int) []scoredArticle {
+	result := make([]scoredArticle, 0, len(scored))
+	demoted := make([]scoredArticle, 0)
 	count := 0
-	end := len(scored) // boundary: demoted items live at [end:]
-	for i := 0; i < end; i++ {
-		if systemOwnerIDs[scored[i].article.OwnerID] {
+	for _, s := range scored {
+		if s.article.BoostScore > 0 {
 			count++
-			if count > maxSystem {
-				item := scored[i]
-				copy(scored[i:end-1], scored[i+1:end])
-				scored[end-1] = item
-				end--
-				i-- // re-check this position (now holds the next item)
+			if count > maxBoosted {
+				demoted = append(demoted, s)
+				continue
 			}
 		}
+		result = append(result, s)
 	}
+	return append(result, demoted...)
 }
 
 // FeedPersonalization JSON marshaling for Redis cache
