@@ -191,12 +191,11 @@ def fetch_reddit_ideas(subs, limit=25):
                 selftext = d.get("selftext", "").strip()
                 if not title or len(title) < 10:
                     continue
-                # Skip divisive/negative topics
+                # Skip violent/hateful topics (satire politics is fine)
                 skip_words = [
                     "racis", "rasis", "syrjin", "vihapuh", "hate", "nazi",
                     "murder", "murha", "rape", "raiskau", "suicide", "itsemurh",
-                    "terror", "shooting", "ampum", "war ", "sota ",
-                    "immigra", "maahantul", "refugee", "pakolai",
+                    "terror", "shooting", "ampum",
                 ]
                 combined = (title + " " + selftext).lower()
                 if any(w in combined for w in skip_words):
@@ -232,7 +231,7 @@ Topics should be:
 - Fun, engaging, relatable — not boring government reports
 - Mix of: community drama, feel-good stories, weird happenings, local heroes, food/culture, seasonal events, sports moments
 - Tied to the specific town — mention what makes it relevant THERE
-- POSITIVE or LIGHTHEARTED only — no racism, crime, politics, immigration, war, tragedy, or divisive topics
+- POSITIVE, LIGHTHEARTED, or SATIRICAL — satire politics is great! No racism, violent crime, war, or tragedy
 
 Respond with a JSON array:
 [
