@@ -519,18 +519,47 @@ export default function HomePage() {
     setSelectedIds(new Set());
   }, []);
 
-  const recentArticles = allArticles.slice(0, 10);
-  const bestOfWeek = useMemo(() => {
+  // Deduplicate: each article appears in at most one section
+  const { recentArticles, bestOfWeek, opinionArticles, eventArticles, newsHeadlines, newsFeatured } = useMemo(() => {
+    const used = new Set<string>();
+
+    // 1. Trending gets first pick (from separate fetch — mark those IDs)
+    for (const a of trendingArticles) used.add(a.id);
+
+    // 2. Recent: top 10 from ranked feed, excluding trending
+    const recent: Article[] = [];
+    for (const a of allArticles) {
+      if (recent.length >= 10) break;
+      if (!used.has(a.id)) {
+        recent.push(a);
+        used.add(a.id);
+      }
+    }
+
+    // 3. Best of Week: image articles from last 7 days, excluding used
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return allArticles
-      .filter((a) => a.image && a.createdAt && new Date(a.createdAt).getTime() > weekAgo)
-      .slice(0, 5); // already ranked by server
-  }, [allArticles]);
-  const opinionArticles = allArticles.filter((a) => a.category === "opinion");
-  const eventArticles = allArticles.filter((a) => a.category === "events");
-  const newsCategories = ["council", "news", "community"];
-  const newsHeadlines = allArticles.filter((a) => newsCategories.includes(a.category) && !a.image);
-  const newsFeatured = allArticles.filter((a) => newsCategories.includes(a.category) && !!a.image);
+    const bow: Article[] = [];
+    for (const a of allArticles) {
+      if (bow.length >= 5) break;
+      if (!used.has(a.id) && a.image && a.createdAt && new Date(a.createdAt).getTime() > weekAgo) {
+        bow.push(a);
+        used.add(a.id);
+      }
+    }
+
+    // 4. Category sections: only unused articles
+    const opinions = allArticles.filter((a) => !used.has(a.id) && a.category === "opinion");
+    opinions.forEach((a) => used.add(a.id));
+
+    const events = allArticles.filter((a) => !used.has(a.id) && a.category === "events");
+    events.forEach((a) => used.add(a.id));
+
+    const newsCategories = ["council", "news", "community"];
+    const headlines = allArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !a.image);
+    const featured = allArticles.filter((a) => !used.has(a.id) && newsCategories.includes(a.category) && !!a.image);
+
+    return { recentArticles: recent, bestOfWeek: bow, opinionArticles: opinions, eventArticles: events, newsHeadlines: headlines, newsFeatured: featured };
+  }, [allArticles, trendingArticles]);
 
   // Skip onboarding when arriving via shared town link
   const [showOnboarding, setShowOnboarding] = useState(() =>
