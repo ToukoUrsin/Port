@@ -148,6 +148,6 @@
     height: calc(100vh - 56px - 56px);
   }
   .explore-apply {
-    bottom: var(--space-4);
+    bottom: var(--space-16);
   }
 }
