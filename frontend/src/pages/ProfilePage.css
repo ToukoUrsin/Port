@@ -286,15 +286,6 @@
   white-space: nowrap;
 }
 
-/* Non-clickable draft (still processing, no title) */
-.profile-post--disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.profile-post--disabled:hover .profile-post__title {
-  text-decoration: none;
-}
-
 /* Draft badge */
 .profile-draft-badge {
   display: inline-block;
