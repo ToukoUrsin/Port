@@ -5,16 +5,49 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/middleware"
+	"github.com/localnews/backend/internal/models"
 )
 
 func (h *Handler) GetAdminStats(c *gin.Context) {
 	snapshot := h.stats.GetSnapshot(c.Request.Context())
 	c.JSON(http.StatusOK, snapshot)
+}
+
+// GetHistoricalStats returns hourly snapshots for the last N days.
+func (h *Handler) GetHistoricalStats(c *gin.Context) {
+	days := 7
+	if d, err := strconv.Atoi(c.Query("days")); err == nil && d > 0 && d <= 90 {
+		days = d
+	}
+	since := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
+
+	var rows []models.StatsHourly
+	h.db.Where("hour >= ?", since).Order("hour DESC").Find(&rows)
+	c.JSON(http.StatusOK, rows)
+}
+
+// GetPathHistory returns daily path counts, optionally filtered by path.
+func (h *Handler) GetPathHistory(c *gin.Context) {
+	days := 30
+	if d, err := strconv.Atoi(c.Query("days")); err == nil && d > 0 && d <= 90 {
+		days = d
+	}
+	since := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
+
+	q := h.db.Where("date >= ?", since)
+	if path := c.Query("path"); path != "" {
+		q = q.Where("path = ?", path)
+	}
+
+	var rows []models.StatsDailyPath
+	q.Order("date DESC").Limit(500).Find(&rows)
+	c.JSON(http.StatusOK, rows)
 }
 
 func (h *Handler) StreamAdminStats(c *gin.Context) {

@@ -3,12 +3,16 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/localnews/backend/internal/cache"
 	"github.com/localnews/backend/internal/middleware"
+	"github.com/localnews/backend/internal/models"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type RequestEvent struct {
@@ -43,13 +47,17 @@ type StatsSnapshot struct {
 }
 
 type StatsService struct {
+	db          *gorm.DB
 	cache       *cache.Cache
 	mu          sync.RWMutex
 	subscribers map[string]chan RequestEvent
+	peakRPM     int
+	peakMu      sync.Mutex
 }
 
-func NewStatsService(c *cache.Cache) *StatsService {
+func NewStatsService(db *gorm.DB, c *cache.Cache) *StatsService {
 	return &StatsService{
+		db:          db,
 		cache:       c,
 		subscribers: make(map[string]chan RequestEvent),
 	}
@@ -75,6 +83,14 @@ func (s *StatsService) RecordRequest(ctx context.Context, mwEvent middleware.Sta
 	pipe.HIncrBy(ctx, "stats:paths", mwEvent.Path, 1)
 
 	pipe.Exec(ctx)
+
+	// Track peak RPM in memory
+	currentRPM, _ := rdb.ZCount(ctx, "stats:rpm", fmt.Sprintf("%d", now.Add(-60*time.Second).Unix()), "+inf").Result()
+	s.peakMu.Lock()
+	if int(currentRPM) > s.peakRPM {
+		s.peakRPM = int(currentRPM)
+	}
+	s.peakMu.Unlock()
 
 	// Convert to internal event for SSE fan-out
 	event := RequestEvent{
@@ -199,6 +215,90 @@ func (s *StatsService) GetSnapshot(ctx context.Context) *StatsSnapshot {
 		ActiveUsers:       activeUsers,
 		TopPaths:          topPaths,
 	}
+}
+
+// FlushToPostgres snapshots current Redis counters into PostgreSQL.
+func (s *StatsService) FlushToPostgres(ctx context.Context) {
+	snap := s.GetSnapshot(ctx)
+	now := time.Now()
+	hour := now.Truncate(time.Hour)
+
+	// Grab and reset peak RPM
+	s.peakMu.Lock()
+	peak := s.peakRPM
+	s.peakRPM = 0
+	s.peakMu.Unlock()
+
+	// Use current RPM if higher than tracked peak (covers edge case)
+	if snap.RequestsPerMinute > peak {
+		peak = snap.RequestsPerMinute
+	}
+
+	// Convert top paths to DTO
+	topPaths := make([]models.PathCountDTO, len(snap.TopPaths))
+	for i, p := range snap.TopPaths {
+		topPaths[i] = models.PathCountDTO{Path: p.Path, Count: p.Count}
+	}
+
+	// Upsert hourly row
+	hourly := models.StatsHourly{
+		Hour:         hour,
+		RequestCount: snap.RequestsToday,
+		PeakRPM:      peak,
+		UniqueUsers:  snap.ActiveUserCount,
+		TopPaths:     models.JSONB[[]models.PathCountDTO]{V: topPaths},
+	}
+	s.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "hour"}},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"request_count": gorm.Expr("GREATEST(stats_hourlies.request_count, ?)", snap.RequestsToday),
+			"peak_rpm":      gorm.Expr("GREATEST(stats_hourlies.peak_rpm, ?)", peak),
+			"unique_users":  gorm.Expr("GREATEST(stats_hourlies.unique_users, ?)", snap.ActiveUserCount),
+			"top_paths":     hourly.TopPaths,
+		}),
+	}).Create(&hourly)
+
+	// Upsert daily path counts
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	for _, p := range snap.TopPaths {
+		dp := models.StatsDailyPath{
+			Date:  today,
+			Path:  p.Path,
+			Count: p.Count,
+		}
+		s.db.WithContext(ctx).Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "date"}, {Name: "path"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"count": gorm.Expr("GREATEST(stats_daily_paths.count, ?)", p.Count),
+			}),
+		}).Create(&dp)
+	}
+
+	log.Printf("Stats flushed to PostgreSQL (hour=%s, paths=%d)", hour.Format("2006-01-02T15:00"), len(snap.TopPaths))
+}
+
+// StartPeriodicFlush runs FlushToPostgres every hour and prunes old data.
+func (s *StatsService) StartPeriodicFlush(ctx context.Context) {
+	// Immediate flush on startup
+	s.FlushToPostgres(ctx)
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.FlushToPostgres(ctx)
+
+				// Prune rows older than 90 days
+				cutoff := time.Now().Add(-90 * 24 * time.Hour)
+				s.db.Where("hour < ?", cutoff).Delete(&models.StatsHourly{})
+				s.db.Where("date < ?", cutoff).Delete(&models.StatsDailyPath{})
+			}
+		}
+	}()
 }
 
 func parseInt64(s string) (int64, error) {

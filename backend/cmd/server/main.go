@@ -124,6 +124,15 @@ func main() {
 		research = services.NewStubResearchService()
 	}
 
+	// Questioning service
+	var questioning services.QuestioningService
+	if geminiClient != nil {
+		questioning = services.NewGeminiQuestioningService(geminiClient, cfg.GenerationModel)
+		log.Printf("Gemini questioning enabled (model=%s)", cfg.GenerationModel)
+	} else {
+		questioning = services.NewStubQuestioningService()
+	}
+
 	// Transcription service
 	var transcription services.TranscriptionService
 	if cfg.ElevenLabsAPIKey != "" {
@@ -135,7 +144,7 @@ func main() {
 
 	// Pipeline
 	chunker := services.NewStubChunkerService()
-	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embeddingSvc, research)
+	pipelineSvc := services.NewPipelineService(db, transcription, generation, review, photoDesc, chunker, embeddingSvc, research, questioning)
 
 	// Batch service (admin batch publishing)
 	var batchSvc *services.BatchService
@@ -149,7 +158,7 @@ func main() {
 
 	// Stats service
 	geoResolver := services.NewGeoIPResolver()
-	statsSvc := services.NewStatsService(c)
+	statsSvc := services.NewStatsService(db, c)
 
 	// Notification service
 	notifSvc := services.NewNotificationService(c)
@@ -242,9 +251,10 @@ func main() {
 		authed.DELETE("/submissions/:id", h.DeleteSubmission)
 		authed.GET("/submissions/:id/stream", h.StreamPipeline)
 
-		// Publish + refine + appeal
+		// Publish + refine + appeal + answers
 		authed.POST("/submissions/:id/publish", h.PublishSubmission)
 		authed.POST("/submissions/:id/refine", h.RefineSubmission)
+		authed.POST("/submissions/:id/answers", h.AnswerQuestions)
 		authed.POST("/submissions/:id/appeal", h.AppealSubmission)
 
 		// Profiles
@@ -301,6 +311,8 @@ func main() {
 		admin.PUT("/locations/:id", h.UpdateLocation)
 		admin.GET("/admin/stats", h.GetAdminStats)
 		admin.GET("/admin/stats/stream", h.StreamAdminStats)
+		admin.GET("/admin/stats/history", h.GetHistoricalStats)
+		admin.GET("/admin/stats/paths", h.GetPathHistory)
 	}
 
 	// --- Moderation routes ---
@@ -320,6 +332,9 @@ func main() {
 			adminAPI.POST("/media/:id", h.AdminUploadMedia)
 		}
 	}
+
+	// Stats periodic flush to PostgreSQL (hourly)
+	statsSvc.StartPeriodicFlush(context.Background())
 
 	// Notification cleanup: delete notifications older than 90 days, every 24 hours
 	go func() {

@@ -38,6 +38,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Reaction{},
 		&models.Notification{},
 		&models.Bookmark{},
+		&models.StatsHourly{},
+		&models.StatsDailyPath{},
 	)
 }
 
