@@ -119,9 +119,35 @@
   color: var(--color-text-tertiary);
 }
 
+/* Apply button */
+.explore-apply {
+  position: absolute;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: var(--space-3) var(--space-8);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.explore-apply:hover {
+  filter: brightness(1.1);
+}
+
 /* Mobile */
 @media (max-width: 767px) {
   .explore {
     height: calc(100vh - 56px - 56px);
+  }
+  .explore-apply {
+    bottom: var(--space-4);
   }
 }

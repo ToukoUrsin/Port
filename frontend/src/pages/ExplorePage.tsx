@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { useSearchParams, Navigate } from "react-router-dom";
+import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getLocations } from "@/lib/api";
 import type { ApiLocation } from "@/lib/types";
 import Navbar from "@/components/Navbar";
@@ -125,6 +126,8 @@ export function ExploreRedirectGuard() {
 
 export default function ExplorePage() {
   useDocumentHead({ title: "Explore" });
+  const navigate = useNavigate();
+  const { t } = useLanguage();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedPaths, setSelectedPaths] = useState<Map<string, string>>(new Map());
   const [areas, setAreas] = useState<Area[]>([]);
@@ -241,6 +244,14 @@ export default function ExplorePage() {
           ))}
         </MapContainer>
 
+        {selectedIds.size > 0 && (
+          <button
+            className="explore-apply"
+            onClick={() => navigate("/")}
+          >
+            {t("explore.apply")} ({selectedIds.size})
+          </button>
+        )}
       </div>
       <BottomBar />
     </>
