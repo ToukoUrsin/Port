@@ -140,7 +140,7 @@ export default function HistoricalStats() {
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip
                     labelFormatter={(v) => new Date(v as string).toLocaleString()}
-                    formatter={(v: number) => [v.toLocaleString(), "Requests"]}
+                    formatter={(v) => [Number(v).toLocaleString(), "Requests"]}
                   />
                   <Area
                     type="monotone"
@@ -162,7 +162,7 @@ export default function HistoricalStats() {
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip
                     labelFormatter={(v) => new Date(v as string).toLocaleString()}
-                    formatter={(v: number) => [v.toLocaleString(), "RPM"]}
+                    formatter={(v) => [Number(v).toLocaleString(), "RPM"]}
                   />
                   <Line
                     type="monotone"
@@ -183,7 +183,7 @@ export default function HistoricalStats() {
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip
                     labelFormatter={(v) => new Date(v as string).toLocaleString()}
-                    formatter={(v: number) => [v.toLocaleString(), "IPs"]}
+                    formatter={(v) => [Number(v).toLocaleString(), "IPs"]}
                   />
                   <Area
                     type="monotone"
