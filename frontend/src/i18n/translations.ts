@@ -193,6 +193,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "profile.statusRefining": "Hiotaan",
     "profile.statusInReview": "Tarkistuksessa",
     "profile.statusArchived": "Arkistoitu",
+    "profile.karma": "Karma",
 
     // Tag page
     "tag.article": "artikkeli",
@@ -216,6 +217,19 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "tag.safety": "Turvallisuus",
     "tag.health": "Terveys",
     "tag.environment": "Ympäristö",
+
+    // Onboard (new user flow)
+    "onboard.welcomeTitle": "Tervetuloa PORT:iin",
+    "onboard.welcomeDesc": "Paikallinen uutisalusta, jossa sinun tarinasi muuttuvat artikkeleiksi.",
+    "onboard.howTitle": "Näin se toimii",
+    "onboard.step1": "Kerro mitä näit — tekstillä, kuvilla tai äänellä",
+    "onboard.step2": "Tekoäly kirjoittaa artikkelin puolestasi",
+    "onboard.step3": "Tarkista, muokkaa ja julkaise",
+    "onboard.qualityTitle": "Laatu ensin",
+    "onboard.qualityDesc": "Jokainen artikkeli tarkistetaan automaattisesti ennen julkaisua. Näin varmistamme luotettavat paikallisuutiset.",
+    "onboard.skip": "Ohita",
+    "onboard.next": "Seuraava",
+    "onboard.getStarted": "Aloita",
 
     // Onboarding
     "onboarding.welcome": "Tervetuloa!",
@@ -614,6 +628,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "profile.statusRefining": "Refining",
     "profile.statusInReview": "In review",
     "profile.statusArchived": "Archived",
+    "profile.karma": "Karma",
 
     // Tag page
     "tag.article": "article",
@@ -637,6 +652,19 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "tag.safety": "Safety",
     "tag.health": "Health",
     "tag.environment": "Environment",
+
+    // Onboard (new user flow)
+    "onboard.welcomeTitle": "Welcome to PORT",
+    "onboard.welcomeDesc": "A local news platform where your stories become articles.",
+    "onboard.howTitle": "How it works",
+    "onboard.step1": "Tell us what you saw — with text, photos, or audio",
+    "onboard.step2": "AI writes the article for you",
+    "onboard.step3": "Review, edit, and publish",
+    "onboard.qualityTitle": "Quality first",
+    "onboard.qualityDesc": "Every article is automatically reviewed before publishing. This is how we ensure trustworthy local news.",
+    "onboard.skip": "Skip",
+    "onboard.next": "Next",
+    "onboard.getStarted": "Get started",
 
     // Onboarding
     "onboarding.welcome": "Welcome!",
