@@ -306,8 +306,12 @@ export default function HomePage() {
   const { language, setLanguage, t } = useLanguage();
   const locationSlug = searchParams.get("location");
 
-  // Auto-detect language from location's country when arriving via shared link,
-  // and pre-select the town in the filter
+  // --- Shared link handling ---
+  // Track the shared location separately so it doesn't pollute localStorage.
+  // null = no shared link, undefined = resolving, ApiLocation = resolved
+  const [sharedLoc, setSharedLoc] = useState<ApiLocation | null | undefined>(
+    locationSlug ? undefined : null,
+  );
   const langDetected = useRef(false);
   useEffect(() => {
     if (!locationSlug || langDetected.current) return;
@@ -319,13 +323,8 @@ export default function HomePage() {
       } else if (path.includes("united-states") && language !== "en") {
         setLanguage("en");
       }
-      // Pre-select this town in the city filter
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.add(loc.id);
-        return next;
-      });
-    }).catch(() => { /* location not found, keep current language */ });
+      setSharedLoc(loc);
+    }).catch(() => { setSharedLoc(null); });
   }, [locationSlug, language, setLanguage]);
 
   // Fetch locations from API, filtered by language/country
@@ -367,7 +366,7 @@ export default function HomePage() {
   // Selected location IDs — from city bar toggles + explore map
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(getSavedLocationIds()));
 
-  // Sync to localStorage when selectedIds changes
+  // Sync to localStorage when selectedIds changes (but NOT the shared link location)
   useEffect(() => {
     localStorage.setItem("selected_locations", JSON.stringify(Array.from(selectedIds)));
   }, [selectedIds]);
@@ -381,53 +380,77 @@ export default function HomePage() {
     });
   }
 
-  // "All" means no filter
-  const isAllSelected = selectedIds.size === 0;
+  // When viewing via shared link, filter to that town only
+  const isSharedLink = sharedLoc !== null;
+  const isAllSelected = !isSharedLink && selectedIds.size === 0;
 
   function selectAll() {
+    setSharedLoc(null); // clear shared link filter when user taps "All"
     setSelectedIds(new Set());
   }
 
+  // Merge selected IDs + shared location for article fetching
+  const effectiveIds = useMemo(() => {
+    const ids = Array.from(selectedIds);
+    if (sharedLoc) ids.push(sharedLoc.id);
+    return ids;
+  }, [selectedIds, sharedLoc]);
+
   // Fetch articles filtered by selected locations
-  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const fetchArticles = useCallback(
     () => {
-      if (selectedIdsArray.length > 0) {
-        return getArticles({ limit: 100, location_ids: selectedIdsArray });
+      // Still resolving shared link — don't fetch yet
+      if (sharedLoc === undefined) {
+        return Promise.resolve({ articles: [], total: 0 } as ArticleListResponse);
+      }
+      if (effectiveIds.length > 0) {
+        return getArticles({ limit: 100, location_ids: effectiveIds });
       }
       return getArticles({ limit: 100, country });
     },
-    [selectedIdsArray, country],
+    [effectiveIds, country, sharedLoc],
   );
-  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedIdsArray, country]);
+  const isResolvingSharedLink = sharedLoc === undefined;
+  const { data: apiData, isLoading: isLoadingArticles, error } = useApi<ArticleListResponse>(fetchArticles, [effectiveIds, country, sharedLoc]);
+  const isLoading = isResolvingSharedLink || isLoadingArticles;
   const allArticles = useMemo(
     () => (apiData?.articles ?? []).map((a) => apiToArticle(a, t)),
     [apiData, t],
   );
 
-  // Build filter chips: show chips for cities selected from explore map that aren't in the nearby bar
+  // Build filter chips
   const nearbyIdSet = useMemo(() => new Set(nearbyCities.map((l) => l.id)), [nearbyCities]);
   const filterChips = useMemo(() => {
     const chips: FilterChip[] = [];
+    // Show shared link location as a chip
+    if (sharedLoc) {
+      chips.push({ type: "location", id: sharedLoc.id, label: sharedLoc.name });
+    }
     for (const locId of selectedIds) {
-      // Always show chip for non-nearby selections; also show for nearby ones
+      if (sharedLoc && locId === sharedLoc.id) continue; // avoid duplicate
       const loc = allLocations.find((l) => l.id === locId);
       if (loc && !nearbyIdSet.has(locId)) {
         chips.push({ type: "location", id: loc.id, label: loc.name });
       }
     }
     return chips;
-  }, [selectedIds, allLocations, nearbyIdSet]);
+  }, [selectedIds, allLocations, nearbyIdSet, sharedLoc]);
 
   const handleRemoveChip = useCallback((chip: FilterChip) => {
+    // If removing the shared link chip, clear it
+    if (sharedLoc && chip.id === sharedLoc.id) {
+      setSharedLoc(null);
+      return;
+    }
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.delete(chip.id);
       return next;
     });
-  }, []);
+  }, [sharedLoc]);
 
   const handleClearAll = useCallback(() => {
+    setSharedLoc(null);
     setSelectedIds(new Set());
   }, []);
 
@@ -462,15 +485,18 @@ export default function HomePage() {
           >
             {t("home.all")}
           </button>
-          {nearbyCities.map((loc) => (
-            <button
-              key={loc.id}
-              className={`city-bar__item ${selectedIds.has(loc.id) ? "city-bar__item--active" : ""}`}
-              onClick={() => toggleCity(loc.id)}
-            >
-              {loc.name}
-            </button>
-          ))}
+          {nearbyCities.map((loc) => {
+            const isActive = selectedIds.has(loc.id) || (sharedLoc?.id === loc.id);
+            return (
+              <button
+                key={loc.id}
+                className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
+                onClick={() => toggleCity(loc.id)}
+              >
+                {loc.name}
+              </button>
+            );
+          })}
         </div>
       </nav>
       <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
