@@ -1335,33 +1335,8 @@
 /* ========================================
    MORE STORIES (Infinite Scroll)
    ======================================== */
-.more-stories-virtual {
-  position: relative;
-  width: 100%;
-}
-
-.more-stories-row {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  display: flex;
-  gap: var(--space-6);
-}
-
-.more-stories-row > * {
-  flex: 1;
-  min-width: 0;
-}
-
 .scroll-sentinel {
   height: 1px;
-}
-
-.home-section__more .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .more-stories__status {

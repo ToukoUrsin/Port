@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
@@ -366,75 +365,16 @@ function MoreStoriesSection({
   sentinelRef: React.RefObject<HTMLDivElement | null>;
   t: (key: string) => string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [columns, setColumns] = useState(1);
-  const [scrollMargin, setScrollMargin] = useState(0);
-
-  // Track column count based on viewport
-  useEffect(() => {
-    const update = () => {
-      if (window.matchMedia("(min-width: 1024px)").matches) setColumns(3);
-      else if (window.matchMedia("(min-width: 768px)").matches) setColumns(2);
-      else setColumns(1);
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  // Measure scrollMargin from container offset
-  useEffect(() => {
-    if (containerRef.current) {
-      setScrollMargin(containerRef.current.offsetTop);
-    }
-  }, [articles.length]);
-
-  const rowCount = Math.ceil(articles.length / columns);
-  const useVirtual = articles.length >= 60;
-
-  const virtualizer = useWindowVirtualizer({
-    count: useVirtual ? rowCount : 0,
-    estimateSize: () => 340,
-    overscan: 3,
-    scrollMargin,
-  });
-
   if (articles.length === 0 && !hasMore) return null;
 
   return (
     <section className="home-section">
       <h2 className="home-section__title">{t("home.moreStories")}</h2>
-      {useVirtual ? (
-        <div
-          ref={containerRef}
-          className="more-stories-virtual"
-          style={{ height: virtualizer.getTotalSize() }}
-        >
-          {virtualizer.getVirtualItems().map((virtualRow) => {
-            const startIdx = virtualRow.index * columns;
-            const rowArticles = articles.slice(startIdx, startIdx + columns);
-            return (
-              <div
-                key={virtualRow.key}
-                className="more-stories-row"
-                style={{
-                  transform: `translateY(${virtualRow.start - virtualizer.options.scrollMargin}px)`,
-                }}
-              >
-                {rowArticles.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="article-grid">
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
-        </div>
-      )}
+      <div className="article-grid">
+        {articles.map((article) => (
+          <ArticleCard key={article.id} article={article} />
+        ))}
+      </div>
       <div ref={sentinelRef} className="scroll-sentinel" />
       {isLoadingMore && (
         <div className="more-stories__status">
