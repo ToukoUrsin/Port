@@ -82,6 +82,29 @@ func (c *APIClient) CreateArticleBatch(title, content, category string, ownerID 
 	return c.postJSON(url, map[string]any{"articles": []any{article}}, c.adminToken)
 }
 
+func (c *APIClient) ListNotifications(limit int) (map[string]any, error) {
+	url := fmt.Sprintf("%s/api/notifications?limit=%d", c.baseURL, limit)
+	return c.getJSON(url, c.token)
+}
+
+func (c *APIClient) MarkAllNotificationsRead() (map[string]any, error) {
+	url := fmt.Sprintf("%s/api/notifications/read", c.baseURL)
+	req, err := http.NewRequest("PUT", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	return map[string]any{"status": "ok"}, nil
+}
+
 // --- HTTP helpers ---
 
 func (c *APIClient) getJSON(url, token string) (map[string]any, error) {

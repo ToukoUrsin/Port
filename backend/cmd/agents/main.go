@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -22,9 +23,11 @@ import (
 
 func main() {
 	baseURL := flag.String("base-url", "http://localhost:8000", "Backend API base URL")
-	agentNames := flag.String("agents", "", "Comma-separated agent names to run (default: all)")
+	agentNames := flag.String("agents", "", "Comma-separated agent names to run (default: random subset)")
 	maxIter := flag.Int("max-iter", 20, "Max tool-call rounds per agent")
 	model := flag.String("model", "gemini-2.5-flash", "Gemini model for agents")
+	minAgents := flag.Int("min", 5, "Minimum number of random agents to activate")
+	maxAgents := flag.Int("max", 10, "Maximum number of random agents to activate")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "[agents] ", log.LstdFlags)
@@ -66,7 +69,7 @@ func main() {
 		logger.Fatalf("gemini: %v", err)
 	}
 
-	// Filter personas if --agents flag provided
+	// Select personas: explicit names or random subset
 	personas := agents.Personas
 	if *agentNames != "" {
 		names := strings.Split(*agentNames, ",")
@@ -76,7 +79,6 @@ func main() {
 		}
 		var filtered []agents.Persona
 		for _, p := range personas {
-			// Match by first name (lowercase) or profile_name
 			firstName := strings.ToLower(strings.Split(p.DisplayName, " ")[0])
 			if nameSet[firstName] || nameSet[p.ProfileName] {
 				filtered = append(filtered, p)
@@ -86,6 +88,17 @@ func main() {
 			logger.Fatalf("No matching agents found for: %s", *agentNames)
 		}
 		personas = filtered
+	} else {
+		// Random subset: pick between min and max agents
+		count := *minAgents + rand.Intn(*maxAgents-*minAgents+1)
+		if count > len(personas) {
+			count = len(personas)
+		}
+		rand.Shuffle(len(personas), func(i, j int) {
+			personas[i], personas[j] = personas[j], personas[i]
+		})
+		personas = personas[:count]
+		logger.Printf("Randomly selected %d agents for this session", count)
 	}
 
 	// Seed agent profiles + generate tokens

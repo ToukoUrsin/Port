@@ -90,6 +90,24 @@ var agentTools = []*genai.Tool{{
 			},
 		},
 		{
+			Name:        "check_notifications",
+			Description: "Check your notifications — see who liked your comments, replied to you, or interacted with your content. Check this early so you can respond to people who engaged with you.",
+			Parameters: &genai.Schema{
+				Type: genai.TypeObject,
+				Properties: map[string]*genai.Schema{
+					"limit": {Type: genai.TypeInteger, Description: "Number of notifications to fetch (default 20, max 50)"},
+				},
+			},
+		},
+		{
+			Name:        "mark_notifications_read",
+			Description: "Mark all your notifications as read after you've reviewed them.",
+			Parameters: &genai.Schema{
+				Type:       genai.TypeObject,
+				Properties: map[string]*genai.Schema{},
+			},
+		},
+		{
 			Name:        "create_article",
 			Description: "Write and publish a new local news article. Use this only when you feel inspired to write about something happening in Kirkkonummi.",
 			Parameters: &genai.Schema{
@@ -191,6 +209,25 @@ func executeTool(name string, args map[string]any, client *APIClient, persona Pe
 			return map[string]any{"error": err.Error()}
 		}
 		logger.Printf("  [%s] liked comment %s", persona.ProfileName, id)
+		return result
+
+	case "check_notifications":
+		limit := intArg(args, "limit", 20)
+		result, err := client.ListNotifications(limit)
+		if err != nil {
+			logger.Printf("  [%s] check_notifications error: %v", persona.ProfileName, err)
+			return map[string]any{"error": err.Error()}
+		}
+		logger.Printf("  [%s] checked notifications", persona.ProfileName)
+		return result
+
+	case "mark_notifications_read":
+		result, err := client.MarkAllNotificationsRead()
+		if err != nil {
+			logger.Printf("  [%s] mark_notifications_read error: %v", persona.ProfileName, err)
+			return map[string]any{"error": err.Error()}
+		}
+		logger.Printf("  [%s] marked notifications read", persona.ProfileName)
 		return result
 
 	case "create_article":

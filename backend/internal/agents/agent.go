@@ -46,8 +46,11 @@ func (a *Agent) Run(ctx context.Context) error {
 	// Kick off the agent
 	resp, err := session.SendMessage(ctx, *genai.NewPartFromText(
 		"You're now active on the local news platform for Kirkkonummi. "+
-			"Start by browsing recent articles, then interact naturally based on your interests. "+
-			"Read articles that catch your eye, like what you enjoy, and comment when you have something to say. "+
+			"FIRST: Check your notifications to see if anyone has liked your comments, replied to you, or interacted with your content. "+
+			"If someone replied to your comment, read the article's comments and reply back to them naturally — have a conversation! "+
+			"If someone liked your comment, you might check what they've been writing too. "+
+			"THEN: Browse recent articles, read what catches your eye, like what you enjoy, and comment when you have something to say. "+
+			"When reading articles, also check the comments — if someone said something interesting, reply to them using reply_to_comment. "+
 			"When you feel you've done enough for this session, call the done tool.",
 	))
 	if err != nil {

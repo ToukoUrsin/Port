@@ -40,12 +40,6 @@ func (s *Service) SimilarArticles(ctx context.Context, articleID uuid.UUID, limi
 	}
 	centroidVec := pgvector.NewVector(centroid)
 
-	// Query for closest submission embeddings, excluding the source article
-	type entityHit struct {
-		EntityID string  `gorm:"column:entity_id"`
-		Score    float64 `gorm:"column:score"`
-	}
-
 	// Use raw SQL for correct ORDER BY with pgvector operator binding.
 	// SET LOCAL hnsw.ef_search ensures thorough graph exploration with filters.
 	fetchLimit := limit * 3
