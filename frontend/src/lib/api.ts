@@ -294,6 +294,17 @@ export async function rephraseSubmission(
   });
 }
 
+export function submitAnswers(
+  submissionId: string,
+  answers: Array<{ question: string; answer: string; skipped: boolean }>,
+  skipAll?: boolean,
+): Promise<{ status: string }> {
+  return apiFetch<{ status: string }>(`/api/submissions/${submissionId}/answers`, {
+    method: "POST",
+    body: JSON.stringify({ answers, skip_all: skipAll }),
+  });
+}
+
 export async function appealSubmission(
   id: string,
 ): Promise<{ status: string }> {

@@ -14,13 +14,14 @@ import (
 )
 
 type GenerationInput struct {
-	Transcript        string
-	Notes             string
-	PhotoDescriptions []string
-	TownContext       string
-	ResearchContext   string // web-sourced background research (empty if research skipped/failed)
-	PreviousArticle   string // empty on first run
-	Direction         string // empty on first run
+	Transcript            string
+	Notes                 string
+	PhotoDescriptions     []string
+	TownContext           string
+	ResearchContext       string // web-sourced background research (empty if research skipped/failed)
+	ClarificationAnswers  string // contributor answers to pre-generation questions
+	PreviousArticle       string // empty on first run
+	Direction             string // empty on first run
 }
 
 type GenerationOutput struct {

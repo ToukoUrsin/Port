@@ -233,6 +233,13 @@ func collectEvents(events chan PipelineEvent) []PipelineEvent {
 	return result
 }
 
+// mockQuestioning returns no questions so the pipeline continues without pausing.
+type mockQuestioning struct{}
+
+func (m *mockQuestioning) Analyze(ctx context.Context, input QuestioningInput) (*QuestioningOutput, error) {
+	return &QuestioningOutput{Questions: []string{}}, nil
+}
+
 func defaultResearchResult() *models.ResearchResult {
 	return &models.ResearchResult{
 		Context: "Background: The council met on March 4.",
@@ -242,11 +249,11 @@ func defaultResearchResult() *models.ResearchResult {
 }
 
 func buildPipeline(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription) *PipelineService {
-	return NewPipelineService(db, trans, gen, rev, photo, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()})
+	return NewPipelineService(db, trans, gen, rev, photo, &mockChunker{}, &mockEmbedding{}, &mockResearch{result: defaultResearchResult()}, &mockQuestioning{})
 }
 
 func buildPipelineWithEmbedding(db *gorm.DB, trans *mockTranscription, gen *mockGeneration, rev *mockReview, photo *mockPhotoDescription, chunker *mockChunker, emb *mockEmbedding) *PipelineService {
-	return NewPipelineService(db, trans, gen, rev, photo, chunker, emb, &mockResearch{result: defaultResearchResult()})
+	return NewPipelineService(db, trans, gen, rev, photo, chunker, emb, &mockResearch{result: defaultResearchResult()}, &mockQuestioning{})
 }
 
 // --- Pipeline tests ---
@@ -922,7 +929,7 @@ func TestPipeline_ResearchStep_EventEmitted(t *testing.T) {
 	rev := &mockReview{result: defaultReviewResult()}
 	research := &mockResearch{result: defaultResearchResult()}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 
@@ -967,7 +974,7 @@ func TestPipeline_ResearchFailure_NonFatal(t *testing.T) {
 	rev := &mockReview{result: defaultReviewResult()}
 	research := &mockResearch{err: fmt.Errorf("Google Search API down")}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 
@@ -1002,7 +1009,7 @@ func TestPipeline_ResearchContext_PassedToGeneration(t *testing.T) {
 		Queries: []string{"kirkkonummi budget"},
 	}}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 	collectEvents(events)
@@ -1033,7 +1040,7 @@ func TestPipeline_Refinement_SkipsResearch(t *testing.T) {
 	rev := &mockReview{result: defaultReviewResult()}
 	research := &mockResearch{result: defaultResearchResult()}
 
-	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research)
+	pipeline := NewPipelineService(db, &mockTranscription{}, gen, rev, &mockPhotoDescription{}, &mockChunker{}, &mockEmbedding{}, research, &mockQuestioning{})
 	events := make(chan PipelineEvent, 20)
 	pipeline.Run(context.Background(), sub.ID, events)
 	collectEvents(events)

@@ -37,6 +37,7 @@ type PipelineService struct {
 	chunker          ChunkerService
 	embedding        EmbeddingService
 	researcher       ResearchService
+	questioning      QuestioningService
 	semanticGrouper  *SemanticGrouper
 }
 
@@ -49,6 +50,7 @@ func NewPipelineService(
 	chunker ChunkerService,
 	embedding EmbeddingService,
 	researcher ResearchService,
+	questioning QuestioningService,
 ) *PipelineService {
 	return &PipelineService{
 		db:               db,
@@ -59,6 +61,7 @@ func NewPipelineService(
 		chunker:          chunker,
 		embedding:        embedding,
 		researcher:       researcher,
+		questioning:      questioning,
 		semanticGrouper:  NewSemanticGrouper(embedding),
 	}
 }
@@ -89,7 +92,7 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	}
 
 	// Validate starting state
-	if sub.Status != models.StatusDraft && sub.Status != models.StatusRefining {
+	if sub.Status != models.StatusDraft && sub.Status != models.StatusRefining && sub.Status != models.StatusQuestioning {
 		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "load", Message: "Submission is not in a valid state for pipeline processing"})
 		return
 	}
@@ -101,7 +104,12 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	var photoDescs []string
 	var photoFileURLs []string
 
-	if sub.Status == models.StatusRefining && sub.Meta.V.Transcript != "" {
+	if sub.Status == models.StatusQuestioning && sub.Meta.V.Transcript != "" {
+		// Resume from questioning: reuse persisted transcript, photoDescs, photoFileURLs
+		transcript = sub.Meta.V.Transcript
+		photoDescs = sub.Meta.V.PhotoDescs
+		photoFileURLs = sub.Meta.V.PhotoFileURLs
+	} else if sub.Status == models.StatusRefining && sub.Meta.V.Transcript != "" {
 		// Refinement: reuse persisted transcript, skip GATHER
 		transcript = sub.Meta.V.Transcript
 		// Load photo URLs for placeholder replacement during refinement
@@ -142,8 +150,8 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 	// RESEARCH (non-fatal — continue with empty context on failure)
 	var researchContext string
 	var researchResult *models.ResearchResult
-	if sub.Status == models.StatusRefining && sub.Meta.V.Research != nil {
-		// Refinement: reuse persisted research
+	if (sub.Status == models.StatusRefining || sub.Status == models.StatusQuestioning) && sub.Meta.V.Research != nil {
+		// Refinement or question-resume: reuse persisted research
 		researchContext = sub.Meta.V.Research.Context
 		researchResult = sub.Meta.V.Research
 	} else {
@@ -168,6 +176,55 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
+	// QUESTIONING — ask clarification questions before generation (skip during refinement and question-resume)
+	if sub.Status != models.StatusRefining && sub.Status != models.StatusQuestioning {
+		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "questioning", Message: "Analyzing for follow-up questions..."}) {
+			return
+		}
+
+		qOutput, qErr := p.questioning.Analyze(ctx, QuestioningInput{
+			Transcript:        transcript,
+			Notes:             sub.Description,
+			PhotoDescriptions: photoDescs,
+			TownContext:       townContext,
+			ResearchContext:   researchContext,
+		})
+		if qErr != nil {
+			log.Printf("questioning failed for submission %s: %v", submissionID, qErr)
+			// Non-fatal: continue without questions
+		} else if qOutput != nil && len(qOutput.Questions) > 0 {
+			// Persist state for resume: transcript, research, photoDescs, photoFileURLs, questions
+			meta := sub.Meta.V
+			if meta.Transcript == "" && transcript != "" {
+				meta.Transcript = transcript
+			}
+			meta.PhotoDescs = photoDescs
+			meta.PhotoFileURLs = photoFileURLs
+			if researchResult != nil {
+				meta.Research = researchResult
+			}
+			questions := make([]models.ClarificationQA, len(qOutput.Questions))
+			for i, q := range qOutput.Questions {
+				questions[i] = models.ClarificationQA{Question: q}
+			}
+			meta.Questions = questions
+
+			p.db.Model(&sub).Updates(map[string]any{
+				"status": models.StatusQuestioning,
+				"meta":   models.JSONB[models.SubmissionMeta]{V: meta},
+			})
+
+			// Send questions event and pause the pipeline
+			sendEvent(ctx, events, PipelineEvent{
+				Event: "questions",
+				Data: map[string]any{
+					"questions": qOutput.Questions,
+				},
+			})
+			return // pipeline pauses — will resume when contributor answers
+		}
+	}
+
 	// GENERATE
 	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}) {
 		return
@@ -180,6 +237,11 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		PhotoDescriptions: photoDescs,
 		TownContext:       townContext,
 		ResearchContext:   researchContext,
+	}
+
+	// Fold in clarification answers from questioning stage
+	if len(sub.Meta.V.Questions) > 0 {
+		genInput.ClarificationAnswers = formatQAPairs(sub.Meta.V.Questions)
 	}
 
 	// If refinement, add previous article + direction
@@ -477,5 +539,21 @@ func ExtractFirstParagraph(markdown string) string {
 		return line
 	}
 	return ""
+}
+
+// formatQAPairs formats answered clarification questions into a string for generation input.
+func formatQAPairs(questions []models.ClarificationQA) string {
+	var b strings.Builder
+	for _, qa := range questions {
+		if qa.Skipped || qa.Answer == "" {
+			continue
+		}
+		b.WriteString("Q: ")
+		b.WriteString(qa.Question)
+		b.WriteString("\nA: ")
+		b.WriteString(qa.Answer)
+		b.WriteString("\n\n")
+	}
+	return b.String()
 }
 

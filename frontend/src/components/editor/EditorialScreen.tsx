@@ -320,7 +320,7 @@ export function EditorialScreen({
         <div className="editorial-header-right">
           {statusLabel && <span className={statusClass}>{statusLabel}</span>}
           <StoryStrength scores={review.scores} />
-          <PublishButton gate={review.gate} onPublish={onPublish} />
+          <PublishButton gate={review.gate} onPublish={onPublish} scores={review.scores} />
         </div>
       </div>
 

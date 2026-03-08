@@ -85,6 +85,12 @@ func buildGenerationUserPrompt(input GenerationInput) string {
 		b.WriteString("\n\n")
 	}
 
+	if input.ClarificationAnswers != "" {
+		b.WriteString("Contributor clarifications (answers to follow-up questions — treat as primary source material):\n")
+		b.WriteString(input.ClarificationAnswers)
+		b.WriteString("\n\n")
+	}
+
 	if input.TownContext != "" {
 		b.WriteString("Town context (background reference only — do NOT use to add geographic claims or details not in the source material): ")
 		b.WriteString(input.TownContext)

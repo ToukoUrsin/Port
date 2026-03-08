@@ -10,6 +10,7 @@ export interface StreamCallbacks {
   onStatus: (event: SSEStatusEvent) => void;
   onComplete: (event: SSECompleteEvent) => void;
   onError: (event: SSEErrorEvent) => void;
+  onQuestions?: (questions: string[]) => void;
 }
 
 /**
@@ -76,6 +77,9 @@ export function streamPipeline(
                   break;
                 case "error":
                   callbacks.onError(parsed as SSEErrorEvent);
+                  break;
+                case "questions":
+                  callbacks.onQuestions?.(parsed.data?.questions ?? parsed.questions ?? []);
                   break;
               }
             } catch {

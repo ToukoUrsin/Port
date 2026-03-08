@@ -19,3 +19,6 @@ var PhotoVision string
 
 //go:embed research_system.txt
 var ResearchSystem string
+
+//go:embed questioning_system.txt
+var QuestioningSystem string

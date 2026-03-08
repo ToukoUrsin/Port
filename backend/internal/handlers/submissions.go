@@ -370,8 +370,37 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 		return
 	}
 
-	// Gate is informational only — never blocks publishing (anti-censorship design).
-	// The review data is still available on the article for reader transparency.
+	// Quality gate: block publishing if any score is below 60%
+	if sub.Meta.V.Review != nil {
+		scores := sub.Meta.V.Review.Scores
+		threshold := 0.6
+		var failedScores []string
+		if scores.Evidence < threshold {
+			failedScores = append(failedScores, "evidence")
+		}
+		if scores.Perspectives < threshold {
+			failedScores = append(failedScores, "perspectives")
+		}
+		if scores.Representation < threshold {
+			failedScores = append(failedScores, "representation")
+		}
+		if scores.EthicalFraming < threshold {
+			failedScores = append(failedScores, "ethical_framing")
+		}
+		if scores.CulturalContext < threshold {
+			failedScores = append(failedScores, "cultural_context")
+		}
+		if scores.Manipulation < threshold {
+			failedScores = append(failedScores, "manipulation")
+		}
+		if len(failedScores) > 0 {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"error":         "quality_below_threshold",
+				"failed_scores": failedScores,
+			})
+			return
+		}
+	}
 
 	now := time.Now()
 	meta := sub.Meta.V
@@ -492,6 +521,73 @@ func (h *Handler) RefineSubmission(c *gin.Context) {
 		"status": models.StatusRefining,
 		"meta":   models.JSONB[models.SubmissionMeta]{V: meta},
 	})
+
+	c.JSON(http.StatusOK, gin.H{"status": "ready_to_stream"})
+}
+
+func (h *Handler) AnswerQuestions(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var sub models.Submission
+	if err := h.db.First(&sub, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	actor := services.ActorFromContext(c)
+	if !h.access.CanViewSubmission(actor, &sub) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if sub.OwnerID != actor.ProfileID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only the owner can answer questions"})
+		return
+	}
+
+	if sub.Status != models.StatusQuestioning {
+		c.JSON(http.StatusConflict, gin.H{"error": "submission is not awaiting answers"})
+		return
+	}
+
+	var req struct {
+		Answers []struct {
+			Question string `json:"question"`
+			Answer   string `json:"answer"`
+			Skipped  bool   `json:"skipped"`
+		} `json:"answers"`
+		SkipAll bool `json:"skip_all"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	meta := sub.Meta.V
+
+	if req.SkipAll {
+		// Mark all questions as skipped
+		for i := range meta.Questions {
+			meta.Questions[i].Skipped = true
+		}
+	} else {
+		// Merge answers into questions
+		for _, a := range req.Answers {
+			for i := range meta.Questions {
+				if meta.Questions[i].Question == a.Question {
+					meta.Questions[i].Answer = a.Answer
+					meta.Questions[i].Skipped = a.Skipped
+					break
+				}
+			}
+		}
+	}
+
+	// Keep status as StatusQuestioning — pipeline.Run checks this to know it's a resume
+	h.db.Model(&sub).Update("meta", models.JSONB[models.SubmissionMeta]{V: meta})
 
 	c.JSON(http.StatusOK, gin.H{"status": "ready_to_stream"})
 }
