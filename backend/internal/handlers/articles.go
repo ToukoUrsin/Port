@@ -305,7 +305,7 @@ func (h *Handler) GetArticle(c *gin.Context) {
 
 	// Cache hit
 	var article models.Submission
-	if h.cache.Get(c.Request.Context(), key, &article) {
+	if h.cache.Get(c.Request.Context(), key, &article) && article.Status == models.StatusPublished {
 		// Increment views in background (approximate count)
 		go h.db.Model(&models.Submission{}).Where("id = ?", article.ID).
 			UpdateColumn("views", gorm.Expr("views + 1"))

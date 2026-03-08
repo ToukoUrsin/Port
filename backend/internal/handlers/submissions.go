@@ -247,8 +247,8 @@ func (h *Handler) ListSubmissions(c *gin.Context) {
 		// Editors see all submissions
 	} else {
 		query = query.Where(
-			"owner_id = ? OR id IN (SELECT submission_id FROM submission_contributors WHERE profile_id = ?)",
-			actor.ProfileID, actor.ProfileID,
+			"owner_id = ? OR (status = ? AND id IN (SELECT submission_id FROM submission_contributors WHERE profile_id = ?))",
+			actor.ProfileID, models.StatusPublished, actor.ProfileID,
 		)
 	}
 
