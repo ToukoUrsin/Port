@@ -369,7 +369,7 @@ export default function HomePage() {
   const fetchArticles = useCallback(
     () => {
       if (selectedIdsArray.length > 0) {
-        return getArticles({ limit: 100, location_ids: selectedIdsArray, country });
+        return getArticles({ limit: 100, location_ids: selectedIdsArray });
       }
       return getArticles({ limit: 100, country });
     },
