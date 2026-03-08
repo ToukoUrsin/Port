@@ -383,7 +383,7 @@ export default function HomePage() {
 
   // Fetch locations from API, filtered by language/country
   const country = language === "fi" ? "finland" : "united-states";
-  const fetchLocations = useCallback(() => getLocations({ country, level: [3] }), [country]);
+  const fetchLocations = useCallback(() => getLocations({ country, level: [3], min_articles: 1 }), [country]);
   const { data: locData } = useApi<{ locations: ApiLocation[] }>(fetchLocations, [country]);
   const allLocations = useMemo(
     () => (locData?.locations ?? []).sort((a, b) => a.name.localeCompare(b.name)),
