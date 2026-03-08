@@ -40,6 +40,9 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
 
     // Filter chips
     "filter.clearAll": "Tyhjennä kaikki",
+    "filter.categories": "Kategoriat",
+    "filter.moreCities": "Lisää kaupunkeja",
+    "home.noFilterResults": "Artikkeleita ei löydy valituilla suodattimilla.",
 
     // Login
     "login.title": "PORT",
@@ -490,6 +493,9 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
 
     // Filter chips
     "filter.clearAll": "Clear all",
+    "filter.categories": "Categories",
+    "filter.moreCities": "More cities",
+    "home.noFilterResults": "No articles match the selected filters.",
 
     // Login
     "login.title": "PORT",
