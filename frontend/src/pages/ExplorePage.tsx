@@ -22,6 +22,7 @@ interface Area {
 }
 
 const STORAGE_KEY = "selected_locations";
+const STORAGE_NAMES_KEY = "selected_location_names";
 const STORAGE_PATHS_KEY = "selected_location_paths";
 
 export function getSavedLocationIds(): string[] {
@@ -30,6 +31,15 @@ export function getSavedLocationIds(): string[] {
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
+  }
+}
+
+export function getSavedLocationNames(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_NAMES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
   }
 }
 
@@ -190,6 +200,17 @@ export default function ExplorePage() {
     const ids = Array.from(selectedIds);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
     localStorage.setItem(STORAGE_PATHS_KEY, JSON.stringify(Array.from(selectedPaths.entries())));
+    // Save id→name map so HomePage can show chips for explore-picked locations
+    const names: Record<string, string> = {};
+    const prev = getSavedLocationNames();
+    for (const area of areas) {
+      if (selectedIds.has(area.id)) names[area.id] = area.name;
+    }
+    // Keep names for selections not currently visible on map
+    for (const id of ids) {
+      if (!names[id] && prev[id]) names[id] = prev[id];
+    }
+    localStorage.setItem(STORAGE_NAMES_KEY, JSON.stringify(names));
     navigate("/");
   }
 

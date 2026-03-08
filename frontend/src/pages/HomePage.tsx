@@ -14,7 +14,7 @@ import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse, ApiLocation } from "@/lib/types.ts";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BADGE_CLASS, type Article } from "@/data/articles";
-import { getSavedLocationIds } from "@/pages/ExplorePage";
+import { getSavedLocationIds, getSavedLocationNames } from "@/pages/ExplorePage";
 import "./HomePage.css";
 
 
@@ -483,6 +483,9 @@ export default function HomePage() {
     [trendingData, t],
   );
 
+  // Saved location names from explore map picks
+  const savedNames = useMemo(() => getSavedLocationNames(), []);
+
   // Build filter chips
   const nearbyIdSet = useMemo(() => new Set(nearbyCities.map((l) => l.id)), [nearbyCities]);
   const filterChips = useMemo(() => {
@@ -493,13 +496,15 @@ export default function HomePage() {
     }
     for (const locId of selectedIds) {
       if (sharedLoc && locId === sharedLoc.id) continue; // avoid duplicate
+      if (nearbyIdSet.has(locId)) continue; // nearby cities shown in bar
       const loc = allLocations.find((l) => l.id === locId);
-      if (loc && !nearbyIdSet.has(locId)) {
-        chips.push({ type: "location", id: loc.id, label: loc.name });
+      const name = loc?.name ?? savedNames[locId];
+      if (name) {
+        chips.push({ type: "location", id: locId, label: name });
       }
     }
     return chips;
-  }, [selectedIds, allLocations, nearbyIdSet, sharedLoc]);
+  }, [selectedIds, allLocations, nearbyIdSet, sharedLoc, savedNames]);
 
   const handleRemoveChip = useCallback((chip: FilterChip) => {
     // If removing the shared link chip, clear it
