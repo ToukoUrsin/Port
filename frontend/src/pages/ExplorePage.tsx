@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
-import { useLanguage } from "@/contexts/LanguageContext";
+import { useSearchParams, Navigate } from "react-router-dom";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { getLocations } from "@/lib/api";
 import type { ApiLocation } from "@/lib/types";
@@ -125,9 +124,7 @@ export function ExploreRedirectGuard() {
 }
 
 export default function ExplorePage() {
-  const { t } = useLanguage();
   useDocumentHead({ title: "Explore" });
-  const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedPaths, setSelectedPaths] = useState<Map<string, string>>(new Map());
   const [areas, setAreas] = useState<Area[]>([]);
@@ -186,32 +183,24 @@ export default function ExplorePage() {
       const next = new Set(prev);
       if (next.has(area.id)) next.delete(area.id);
       else next.add(area.id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(next)));
       return next;
     });
     setSelectedPaths((prev) => {
       const next = new Map(prev);
       if (next.has(area.id)) next.delete(area.id);
       else next.set(area.id, area.path);
+      localStorage.setItem(STORAGE_PATHS_KEY, JSON.stringify(Array.from(next.entries())));
       return next;
     });
-  }
-
-  function handleApply() {
-    const ids = Array.from(selectedIds);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-    localStorage.setItem(STORAGE_PATHS_KEY, JSON.stringify(Array.from(selectedPaths.entries())));
-    // Save id→name map so HomePage can show chips for explore-picked locations
-    const names: Record<string, string> = {};
-    const prev = getSavedLocationNames();
-    for (const area of areas) {
-      if (selectedIds.has(area.id)) names[area.id] = area.name;
+    // Update names map
+    const prevNames = getSavedLocationNames();
+    if (prevNames[area.id]) {
+      delete prevNames[area.id];
+    } else {
+      prevNames[area.id] = area.name;
     }
-    // Keep names for selections not currently visible on map
-    for (const id of ids) {
-      if (!names[id] && prev[id]) names[id] = prev[id];
-    }
-    localStorage.setItem(STORAGE_NAMES_KEY, JSON.stringify(names));
-    navigate("/");
+    localStorage.setItem(STORAGE_NAMES_KEY, JSON.stringify(prevNames));
   }
 
   function hasSelectedDescendant(area: Area): boolean {
@@ -252,17 +241,6 @@ export default function ExplorePage() {
           ))}
         </MapContainer>
 
-        <div className="explore-bottom">
-          <button
-            className="explore-bottom__apply"
-            onClick={handleApply}
-            disabled={selectedIds.size === 0}
-          >
-            {selectedIds.size === 0
-              ? t("explore.selectAreas")
-              : `${t("explore.apply")} (${selectedIds.size})`}
-          </button>
-        </div>
       </div>
       <BottomBar />
     </>
