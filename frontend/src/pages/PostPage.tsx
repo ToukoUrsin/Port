@@ -984,7 +984,7 @@ export default function PostPage() {
       }
       const result = await publishArticle(submissionId);
       if (result && "error" in result && result.error === "quality_below_threshold") {
-        const failed = (result as { failed_scores?: string[] }).failed_scores || [];
+        const failed = result.failed_scores || [];
         toast(
           `Cannot publish: ${failed.join(", ")} score${failed.length > 1 ? "s" : ""} below 60%`,
           "error",

@@ -225,9 +225,14 @@ export type GateRejection = {
   red_triggers: RedTrigger[];
 };
 
+export type QualityRejection = {
+  error: "quality_below_threshold";
+  failed_scores: string[];
+};
+
 export async function publishArticle(
   id: string,
-): Promise<{ status: string } | GateRejection> {
+): Promise<{ status: string } | GateRejection | QualityRejection> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -242,7 +247,7 @@ export async function publishArticle(
   });
 
   if (res.status === 422) {
-    return res.json() as Promise<GateRejection>;
+    return res.json() as Promise<GateRejection | QualityRejection>;
   }
 
   if (!res.ok) {
