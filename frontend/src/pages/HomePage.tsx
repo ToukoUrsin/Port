@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
@@ -9,7 +9,7 @@ import ArticleCard from "@/components/ArticleCard";
 import FilterChips from "@/components/FilterChips";
 import type { FilterChip } from "@/components/FilterChips";
 import { useApi } from "@/hooks/useApi.ts";
-import { getArticles, getLocations } from "@/lib/api.ts";
+import { getArticles, getLocations, getLocation } from "@/lib/api.ts";
 import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse, ApiLocation } from "@/lib/types.ts";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -302,7 +302,31 @@ function NewsSection({
 }
 
 export default function HomePage() {
-  const { language, t } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const { language, setLanguage, t } = useLanguage();
+  const locationSlug = searchParams.get("location");
+
+  // Auto-detect language from location's country when arriving via shared link,
+  // and pre-select the town in the filter
+  const langDetected = useRef(false);
+  useEffect(() => {
+    if (!locationSlug || langDetected.current) return;
+    langDetected.current = true;
+    getLocation(locationSlug).then((loc) => {
+      const path = loc.path.toLowerCase();
+      if (path.includes("finland") && language !== "fi") {
+        setLanguage("fi");
+      } else if (path.includes("united-states") && language !== "en") {
+        setLanguage("en");
+      }
+      // Pre-select this town in the city filter
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.add(loc.id);
+        return next;
+      });
+    }).catch(() => { /* location not found, keep current language */ });
+  }, [locationSlug, language, setLanguage]);
 
   // Fetch locations from API, filtered by language/country
   const country = language === "fi" ? "finland" : "united-states";
@@ -421,7 +445,10 @@ export default function HomePage() {
   const newsHeadlines = allArticles.filter((a) => newsCategories.includes(a.category) && !a.image);
   const newsFeatured = allArticles.filter((a) => newsCategories.includes(a.category) && !!a.image);
 
-  const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
+  // Skip onboarding when arriving via shared town link
+  const [showOnboarding, setShowOnboarding] = useState(() =>
+    locationSlug ? false : shouldShowOnboarding()
+  );
 
   return (
     <>
