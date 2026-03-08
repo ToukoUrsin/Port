@@ -1766,3 +1766,59 @@
    =============================================== */
 .spin { animation: editor-spin 1s linear infinite; }
 @keyframes editor-spin { to { transform: rotate(360deg); } }
+
+/* ===============================================
+   Quality gate banner
+   =============================================== */
+.quality-gate-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  margin: 0 0 var(--space-4);
+}
+
+.quality-gate-banner__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+
+.quality-gate-banner--green {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  background: oklch(0.95 0.05 145);
+  color: oklch(0.3 0.1 145);
+  border: 1px solid oklch(0.85 0.08 145);
+}
+
+.quality-gate-banner--yellow {
+  background: oklch(0.95 0.06 85);
+  color: oklch(0.35 0.1 70);
+  border: 1px solid oklch(0.85 0.08 85);
+}
+
+.quality-gate-banner--red {
+  background: oklch(0.94 0.04 25);
+  color: oklch(0.35 0.12 25);
+  border: 1px solid oklch(0.85 0.08 25);
+}
+
+.quality-gate-banner__scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  padding-left: calc(18px + var(--space-2));
+  font-size: var(--text-xs);
+  opacity: 0.85;
+}
+
+.quality-gate-banner__score {
+  white-space: nowrap;
+}
