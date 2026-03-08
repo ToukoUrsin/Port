@@ -161,6 +161,12 @@ func buildGenerationUserPrompt(pctx *PipelineContext) string {
 		b.WriteString("\n\nRegenerate the article incorporating the contributor's direction. Keep what works, change what they asked for. Do not lose information from the original sources.")
 	}
 
+	if pctx.Language != "" {
+		b.WriteString("\n\nLanguage: Write this article in ")
+		b.WriteString(pctx.Language)
+		b.WriteString(".\n")
+	}
+
 	return b.String()
 }
 

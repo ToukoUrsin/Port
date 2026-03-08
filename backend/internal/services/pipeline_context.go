@@ -14,6 +14,7 @@ type PipelineContext struct {
 	PhotoDescriptions []string
 	PhotoFileURLs     []string
 	TownContext       string
+	Language          string // e.g. "Finnish", "English", "Swedish"; empty = auto-detect from source
 
 	// RESEARCH outputs
 	ResearchContext string

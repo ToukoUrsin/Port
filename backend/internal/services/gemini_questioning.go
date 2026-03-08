@@ -105,5 +105,11 @@ func buildQuestioningUserPrompt(pctx *PipelineContext) string {
 		b.WriteString(pctx.TownContext)
 	}
 
+	if pctx.Language != "" {
+		b.WriteString("\n\nLanguage: Ask questions in ")
+		b.WriteString(pctx.Language)
+		b.WriteString(".\n")
+	}
+
 	return b.String()
 }

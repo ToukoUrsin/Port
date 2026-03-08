@@ -4,6 +4,7 @@ import {
   ArrowUp, X, Loader2,
   CheckCircle, Camera, EyeOff,
   Mic, ImageIcon, Search, PenTool, ShieldCheck, Type, MessageCircleQuestion, Send,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext.tsx";
 import { useToast } from "@/components/Toast.tsx";
@@ -238,7 +239,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
 
 // --- Step 2: Processing with SSE (live data feed) ---
 
-const STEP_ORDER = ["transcribing", "describing_photos", "researching", "questioning", "generating", "reviewing"];
+const STEP_ORDER = ["transcribing", "describing_photos", "researching", "questioning", "generating", "reviewing", "auto_fixing"];
 
 const STEP_ICONS: Record<string, React.ReactNode> = {
   transcribing: <Mic size={16} />,
@@ -247,6 +248,7 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
   questioning: <MessageCircleQuestion size={16} />,
   generating: <PenTool size={16} />,
   reviewing: <ShieldCheck size={16} />,
+  auto_fixing: <RefreshCw size={16} />,
 };
 
 const SCORE_KEYS = ["evidence", "perspectives", "representation", "ethical_framing", "cultural_context", "manipulation"];
@@ -301,6 +303,7 @@ function ProcessingStep({
     questioning: language === "fi" ? "Tarkentavat kysymykset" : "Follow-up questions",
     generating: t("post.stepWriting"),
     reviewing: t("post.stepReviewing"),
+    auto_fixing: language === "fi" ? "Korjataan ongelmia" : "Fixing issues",
   };
   const [stepKeys, setStepKeys] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState<string>("");

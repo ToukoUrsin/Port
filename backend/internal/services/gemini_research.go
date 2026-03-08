@@ -190,6 +190,12 @@ func buildResearchUserPrompt(pctx *PipelineContext) string {
 		b.WriteString(pctx.TownContext)
 	}
 
+	if pctx.Language != "" {
+		b.WriteString("\n\nLanguage: Use ")
+		b.WriteString(pctx.Language)
+		b.WriteString("-language searches.\n")
+	}
+
 	return b.String()
 }
 

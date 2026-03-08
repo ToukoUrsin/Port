@@ -21,6 +21,53 @@ import (
 	"gorm.io/gorm"
 )
 
+const maxAutoFixRounds = 2
+
+var autoFixableTriggers = map[string]bool{
+	"hallucinated_claim":      true,
+	"possible_hallucination":  true,
+	"fabricated_quote":        true,
+	"unattributed_accusation": true,
+}
+
+func hasAutoFixableRedTriggers(review *models.ReviewResult) bool {
+	if review.Gate != "RED" || len(review.RedTriggers) == 0 {
+		return false
+	}
+	for _, rt := range review.RedTriggers {
+		if autoFixableTriggers[rt.Trigger] {
+			return true
+		}
+	}
+	return false
+}
+
+func composeFixDirection(triggers []models.RedTrigger) string {
+	var b strings.Builder
+	b.WriteString("The editorial review found issues that must be fixed:\n\n")
+	n := 0
+	for _, rt := range triggers {
+		if !autoFixableTriggers[rt.Trigger] {
+			continue
+		}
+		n++
+		switch rt.Trigger {
+		case "hallucinated_claim", "possible_hallucination":
+			b.WriteString(fmt.Sprintf("%d. REMOVE this claim (not in source material): \"%s\"\n", n, rt.Sentence))
+		case "fabricated_quote":
+			b.WriteString(fmt.Sprintf("%d. REMOVE this quote (not in source transcript): \"%s\"\n", n, rt.Sentence))
+		case "unattributed_accusation":
+			b.WriteString(fmt.Sprintf("%d. This accusation needs attribution or softening: \"%s\"", n, rt.Sentence))
+			if len(rt.FixOptions) > 0 {
+				b.WriteString(fmt.Sprintf(" Options: %s", strings.Join(rt.FixOptions, "; ")))
+			}
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("\nDo not add new information. Only fix the listed issues. Keep everything else unchanged.")
+	return b.String()
+}
+
 type PipelineEvent struct {
 	Event   string `json:"event"`
 	Step    string `json:"step,omitempty"`
@@ -233,12 +280,6 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
-	// GENERATE
-	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}) {
-		return
-	}
-	p.db.Model(&sub).Update("status", models.StatusGenerating)
-
 	// Fold in clarification answers from questioning stage
 	if len(sub.Meta.V.Questions) > 0 {
 		pctx.ClarificationAnswers = formatQAPairs(sub.Meta.V.Questions)
@@ -258,55 +299,86 @@ func (p *PipelineService) Run(ctx context.Context, submissionID uuid.UUID, event
 		}
 	}
 
-	genOutput, err := p.generation.Generate(ctx, pctx)
-	if err != nil {
-		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrGeneration})
-		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "generating", Message: fmt.Sprintf("Generation failed: %v", err)})
-		return
+	// GENERATE → REVIEW loop with auto-fix for fixable RED triggers
+	var genOutput *GenerationOutput
+	var reviewResult *models.ReviewResult
+
+	for round := 0; round <= maxAutoFixRounds; round++ {
+		// GENERATE
+		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generating", Message: "Writing article..."}) {
+			return
+		}
+		p.db.Model(&sub).Update("status", models.StatusGenerating)
+
+		var err error
+		genOutput, err = p.generation.Generate(ctx, pctx)
+		if err != nil {
+			p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrGeneration})
+			sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "generating", Message: fmt.Sprintf("Generation failed: %v", err)})
+			return
+		}
+
+		// Send generation metadata to frontend
+		wordCount := len(strings.Fields(genOutput.ArticleMarkdown))
+		sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generated", Message: "Article written", Data: map[string]any{
+			"structure":       genOutput.Metadata.ChosenStructure,
+			"category":        genOutput.Metadata.Category,
+			"confidence":      genOutput.Metadata.Confidence,
+			"missing_context": genOutput.Metadata.MissingContext,
+			"word_count":      wordCount,
+		}})
+
+		// Update pipeline context with generation outputs
+		pctx.ArticleMarkdown = genOutput.ArticleMarkdown
+		pctx.Metadata = genOutput.Metadata
+
+		// Collect gap annotations as additional questions asked (only on first round)
+		if round == 0 {
+			for _, gap := range genOutput.Metadata.MissingContext {
+				pctx.QuestionsAsked = append(pctx.QuestionsAsked, gap)
+			}
+		}
+
+		// REVIEW
+		if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}) {
+			return
+		}
+		p.db.Model(&sub).Update("status", models.StatusReviewing)
+
+		reviewResult, err = p.review.Review(ctx, pctx)
+		if err != nil {
+			p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrReview})
+			sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "reviewing", Message: fmt.Sprintf("Review failed: %v", err)})
+			return
+		}
+
+		// Send review summary to frontend
+		sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewed", Message: "Review complete", Data: map[string]any{
+			"gate":            reviewResult.Gate,
+			"scores":          reviewResult.Scores,
+			"verified_claims": len(reviewResult.Verification),
+			"red_triggers":    len(reviewResult.RedTriggers),
+			"yellow_flags":    len(reviewResult.YellowFlags),
+			"coaching":        reviewResult.Coaching,
+			"web_sources":     len(reviewResult.WebSources),
+		}})
+
+		// Check if we should auto-fix
+		if round < maxAutoFixRounds && hasAutoFixableRedTriggers(reviewResult) {
+			if !sendEvent(ctx, events, PipelineEvent{
+				Event:   "status",
+				Step:    "auto_fixing",
+				Message: fmt.Sprintf("Fixing issues (round %d/%d)...", round+1, maxAutoFixRounds),
+			}) {
+				return
+			}
+			// Set up next round: previous article + fix direction
+			pctx.PreviousArticle = genOutput.ArticleMarkdown
+			pctx.Direction = composeFixDirection(reviewResult.RedTriggers)
+			continue
+		}
+		break
 	}
-
-	// Send generation metadata to frontend
-	wordCount := len(strings.Fields(genOutput.ArticleMarkdown))
-	sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "generated", Message: "Article written", Data: map[string]any{
-		"structure":       genOutput.Metadata.ChosenStructure,
-		"category":        genOutput.Metadata.Category,
-		"confidence":      genOutput.Metadata.Confidence,
-		"missing_context": genOutput.Metadata.MissingContext,
-		"word_count":      wordCount,
-	}})
-
-	// Update pipeline context with generation outputs
-	pctx.ArticleMarkdown = genOutput.ArticleMarkdown
-	pctx.Metadata = genOutput.Metadata
-
-	// Collect gap annotations as additional questions asked
-	for _, gap := range genOutput.Metadata.MissingContext {
-		pctx.QuestionsAsked = append(pctx.QuestionsAsked, gap)
-	}
-
-	// REVIEW
-	if !sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewing", Message: "Reviewing quality..."}) {
-		return
-	}
-	p.db.Model(&sub).Update("status", models.StatusReviewing)
-
-	reviewResult, err := p.review.Review(ctx, pctx)
-	if err != nil {
-		p.db.Model(&sub).Updates(map[string]any{"status": models.StatusDraft, "error": models.ErrReview})
-		sendEvent(ctx, events, PipelineEvent{Event: "error", Step: "reviewing", Message: fmt.Sprintf("Review failed: %v", err)})
-		return
-	}
-
-	// Send review summary to frontend
-	sendEvent(ctx, events, PipelineEvent{Event: "status", Step: "reviewed", Message: "Review complete", Data: map[string]any{
-		"gate":               reviewResult.Gate,
-		"scores":             reviewResult.Scores,
-		"verified_claims":    len(reviewResult.Verification),
-		"red_triggers":       len(reviewResult.RedTriggers),
-		"yellow_flags":       len(reviewResult.YellowFlags),
-		"coaching":           reviewResult.Coaching,
-		"web_sources":        len(reviewResult.WebSources),
-	}})
 
 	// Replace photo placeholders with actual URLs.
 	// Replace in reverse order so photo_10 is handled before photo_1 can match it.

@@ -248,6 +248,12 @@ func buildReviewUserPrompt(pctx *PipelineContext) string {
 		}
 	}
 
+	if pctx.Language != "" {
+		b.WriteString("\n\nLanguage: Write coaching output in ")
+		b.WriteString(pctx.Language)
+		b.WriteString(".\n")
+	}
+
 	return b.String()
 }
 
