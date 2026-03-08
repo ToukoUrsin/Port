@@ -53,6 +53,7 @@ func (h *Handler) ReactArticle(c *gin.Context) {
 	}).Create(&reaction)
 
 	counts := h.updateAndGetSubmissionReactions(subID)
+	h.recalculateKarma(sub.OwnerID)
 	h.cache.Delete(c.Request.Context(), "articles:"+subID.String())
 
 	// Notify article owner (async)
@@ -60,7 +61,7 @@ func (h *Handler) ReactArticle(c *gin.Context) {
 	if req.Kind == models.ReactionDislike {
 		notifType = models.NotifDislike
 	}
-	go h.createNotification(sub.OwnerID, actor.ProfileID, notifType, subID, models.ReactionTargetSubmission, subID)
+	go h.notifSvc.Notify(h.db, sub.OwnerID, actor.ProfileID, notifType, subID, models.ReactionTargetSubmission, subID)
 
 	counts["user_reaction"] = int(req.Kind)
 	c.JSON(http.StatusOK, counts)
@@ -71,6 +72,12 @@ func (h *Handler) UnreactArticle(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
+	}
+
+	// Look up article owner for karma update
+	var sub models.Submission
+	if err := h.db.Select("owner_id").First(&sub, "id = ?", subID).Error; err == nil {
+		defer h.recalculateKarma(sub.OwnerID)
 	}
 
 	actor := services.ActorFromContext(c)
@@ -155,7 +162,7 @@ func (h *Handler) ReactReply(c *gin.Context) {
 	if req.Kind == models.ReactionDislike {
 		notifType = models.NotifDislike
 	}
-	go h.createNotification(reply.ProfileID, actor.ProfileID, notifType, replyID, models.ReactionTargetReply, reply.SubmissionID)
+	go h.notifSvc.Notify(h.db, reply.ProfileID, actor.ProfileID, notifType, replyID, models.ReactionTargetReply, reply.SubmissionID)
 
 	counts["user_reaction"] = int(req.Kind)
 	c.JSON(http.StatusOK, counts)

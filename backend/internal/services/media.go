@@ -3,12 +3,15 @@ package services
 import (
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/localnews/backend/internal/models"
+	"gorm.io/gorm"
 )
 
 var allowedExtensions = map[string]bool{
@@ -27,10 +30,72 @@ var allowedExtensions = map[string]bool{
 
 type MediaService struct {
 	storagePath string
+	compressor  *ImageCompressor
 }
 
-func NewMediaService(storagePath string) *MediaService {
-	return &MediaService{storagePath: storagePath}
+func NewMediaService(storagePath string, targetSizeKB, maxDim int) *MediaService {
+	return &MediaService{
+		storagePath: storagePath,
+		compressor:  NewImageCompressor(targetSizeKB, maxDim),
+	}
+}
+
+// CompressImage compresses an image file and returns the new path and metadata.
+func (s *MediaService) CompressImage(path string) (string, models.FileMeta, error) {
+	newPath, w, h, _, err := s.compressor.CompressFile(path)
+	if err != nil {
+		return path, models.FileMeta{}, err
+	}
+	meta := models.FileMeta{
+		MimeType: "image/jpeg",
+		Width:    w,
+		Height:   h,
+	}
+	return newPath, meta, nil
+}
+
+// ScanAndCompressUnprocessed finds image files with empty mime_type and compresses them.
+func (s *MediaService) ScanAndCompressUnprocessed(db *gorm.DB) {
+	var files []models.File
+	db.Where("file_type = 2 AND (meta->>'mime_type' IS NULL OR meta->>'mime_type' = '')").Find(&files)
+
+	if len(files) == 0 {
+		return
+	}
+
+	compressed := 0
+	for _, f := range files {
+		ext := strings.ToLower(filepath.Ext(f.Name))
+		if ext == ".heic" {
+			// Mark HEIC so we don't retry
+			f.Meta = models.JSONB[models.FileMeta]{V: models.FileMeta{MimeType: "image/heic"}}
+			db.Model(&f).Update("meta", f.Meta)
+			continue
+		}
+
+		newPath, meta, err := s.CompressImage(f.Name)
+		if err != nil {
+			log.Printf("compress scan: %s: %v", f.Name, err)
+			continue
+		}
+
+		info, err := os.Stat(newPath)
+		if err != nil {
+			log.Printf("compress scan: stat %s: %v", newPath, err)
+			continue
+		}
+
+		db.Model(&f).Updates(map[string]any{
+			"name": newPath,
+			"size": info.Size(),
+			"meta": models.JSONB[models.FileMeta]{V: meta},
+		})
+		compressed++
+	}
+
+	if compressed > 0 {
+		log.Printf("compressed %d images on startup", compressed)
+	}
 }
 
 func (s *MediaService) SaveUploadedFile(file *multipart.FileHeader, submissionID uuid.UUID, maxSizeBytes int64) (string, int64, error) {

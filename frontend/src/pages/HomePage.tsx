@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
@@ -13,7 +13,6 @@ import { getArticles, getLocations } from "@/lib/api.ts";
 import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse, ApiLocation } from "@/lib/types.ts";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import { getSavedLocationIds } from "@/pages/ExplorePage";
 import "./HomePage.css";
@@ -303,89 +302,116 @@ function NewsSection({
 }
 
 export default function HomePage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const { language, t } = useLanguage();
-  useDocumentHead({ title: "Home" });
-  const locationSlug = searchParams.get("location");
 
   // Fetch locations from API, filtered by language/country
   const country = language === "fi" ? "finland" : "united-states";
   const fetchLocations = useCallback(() => getLocations({ country, level: [3] }), [country]);
   const { data: locData } = useApi<{ locations: ApiLocation[] }>(fetchLocations, [country]);
-  const locations = useMemo(
+  const allLocations = useMemo(
     () => (locData?.locations ?? []).sort((a, b) => a.name.localeCompare(b.name)),
     [locData],
   );
 
-  const selectedLocation = locations.find((l) => l.slug === locationSlug);
-  const [savedLocIds, setSavedLocIds] = useState(() => getSavedLocationIds());
-  const regionLocationIds = useMemo(
-    () => locations.filter((l) => l.article_count > 0).map((l) => l.id),
-    [locations],
-  );
+  // Geolocation: get user position for nearby cities
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+  const geoAttempted = useRef(false);
+  useEffect(() => {
+    if (geoAttempted.current) return;
+    geoAttempted.current = true;
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { timeout: 5000 },
+    );
+  }, []);
 
-  // Fetch articles, filtered by location when one is selected.
-  // Always pass country so users only see articles in their language.
+  // 5 nearest cities (with lat/lng), fallback to first 5 alphabetically
+  const nearbyCities = useMemo(() => {
+    const withCoords = allLocations.filter((l) => l.lat != null && l.lng != null);
+    if (userPos && withCoords.length > 0) {
+      const sorted = [...withCoords].sort((a, b) => {
+        const da = (a.lat! - userPos.lat) ** 2 + (a.lng! - userPos.lng) ** 2;
+        const db = (b.lat! - userPos.lat) ** 2 + (b.lng! - userPos.lng) ** 2;
+        return da - db;
+      });
+      return sorted.slice(0, 5);
+    }
+    return allLocations.slice(0, 5);
+  }, [allLocations, userPos]);
+
+  // Selected location IDs — from city bar toggles + explore map
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(getSavedLocationIds()));
+
+  // Sync to localStorage when selectedIds changes
+  useEffect(() => {
+    localStorage.setItem("selected_locations", JSON.stringify(Array.from(selectedIds)));
+  }, [selectedIds]);
+
+  function toggleCity(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  // "All" means no filter
+  const isAllSelected = selectedIds.size === 0;
+
+  function selectAll() {
+    setSelectedIds(new Set());
+  }
+
+  // Fetch articles filtered by selected locations
+  const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
   const fetchArticles = useCallback(
     () => {
-      if (selectedLocation) {
-        return getArticles({ limit: 100, location_id: selectedLocation.id, country });
-      }
-      if (savedLocIds.length > 0) {
-        return getArticles({ limit: 100, location_ids: savedLocIds, country });
-      }
-      if (regionLocationIds.length > 0) {
-        return getArticles({ limit: 100, location_ids: regionLocationIds, country });
+      if (selectedIdsArray.length > 0) {
+        return getArticles({ limit: 100, location_ids: selectedIdsArray });
       }
       return getArticles({ limit: 100, country });
     },
-    [selectedLocation?.id, savedLocIds, regionLocationIds, country],
+    [selectedIdsArray, country],
   );
-  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedLocation?.id, savedLocIds, regionLocationIds]);
+  const { data: apiData, isLoading, error } = useApi<ArticleListResponse>(fetchArticles, [selectedIdsArray, country]);
   const allArticles = useMemo(
     () => (apiData?.articles ?? []).map((a) => apiToArticle(a, t)),
     [apiData, t],
   );
 
-  // Build filter chips from active location filters
+  // Build filter chips: show chips for cities selected from explore map that aren't in the nearby bar
+  const nearbyIdSet = useMemo(() => new Set(nearbyCities.map((l) => l.id)), [nearbyCities]);
   const filterChips = useMemo(() => {
     const chips: FilterChip[] = [];
-    if (selectedLocation) {
-      chips.push({ type: "location", id: selectedLocation.id, label: selectedLocation.name });
-    } else if (savedLocIds.length > 0) {
-      for (const locId of savedLocIds) {
-        const loc = locations.find((l) => l.id === locId);
-        if (loc) chips.push({ type: "location", id: loc.id, label: loc.name });
+    for (const locId of selectedIds) {
+      // Always show chip for non-nearby selections; also show for nearby ones
+      const loc = allLocations.find((l) => l.id === locId);
+      if (loc && !nearbyIdSet.has(locId)) {
+        chips.push({ type: "location", id: loc.id, label: loc.name });
       }
     }
     return chips;
-  }, [selectedLocation, savedLocIds, locations]);
+  }, [selectedIds, allLocations, nearbyIdSet]);
 
   const handleRemoveChip = useCallback((chip: FilterChip) => {
-    if (chip.type === "location") {
-      if (selectedLocation && chip.id === selectedLocation.id) {
-        searchParams.delete("location");
-        setSearchParams(searchParams);
-      } else {
-        const updated = savedLocIds.filter((id) => id !== chip.id);
-        localStorage.setItem("selected_locations", JSON.stringify(updated));
-        setSavedLocIds(updated);
-      }
-    }
-  }, [selectedLocation, savedLocIds, searchParams, setSearchParams]);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(chip.id);
+      return next;
+    });
+  }, []);
 
   const handleClearAll = useCallback(() => {
-    searchParams.delete("location");
-    setSearchParams(searchParams);
-    localStorage.setItem("selected_locations", JSON.stringify([]));
-    setSavedLocIds([]);
-  }, [searchParams, setSearchParams]);
+    setSelectedIds(new Set());
+  }, []);
 
   const recentArticles = allArticles.slice(0, 10);
   const bestOfWeek = useMemo(
     () => [...allArticles]
       .filter((a) => a.image)
-      .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+      .sort((a, b) => b.title.localeCompare(a.title))
       .slice(0, 5),
     [allArticles],
   );
@@ -403,24 +429,21 @@ export default function HomePage() {
       <Navbar />
       <nav className="city-bar">
         <div className="city-bar__scroll">
-          <Link
-            to="/"
-            className={`city-bar__item ${!locationSlug ? "city-bar__item--active" : ""}`}
+          <button
+            className={`city-bar__item ${isAllSelected ? "city-bar__item--active" : ""}`}
+            onClick={selectAll}
           >
-            All
-          </Link>
-          {locations.map((loc) => {
-            const isActive = loc.slug === locationSlug;
-            return (
-              <Link
-                key={loc.id}
-                to={isActive ? "/" : `/?location=${loc.slug}`}
-                className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
-              >
-                {loc.name}
-              </Link>
-            );
-          })}
+            {t("home.all")}
+          </button>
+          {nearbyCities.map((loc) => (
+            <button
+              key={loc.id}
+              className={`city-bar__item ${selectedIds.has(loc.id) ? "city-bar__item--active" : ""}`}
+              onClick={() => toggleCity(loc.id)}
+            >
+              {loc.name}
+            </button>
+          ))}
         </div>
       </nav>
       <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />

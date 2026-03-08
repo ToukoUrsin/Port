@@ -249,6 +249,36 @@ func (h *Handler) fillOwnerNames(articles []models.Submission) {
 	}
 }
 
+// recalculateKarma computes and stores a profile's karma based on their published articles.
+// Formula: GREEN gate = +10, YELLOW = +5, RED/no review = +2, plus +1 per 100 views, +1 per like.
+func (h *Handler) recalculateKarma(profileID uuid.UUID) {
+	var articles []models.Submission
+	h.db.Where("owner_id = ? AND status = ?", profileID, models.StatusPublished).
+		Select("meta, views, reactions").Find(&articles)
+
+	karma := 0
+	for _, a := range articles {
+		gate := ""
+		if a.Meta.V.Review != nil {
+			gate = a.Meta.V.Review.Gate
+		}
+		switch gate {
+		case "GREEN":
+			karma += 10
+		case "YELLOW":
+			karma += 5
+		default:
+			karma += 2
+		}
+		karma += a.Views / 100
+		if likes, ok := a.Reactions.V["likes"]; ok {
+			karma += likes
+		}
+	}
+
+	h.db.Model(&models.Profile{}).Where("id = ?", profileID).Update("karma", karma)
+}
+
 // resolveLocationHierarchy returns a GORM subquery that selects all location
 // IDs matching the given IDs plus all their descendants via path prefix.
 // Produces a single SQL subquery: SELECT id FROM locations WHERE id IN (...)

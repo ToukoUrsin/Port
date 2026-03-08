@@ -36,6 +36,10 @@ type Config struct {
 	MaxUploadSizeMB int
 	MaxPhotos       int
 
+	// Image compression
+	ImageTargetSizeKB int
+	ImageMaxDimension int
+
 	// Security
 	SecureCookies  bool
 	TrustedProxies []string
@@ -85,6 +89,8 @@ func Load() *Config {
 
 	cfg.MaxUploadSizeMB = envInt("MAX_UPLOAD_SIZE_MB", 25)
 	cfg.MaxPhotos = envInt("MAX_PHOTOS", 10)
+	cfg.ImageTargetSizeKB = envInt("IMAGE_TARGET_SIZE_KB", 500)
+	cfg.ImageMaxDimension = envInt("IMAGE_MAX_DIMENSION", 2048)
 
 	cfg.JWTAccessTTL = parseDuration(env("JWT_ACCESS_TTL", "15m"), 15*time.Minute)
 	cfg.JWTRefreshTTL = parseDuration(env("JWT_REFRESH_TTL", "720h"), 720*time.Hour)

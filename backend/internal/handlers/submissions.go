@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -108,14 +110,29 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "photo upload failed: " + err.Error()})
 				return
 			}
+
+			// Compress image
+			var fileMeta models.FileMeta
+			newPath, meta, compErr := h.media.CompressImage(path)
+			if compErr != nil {
+				log.Printf("compression failed for %s: %v", path, compErr)
+				newPath = path
+			} else {
+				fileMeta = meta
+			}
+			if info, _ := os.Stat(newPath); info != nil {
+				size = info.Size()
+			}
+
 			file := models.File{
 				EntityID:       sub.ID,
 				EntityCategory: models.EntitySubmission,
 				SubmissionID:   sub.ID,
 				ContributorID:  actor.ProfileID,
 				FileType:       2, // photo
-				Name:           path,
+				Name:           newPath,
 				Size:           size,
+				Meta:           models.JSONB[models.FileMeta]{V: fileMeta},
 			}
 			h.db.Create(&file)
 		}
@@ -375,6 +392,12 @@ func (h *Handler) PublishSubmission(c *gin.Context) {
 	// Update location counters (propagate up hierarchy)
 	services.AdjustArticleCount(h.db, sub.LocationID, +1)
 
+	// Recalculate karma for the article owner
+	h.recalculateKarma(sub.OwnerID)
+
+	// Notify followers of the author and location
+	go h.notifyFollowers(sub.OwnerID, sub.ID, sub.LocationID)
+
 	h.db.First(&sub, "id = ?", id)
 	c.JSON(http.StatusOK, sub)
 }
@@ -549,4 +572,40 @@ func (h *Handler) FlagSubmission(c *gin.Context) {
 	h.cache.Delete(c.Request.Context(), cacheKey)
 
 	c.JSON(http.StatusOK, gin.H{"status": "flagged"})
+}
+
+// notifyFollowers notifies all followers of the author and location about a new article.
+func (h *Handler) notifyFollowers(ownerID, submissionID, locationID uuid.UUID) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("notifyFollowers panic: %v", r)
+		}
+	}()
+
+	seen := make(map[uuid.UUID]bool)
+
+	// Profile followers
+	var profileFollowerIDs []uuid.UUID
+	h.db.Model(&models.Follow{}).
+		Where("target_id = ? AND target_type = ?", ownerID, models.FollowProfile).
+		Pluck("profile_id", &profileFollowerIDs)
+	for _, id := range profileFollowerIDs {
+		seen[id] = true
+	}
+
+	// Location followers
+	if locationID != uuid.Nil {
+		var locationFollowerIDs []uuid.UUID
+		h.db.Model(&models.Follow{}).
+			Where("target_id = ? AND target_type = ?", locationID, models.FollowLocation).
+			Pluck("profile_id", &locationFollowerIDs)
+		for _, id := range locationFollowerIDs {
+			seen[id] = true
+		}
+	}
+
+	// Notify each unique follower
+	for followerID := range seen {
+		h.notifSvc.Notify(h.db, followerID, ownerID, models.NotifNewArticle, submissionID, models.ReactionTargetSubmission, submissionID)
+	}
 }

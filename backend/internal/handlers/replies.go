@@ -75,7 +75,7 @@ func (h *Handler) CreateReply(c *gin.Context) {
 	if req.ParentID != nil {
 		var parent models.Reply
 		if h.db.First(&parent, "id = ?", *req.ParentID).Error == nil {
-			h.createNotification(parent.ProfileID, actor.ProfileID, models.NotifReply, reply.ID, models.ReactionTargetReply, subID)
+			go h.notifSvc.Notify(h.db, parent.ProfileID, actor.ProfileID, models.NotifReply, reply.ID, models.ReactionTargetReply, subID)
 		}
 	}
 

@@ -327,7 +327,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!isOwnProfile) return;
     setNotifsLoading(true);
-    getNotifications(50)
+    getNotifications({ limit: 50 })
       .then((res) => setNotifications(res.notifications))
       .catch(() => {})
       .finally(() => setNotifsLoading(false));
@@ -420,6 +420,10 @@ export default function ProfilePage() {
         </div>
 
         <div className="profile-stats">
+          <div className="profile-stat">
+            <span className="profile-stat__value">{profile?.karma ?? 0}</span>
+            <span className="profile-stat__label">{t("profile.karma")}</span>
+          </div>
           <div className="profile-stat">
             <span className="profile-stat__value">{publishedPosts.length}</span>
             <span className="profile-stat__label">{t("profile.published")}</span>

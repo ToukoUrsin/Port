@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { User, LogIn, Search, X, Clock, Loader2, PenSquare, MapPin } from "lucide-react";
+import { User, LogIn, Search, X, Clock, Loader2, PenSquare, MapPin, Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { search, getUnreadCount } from "@/lib/api";
+import { search, getToken } from "@/lib/api";
 import { apiToArticle } from "@/lib/types";
 import type { SearchResponse } from "@/lib/types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
+import { connectNotificationStream } from "@/lib/notificationStream";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 interface NavbarProps {
   initialQuery?: string;
@@ -82,16 +84,38 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
     }
   };
 
-  // Poll unread notification count
+  // Notification state with SSE stream
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
   useEffect(() => {
-    if (!isAuthenticated) return;
-    getUnreadCount().then((d) => setUnreadCount(d.count)).catch(() => {});
-    const interval = setInterval(() => {
-      getUnreadCount().then((d) => setUnreadCount(d.count)).catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
+    if (!isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const token = getToken();
+    if (!token) return;
+
+    const controller = connectNotificationStream(token, {
+      onNotification: () => {
+        setUnreadCount((prev) => prev + 1);
+      },
+      onCount: (count) => {
+        setUnreadCount(count);
+      },
+    });
+
+    return () => controller.abort();
   }, [isAuthenticated]);
+
+  const handleNotifCountChange = useCallback((delta: number) => {
+    if (delta === 0) {
+      setUnreadCount(0);
+    } else {
+      setUnreadCount((prev) => Math.max(0, prev + delta));
+    }
+  }, []);
 
   const showDropdown = query.trim().length > 0;
 
@@ -195,9 +219,28 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
                 <PenSquare size={16} />
                 <span>{t("navbar.post")}</span>
               </NavLink>
-              <NavLink to="/profile" className="home-nav__icon-btn home-nav__profile-btn" title={t("navbar.profile")}>
+              <div className="notif-bell-wrapper">
+                <button
+                  className="notif-bell"
+                  onClick={() => setShowNotifDropdown((v) => !v)}
+                  title={t("notifications.title")}
+                >
+                  <Bell size={20} />
+                  {unreadCount > 0 && (
+                    <span className="notif-bell__badge">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {showNotifDropdown && (
+                  <NotificationDropdown
+                    onClose={() => setShowNotifDropdown(false)}
+                    onCountChange={handleNotifCountChange}
+                  />
+                )}
+              </div>
+              <NavLink to="/profile" className="home-nav__icon-btn" title={t("navbar.profile")}>
                 <User size={18} />
-                {unreadCount > 0 && <span className="notif-dot" />}
               </NavLink>
             </>
           ) : (
@@ -216,10 +259,29 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
         </Link>
         <Link to="/" className="home-nav-topbar__brand">{t("navbar.brandName")}</Link>
         {isAuthenticated ? (
-          <NavLink to="/profile" className="home-nav-topbar__icon home-nav__profile-btn" title={t("navbar.profile")}>
-            <User size={18} />
-            {unreadCount > 0 && <span className="notif-dot" />}
-          </NavLink>
+          <div className="notif-bell-wrapper" style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <button
+              className="notif-bell"
+              onClick={() => setShowNotifDropdown((v) => !v)}
+              title={t("notifications.title")}
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="notif-bell__badge">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+            {showNotifDropdown && (
+              <NotificationDropdown
+                onClose={() => setShowNotifDropdown(false)}
+                onCountChange={handleNotifCountChange}
+              />
+            )}
+            <NavLink to="/profile" className="home-nav-topbar__icon" title={t("navbar.profile")}>
+              <User size={18} />
+            </NavLink>
+          </div>
         ) : (
           <NavLink to="/login" className="home-nav-topbar__icon" title={t("navbar.login")}>
             <LogIn size={18} />

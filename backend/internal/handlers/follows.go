@@ -48,6 +48,11 @@ func (h *Handler) CreateFollow(c *gin.Context) {
 		return
 	}
 
+	// Notify the followed user
+	if req.TargetType == models.FollowProfile {
+		go h.notifSvc.Notify(h.db, req.TargetID, actor.ProfileID, models.NotifNewFollower, follow.ID, models.FollowProfile, uuid.Nil)
+	}
+
 	c.JSON(http.StatusCreated, follow)
 }
 
