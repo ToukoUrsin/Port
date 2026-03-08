@@ -616,84 +616,86 @@ export default function HomePage() {
       {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
       <Navbar />
       <nav className="city-bar">
-        <div className="city-bar__scroll">
+        <div className="city-bar__inner">
+          <div className="city-bar__scroll">
+            <button
+              className={`city-bar__item ${isAllSelected ? "city-bar__item--active" : ""}`}
+              onClick={selectAll}
+            >
+              {t("home.all")}
+            </button>
+            {nearbyCities.map((loc) => {
+              const isActive = selectedIds.has(loc.id) || (sharedLoc?.id === loc.id);
+              return (
+                <button
+                  key={loc.id}
+                  className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
+                  onClick={() => toggleCity(loc.id)}
+                >
+                  {loc.name}
+                </button>
+              );
+            })}
+          </div>
           <button
-            className={`city-bar__item ${isAllSelected ? "city-bar__item--active" : ""}`}
-            onClick={selectAll}
+            className={`city-bar__toggle ${filterPanelOpen ? "city-bar__toggle--active" : ""}`}
+            onClick={() => setFilterPanelOpen((p) => !p)}
+            aria-expanded={filterPanelOpen}
+            aria-label={t("filter.categories")}
           >
-            {t("home.all")}
+            <ChevronDown size={16} style={{ transform: filterPanelOpen ? "rotate(180deg)" : undefined }} />
           </button>
-          {nearbyCities.map((loc) => {
-            const isActive = selectedIds.has(loc.id) || (sharedLoc?.id === loc.id);
-            return (
-              <button
-                key={loc.id}
-                className={`city-bar__item ${isActive ? "city-bar__item--active" : ""}`}
-                onClick={() => toggleCity(loc.id)}
-              >
-                {loc.name}
-              </button>
-            );
-          })}
         </div>
-        <button
-          className={`city-bar__toggle ${filterPanelOpen ? "city-bar__toggle--active" : ""}`}
-          onClick={() => setFilterPanelOpen((p) => !p)}
-          aria-expanded={filterPanelOpen}
-          aria-label={t("filter.categories")}
-        >
-          <ChevronDown size={16} style={{ transform: filterPanelOpen ? "rotate(180deg)" : undefined }} />
-        </button>
-      </nav>
-      {filterPanelOpen && (
-        <div className="filter-panel">
-          {ALL_CATEGORIES.some((cat) => (categoryCounts[cat] ?? 0) > 0) && (
-            <div>
-              <div className="filter-panel__label">{t("filter.categories")}</div>
-              <div className="filter-panel__items" style={{ marginTop: "var(--space-2)" }}>
-                {ALL_CATEGORIES.filter((cat) => (categoryCounts[cat] ?? 0) > 0).map((cat) => (
-                  <button
-                    key={cat}
-                    className={`badge ${BADGE_CLASS[cat] ?? ""} badge--clickable ${selectedCategories.has(cat) ? "badge--active" : ""}`}
-                    onClick={() =>
-                      setSelectedCategories((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(cat)) next.delete(cat);
-                        else next.add(cat);
-                        return next;
-                      })
-                    }
-                  >
-                    {t("tag." + cat)}
-                    <span className="filter-panel__count">{categoryCounts[cat]}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {allLocations.filter((loc) => !nearbyIdSet.has(loc.id)).length > 0 && (
-            <div>
-              <div className="filter-panel__label">{t("filter.moreCities")}</div>
-              <div className="filter-panel__items" style={{ marginTop: "var(--space-2)" }}>
-                {allLocations
-                  .filter((loc) => !nearbyIdSet.has(loc.id))
-                  .map((loc) => (
+        {filterPanelOpen && (
+          <div className="filter-panel">
+            {ALL_CATEGORIES.some((cat) => (categoryCounts[cat] ?? 0) > 0) && (
+              <div>
+                <div className="filter-panel__label">{t("filter.categories")}</div>
+                <div className="filter-panel__items" style={{ marginTop: "var(--space-2)" }}>
+                  {ALL_CATEGORIES.filter((cat) => (categoryCounts[cat] ?? 0) > 0).map((cat) => (
                     <button
-                      key={loc.id}
-                      className={`filter-panel__city ${selectedIds.has(loc.id) ? "filter-panel__city--active" : ""}`}
-                      onClick={() => toggleCity(loc.id)}
+                      key={cat}
+                      className={`badge ${BADGE_CLASS[cat] ?? ""} badge--clickable ${selectedCategories.has(cat) ? "badge--active" : ""}`}
+                      onClick={() =>
+                        setSelectedCategories((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(cat)) next.delete(cat);
+                          else next.add(cat);
+                          return next;
+                        })
+                      }
                     >
-                      {loc.name}
-                      {loc.article_count != null && (
-                        <span className="filter-panel__count">({loc.article_count})</span>
-                      )}
+                      {t("tag." + cat)}
+                      <span className="filter-panel__count">{categoryCounts[cat]}</span>
                     </button>
                   ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+            {allLocations.filter((loc) => !nearbyIdSet.has(loc.id)).length > 0 && (
+              <div>
+                <div className="filter-panel__label">{t("filter.moreCities")}</div>
+                <div className="filter-panel__items" style={{ marginTop: "var(--space-2)" }}>
+                  {allLocations
+                    .filter((loc) => !nearbyIdSet.has(loc.id))
+                    .map((loc) => (
+                      <button
+                        key={loc.id}
+                        className={`filter-panel__city ${selectedIds.has(loc.id) ? "filter-panel__city--active" : ""}`}
+                        onClick={() => toggleCity(loc.id)}
+                      >
+                        {loc.name}
+                        {loc.article_count != null && (
+                          <span className="filter-panel__count">({loc.article_count})</span>
+                        )}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </nav>
       <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
 
       <main className="home-container">
