@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUp, X, Loader2,
-  CheckCircle, Camera, EyeOff,
+  CheckCircle, Camera, EyeOff, FileAudio,
   Mic, ImageIcon, Search, PenTool, ShieldCheck, Type, MessageCircleQuestion, Send,
   RefreshCw,
 } from "lucide-react";
@@ -48,11 +48,13 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
   const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [audioFileName, setAudioFileName] = useState("recording.webm");
   const [anonymous, setAnonymous] = useState(false);
   const [locationId, setLocationId] = useState("");
   const [locationName, setLocationName] = useState("");
   const [showPublicModal, setShowPublicModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const audioFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -75,6 +77,15 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
     });
   }
 
+  function onAudioFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAudioBlob(file);
+    setAudioURL(URL.createObjectURL(file));
+    setAudioFileName(file.name);
+    e.target.value = "";
+  }
+
   const canSubmit = text.trim().length > 0 || files.length > 0 || audioBlob !== null;
 
   async function doSubmit() {
@@ -83,7 +94,7 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
     try {
       const formData = new FormData();
       if (audioBlob) {
-        formData.append("audio", audioBlob, "recording.webm");
+        formData.append("audio", audioBlob, audioFileName);
       }
       for (const f of files) {
         formData.append("photos[]", f.file);
@@ -197,10 +208,19 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             >
               <Camera size={20} />
             </button>
+            <button
+              type="button"
+              className="compose-action"
+              onClick={() => audioFileRef.current?.click()}
+              disabled={isSubmitting}
+            >
+              <FileAudio size={20} />
+            </button>
             <VoiceRecorder
               onRecording={(blob) => {
                 setAudioBlob(blob);
                 setAudioURL(URL.createObjectURL(blob));
+                setAudioFileName("recording.webm");
               }}
               compact
               externalAudioURL={audioURL}
@@ -214,6 +234,13 @@ function InputStep({ onSubmit }: { onSubmit: (submissionId: string) => void }) {
             multiple
             style={{ display: "none" }}
             onChange={onFiles}
+          />
+          <input
+            ref={audioFileRef}
+            type="file"
+            accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.webm"
+            style={{ display: "none" }}
+            onChange={onAudioFile}
           />
           <div className="compose-toolbar-right">
             <button
