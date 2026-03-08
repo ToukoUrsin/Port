@@ -195,6 +195,14 @@
   font-weight: var(--font-semibold);
 }
 
+/* Saved articles grid */
+.profile-saved-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+
 /* Post list */
 .profile-posts {
   display: flex;

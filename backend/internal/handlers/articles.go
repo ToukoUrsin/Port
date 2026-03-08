@@ -50,11 +50,19 @@ func (h *Handler) ListArticles(c *gin.Context) {
 		query = query.Where("owner_id = ?", ownerID)
 	}
 
+	sort := c.DefaultQuery("sort", "recent")
+
 	var total int64
 	query.Count(&total)
 
 	var articles []models.Submission
-	query.Order("updated_at DESC").Limit(limit).Offset(offset).Find(&articles)
+	switch sort {
+	case "popular":
+		query = query.Order("views DESC, updated_at DESC")
+	default:
+		query = query.Order("updated_at DESC")
+	}
+	query.Limit(limit).Offset(offset).Find(&articles)
 
 	h.fillLocationNames(articles)
 	h.fillOwnerNames(articles)
@@ -68,6 +76,9 @@ func (h *Handler) GetArticle(c *gin.Context) {
 	// Cache hit
 	var article models.Submission
 	if h.cache.Get(c.Request.Context(), key, &article) {
+		// Increment views in background (approximate count)
+		go h.db.Model(&models.Submission{}).Where("id = ?", article.ID).
+			UpdateColumn("views", gorm.Expr("views + 1"))
 		c.JSON(http.StatusOK, article)
 		return
 	}
@@ -82,6 +93,10 @@ func (h *Handler) GetArticle(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
+
+	// Increment views in background
+	go h.db.Model(&models.Submission{}).Where("id = ?", id).
+		UpdateColumn("views", gorm.Expr("views + 1"))
 
 	articles := []models.Submission{article}
 	h.fillLocationNames(articles)

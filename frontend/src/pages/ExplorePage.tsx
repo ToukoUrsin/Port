@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { getLocations } from "@/lib/api";
 import type { ApiLocation } from "@/lib/types";
 import Navbar from "@/components/Navbar";
@@ -105,6 +106,7 @@ function MapEventHandler({
 
 export default function ExplorePage() {
   const { t } = useLanguage();
+  useDocumentHead({ title: "Explore" });
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedPaths, setSelectedPaths] = useState<Map<string, string>>(new Map());

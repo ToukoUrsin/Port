@@ -10,6 +10,7 @@ export interface Article {
   timeAgo: string;
   image: string;
   area?: string;
+  views?: number;
   isLead?: boolean;
 }
 

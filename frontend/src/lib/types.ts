@@ -6,10 +6,10 @@ export interface VerificationEntry {
   claim: string;
   evidence: string;
   status:
-    | "SUPPORTED"
-    | "NOT_IN_SOURCE"
-    | "POSSIBLE_HALLUCINATION"
-    | "FABRICATED_QUOTE";
+  | "SUPPORTED"
+  | "NOT_IN_SOURCE"
+  | "POSSIBLE_HALLUCINATION"
+  | "FABRICATED_QUOTE";
 }
 
 export interface QualityScores {
@@ -65,11 +65,11 @@ export interface ResearchResult {
 
 export interface ArticleMetadata {
   chosen_structure:
-    | "news_report"
-    | "feature"
-    | "photo_essay"
-    | "brief"
-    | "narrative";
+  | "news_report"
+  | "feature"
+  | "photo_essay"
+  | "brief"
+  | "narrative";
   category: string;
   confidence: number;
   missing_context: string[];
@@ -389,6 +389,7 @@ export function apiToArticle(s: ApiSubmission, t?: (key: string) => string): Art
     timeAgo: timeAgo(s.created_at, t),
     image: s.meta.featured_img || "",
     area: s.location_name || s.meta.place_name,
+    views: s.views,
   };
 }
 
