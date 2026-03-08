@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { getLocations } from "@/lib/api";
@@ -102,6 +102,16 @@ function MapEventHandler({
   }, []);
 
   return null;
+}
+
+/** Redirect /explore?town=slug to /?location=slug */
+export function ExploreRedirectGuard() {
+  const [searchParams] = useSearchParams();
+  const townParam = searchParams.get("town");
+  if (townParam) {
+    return <Navigate to={`/?location=${encodeURIComponent(townParam)}`} replace />;
+  }
+  return <ExplorePage />;
 }
 
 export default function ExplorePage() {

@@ -85,12 +85,10 @@ func buildGenerationUserPrompt(input GenerationInput) string {
 		b.WriteString("\n\n")
 	}
 
-	tc := input.TownContext
-	if tc == "" {
-		tc = prompts.TownContext
+	if input.TownContext != "" {
+		b.WriteString("Town context (background reference only — do NOT use to add geographic claims or details not in the source material): ")
+		b.WriteString(input.TownContext)
 	}
-	b.WriteString("Town context (background reference only — do NOT use to add geographic claims or details not in the source material): ")
-	b.WriteString(tc)
 
 	if input.PreviousArticle != "" {
 		b.WriteString("\n\nPrevious article:\n")

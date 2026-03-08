@@ -6,7 +6,7 @@ import { ConfirmProvider } from "@/components/ConfirmDialog.tsx";
 import { ProtectedRoute, PublicOnlyRoute, AdminProtectedRoute } from "@/components/ProtectedRoute.tsx";
 import HomePage from "./pages/HomePage";
 import DesignSystem from "./pages/DesignSystem";
-import ExplorePage from "./pages/ExplorePage";
+import { ExploreRedirectGuard } from "./pages/ExplorePage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import PostPage from "./pages/PostPage";
@@ -30,7 +30,7 @@ function App() {
             <Route path="/article/:id" element={<ArticlePage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/tag/:slug" element={<TagPage />} />
-            <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/explore" element={<ExploreRedirectGuard />} />
             <Route path="/design-system" element={<DesignSystem />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route
