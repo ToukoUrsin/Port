@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
-import { getArticle, getSimilarArticles, getReplies, createReply, deleteReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply, bookmarkArticle as apiBookmark, unbookmarkArticle as apiUnbookmark, getBookmarkStatus } from "@/lib/api";
+import { getArticle, getSimilarArticles, getReplies, createReply, deleteReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { apiToArticle, timeAgo, computeOverallScore } from "@/lib/types";
 import type { ApiSubmission, ApiReply, ReactionCounts, ReplyReactionMap } from "@/lib/types";
