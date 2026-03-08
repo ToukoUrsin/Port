@@ -157,6 +157,7 @@ export function getArticles(params?: {
   sort?: "recent" | "popular" | "ranked";
   limit?: number;
   offset?: number;
+  cursor?: string;
 }): Promise<ArticleListResponse> {
   const qs = new URLSearchParams();
   if (params?.location_id) qs.set("location_id", params.location_id);
@@ -167,6 +168,7 @@ export function getArticles(params?: {
   if (params?.sort) qs.set("sort", params.sort);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
+  if (params?.cursor) qs.set("cursor", params.cursor);
   const query = qs.toString();
   return apiFetch<ArticleListResponse>(
     `/api/articles${query ? `?${query}` : ""}`,

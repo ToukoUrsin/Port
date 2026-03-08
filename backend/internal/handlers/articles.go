@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,6 +18,7 @@ import (
 func (h *Handler) ListArticles(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	cursor := c.Query("cursor")
 	locationID := c.Query("location_id")
 	locationIDs := c.Query("location_ids")
 
@@ -56,96 +60,243 @@ func (h *Handler) ListArticles(c *gin.Context) {
 	query.Count(&total)
 
 	var articles []models.Submission
+	hasMore := false
+	nextCursor := ""
+
 	switch sort {
 	case "ranked":
-		// Two-query candidate fetch: regular + boosted (guarantees old editorial articles in pool)
-		var regular []models.Submission
-		query.Session(&gorm.Session{}).Where("boost_score = 0").
-			Order("created_at DESC").Limit(190).Find(&regular)
-		var boosted []models.Submission
-		query.Session(&gorm.Session{}).Where("boost_score > 0").
-			Order("boost_score DESC, created_at DESC").Limit(10).Find(&boosted)
-		articles = append(regular, boosted...)
-
-		if len(articles) > 0 {
-			// Batch-load reply counts
-			articleIDs := make([]uuid.UUID, len(articles))
-			for i, a := range articles {
-				articleIDs[i] = a.ID
-			}
-			type replyCountRow struct {
-				SubmissionID uuid.UUID
-				Count        int
-			}
-			var replyCounts []replyCountRow
-			h.db.Model(&models.Reply{}).
-				Select("submission_id, COUNT(*) as count").
-				Where("submission_id IN ? AND status = ?", articleIDs, models.ReplyVisible).
-				Group("submission_id").
-				Scan(&replyCounts)
-			replyCountMap := make(map[uuid.UUID]int, len(replyCounts))
-			for _, rc := range replyCounts {
-				replyCountMap[rc.SubmissionID] = rc.Count
-			}
-
-			// Batch-load author karma
-			ownerSet := make(map[uuid.UUID]bool)
-			for _, a := range articles {
-				ownerSet[a.OwnerID] = true
-			}
-			ownerIDs := make([]uuid.UUID, 0, len(ownerSet))
-			for id := range ownerSet {
-				ownerIDs = append(ownerIDs, id)
-			}
-			type karmaRow struct {
-				ID    uuid.UUID
-				Karma int
-			}
-			var karmaRows []karmaRow
-			h.db.Model(&models.Profile{}).
-				Select("id, karma").
-				Where("id IN ?", ownerIDs).
-				Scan(&karmaRows)
-			karmaMap := make(map[uuid.UUID]int, len(karmaRows))
-			for _, kr := range karmaRows {
-				karmaMap[kr.ID] = kr.Karma
-			}
-
-			// Load personalization if user is logged in
-			var perso *FeedPersonalization
-			if pidRaw, exists := c.Get("profile_id"); exists {
-				if pidStr, ok := pidRaw.(string); ok {
-					if pid, err := uuid.Parse(pidStr); err == nil {
-						perso = h.loadPersonalization(c, pid)
-					}
-				}
-			}
-
-			h.rankArticles(articles, karmaMap, replyCountMap, perso)
-		}
-
-		// Apply pagination after ranking
-		if offset >= len(articles) {
-			articles = nil
-		} else {
-			end := offset + limit
-			if end > len(articles) {
-				end = len(articles)
-			}
-			articles = articles[offset:end]
-		}
+		articles, hasMore, nextCursor = h.listRanked(c, query, limit, offset, cursor)
 
 	case "popular":
-		query = query.Order("views DESC, updated_at DESC")
-		query.Limit(limit).Offset(offset).Find(&articles)
-	default:
-		query = query.Order("updated_at DESC")
-		query.Limit(limit).Offset(offset).Find(&articles)
+		articles, hasMore, nextCursor = h.listWithKeyset(c, query, limit, offset, cursor, "popular")
+
+	default: // "recent"
+		articles, hasMore, nextCursor = h.listWithKeyset(c, query, limit, offset, cursor, "recent")
 	}
 
 	h.fillLocationNames(articles)
 	h.fillOwnerNames(articles)
-	c.JSON(http.StatusOK, gin.H{"articles": articles, "total": total})
+
+	resp := gin.H{"articles": articles, "total": total, "has_more": hasMore}
+	if nextCursor != "" {
+		resp["next_cursor"] = nextCursor
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// listWithKeyset handles cursor-based pagination for recent and popular sorts.
+func (h *Handler) listWithKeyset(c *gin.Context, query *gorm.DB, limit, offset int, cursor, sortMode string) ([]models.Submission, bool, string) {
+	var articles []models.Submission
+
+	if cursor != "" {
+		// Parse cursor: "value_uuid"
+		parts := strings.SplitN(cursor, "_", 2)
+		if len(parts) == 2 {
+			cursorID, err := uuid.Parse(parts[1])
+			if err == nil {
+				switch sortMode {
+				case "popular":
+					cursorViews, _ := strconv.Atoi(parts[0])
+					query = query.Where("(views, id) < (?, ?)", cursorViews, cursorID)
+				default: // recent
+					cursorTime, err := time.Parse(time.RFC3339Nano, parts[0])
+					if err == nil {
+						query = query.Where("(updated_at, id) < (?, ?)", cursorTime, cursorID)
+					}
+				}
+			}
+		}
+	} else if offset > 0 {
+		// Fallback to offset when no cursor
+		query = query.Offset(offset)
+	}
+
+	switch sortMode {
+	case "popular":
+		query = query.Order("views DESC, id DESC")
+	default:
+		query = query.Order("updated_at DESC, id DESC")
+	}
+
+	// Fetch limit+1 to detect has_more
+	query.Limit(limit + 1).Find(&articles)
+
+	hasMore := len(articles) > limit
+	if hasMore {
+		articles = articles[:limit]
+	}
+
+	nextCursor := ""
+	if hasMore && len(articles) > 0 {
+		last := articles[len(articles)-1]
+		switch sortMode {
+		case "popular":
+			nextCursor = fmt.Sprintf("%d_%s", last.Views, last.ID.String())
+		default:
+			nextCursor = fmt.Sprintf("%s_%s", last.UpdatedAt.Format(time.RFC3339Nano), last.ID.String())
+		}
+	}
+
+	return articles, hasMore, nextCursor
+}
+
+// listRanked handles ranked feed with Redis-cached feed sessions.
+func (h *Handler) listRanked(c *gin.Context, query *gorm.DB, limit, offset int, cursor string) ([]models.Submission, bool, string) {
+	ctx := c.Request.Context()
+
+	// If cursor is provided, try to use cached feed session
+	if cursor != "" {
+		parts := strings.SplitN(cursor, "_", 2)
+		if len(parts) == 2 {
+			feedID := parts[0]
+			cursorOffset, _ := strconv.Atoi(parts[1])
+			cacheKey := "feed:" + feedID
+
+			var cachedIDs []string
+			if h.cache.Get(ctx, cacheKey, &cachedIDs) {
+				// Slice the cached IDs
+				start := cursorOffset
+				if start >= len(cachedIDs) {
+					return nil, false, ""
+				}
+				end := start + limit
+				hasMore := end < len(cachedIDs)
+				if end > len(cachedIDs) {
+					end = len(cachedIDs)
+				}
+				pageIDs := cachedIDs[start:end]
+
+				// Batch-load articles by IDs
+				uuids := make([]uuid.UUID, 0, len(pageIDs))
+				for _, idStr := range pageIDs {
+					if id, err := uuid.Parse(idStr); err == nil {
+						uuids = append(uuids, id)
+					}
+				}
+				var articles []models.Submission
+				if len(uuids) > 0 {
+					h.db.Where("id IN ?", uuids).Find(&articles)
+				}
+
+				// Restore cached order
+				idxMap := make(map[uuid.UUID]int, len(pageIDs))
+				for i, idStr := range pageIDs {
+					if id, err := uuid.Parse(idStr); err == nil {
+						idxMap[id] = i
+					}
+				}
+				for i := 0; i < len(articles); i++ {
+					for j := i + 1; j < len(articles); j++ {
+						if idxMap[articles[i].ID] > idxMap[articles[j].ID] {
+							articles[i], articles[j] = articles[j], articles[i]
+						}
+					}
+				}
+
+				nextCursor := ""
+				if hasMore {
+					nextCursor = fmt.Sprintf("%s_%d", feedID, end)
+				}
+				return articles, hasMore, nextCursor
+			}
+			// Cache miss — fall through to recompute
+		}
+	}
+
+	// Compute ranked list (expanded pool: 350 regular + 150 boosted)
+	var regular []models.Submission
+	query.Session(&gorm.Session{}).Where("boost_score = 0").
+		Order("created_at DESC").Limit(350).Find(&regular)
+	var boosted []models.Submission
+	query.Session(&gorm.Session{}).Where("boost_score > 0").
+		Order("boost_score DESC, created_at DESC").Limit(150).Find(&boosted)
+	allArticles := append(regular, boosted...)
+
+	if len(allArticles) > 0 {
+		// Batch-load reply counts
+		articleIDs := make([]uuid.UUID, len(allArticles))
+		for i, a := range allArticles {
+			articleIDs[i] = a.ID
+		}
+		type replyCountRow struct {
+			SubmissionID uuid.UUID
+			Count        int
+		}
+		var replyCounts []replyCountRow
+		h.db.Model(&models.Reply{}).
+			Select("submission_id, COUNT(*) as count").
+			Where("submission_id IN ? AND status = ?", articleIDs, models.ReplyVisible).
+			Group("submission_id").
+			Scan(&replyCounts)
+		replyCountMap := make(map[uuid.UUID]int, len(replyCounts))
+		for _, rc := range replyCounts {
+			replyCountMap[rc.SubmissionID] = rc.Count
+		}
+
+		// Batch-load author karma
+		ownerSet := make(map[uuid.UUID]bool)
+		for _, a := range allArticles {
+			ownerSet[a.OwnerID] = true
+		}
+		ownerIDs := make([]uuid.UUID, 0, len(ownerSet))
+		for id := range ownerSet {
+			ownerIDs = append(ownerIDs, id)
+		}
+		type karmaRow struct {
+			ID    uuid.UUID
+			Karma int
+		}
+		var karmaRows []karmaRow
+		h.db.Model(&models.Profile{}).
+			Select("id, karma").
+			Where("id IN ?", ownerIDs).
+			Scan(&karmaRows)
+		karmaMap := make(map[uuid.UUID]int, len(karmaRows))
+		for _, kr := range karmaRows {
+			karmaMap[kr.ID] = kr.Karma
+		}
+
+		// Load personalization if user is logged in
+		var perso *FeedPersonalization
+		if pidRaw, exists := c.Get("profile_id"); exists {
+			if pidStr, ok := pidRaw.(string); ok {
+				if pid, err := uuid.Parse(pidStr); err == nil {
+					perso = h.loadPersonalization(c, pid)
+				}
+			}
+		}
+
+		h.rankArticles(allArticles, karmaMap, replyCountMap, perso)
+	}
+
+	// Cache the full ranked ID list in Redis with 15min TTL
+	feedID := uuid.New().String()
+	cachedIDs := make([]string, len(allArticles))
+	for i, a := range allArticles {
+		cachedIDs[i] = a.ID.String()
+	}
+	cacheKey := "feed:" + feedID
+	data, _ := json.Marshal(cachedIDs)
+	_ = h.cache.SetWithTTL(ctx, cacheKey, json.RawMessage(data), 15*time.Minute)
+
+	// Apply pagination (use offset for legacy, default 0)
+	start := offset
+	if start >= len(allArticles) {
+		return nil, false, ""
+	}
+	end := start + limit
+	hasMore := end < len(allArticles)
+	if end > len(allArticles) {
+		end = len(allArticles)
+	}
+	articles := allArticles[start:end]
+
+	nextCursor := ""
+	if hasMore {
+		nextCursor = fmt.Sprintf("%s_%d", feedID, end)
+	}
+
+	return articles, hasMore, nextCursor
 }
 
 func (h *Handler) GetArticle(c *gin.Context) {

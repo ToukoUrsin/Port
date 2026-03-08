@@ -43,6 +43,8 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "filter.categories": "Kategoriat",
     "filter.moreCities": "Lisää kaupunkeja",
     "home.noFilterResults": "Artikkeleita ei löydy valituilla suodattimilla.",
+    "home.moreStories": "Lisää juttuja",
+    "home.allLoaded": "Kaikki artikkelit ladattu",
 
     // Login
     "login.title": "PORT",
@@ -497,6 +499,8 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "filter.categories": "Categories",
     "filter.moreCities": "More cities",
     "home.noFilterResults": "No articles match the selected filters.",
+    "home.moreStories": "More Stories",
+    "home.allLoaded": "All articles loaded",
 
     // Login
     "login.title": "PORT",

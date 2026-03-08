@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
@@ -352,6 +353,104 @@ function NewsSection({
   );
 }
 
+function MoreStoriesSection({
+  articles,
+  hasMore,
+  isLoadingMore,
+  sentinelRef,
+  t,
+}: {
+  articles: Article[];
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  sentinelRef: React.RefObject<HTMLDivElement | null>;
+  t: (key: string) => string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [columns, setColumns] = useState(1);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  // Track column count based on viewport
+  useEffect(() => {
+    const update = () => {
+      if (window.matchMedia("(min-width: 1024px)").matches) setColumns(3);
+      else if (window.matchMedia("(min-width: 768px)").matches) setColumns(2);
+      else setColumns(1);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  // Measure scrollMargin from container offset
+  useEffect(() => {
+    if (containerRef.current) {
+      setScrollMargin(containerRef.current.offsetTop);
+    }
+  }, [articles.length]);
+
+  const rowCount = Math.ceil(articles.length / columns);
+  const useVirtual = articles.length >= 60;
+
+  const virtualizer = useWindowVirtualizer({
+    count: useVirtual ? rowCount : 0,
+    estimateSize: () => 340,
+    overscan: 3,
+    scrollMargin,
+  });
+
+  if (articles.length === 0 && !hasMore) return null;
+
+  return (
+    <section className="home-section">
+      <h2 className="home-section__title">{t("home.moreStories")}</h2>
+      {useVirtual ? (
+        <div
+          ref={containerRef}
+          className="more-stories-virtual"
+          style={{ height: virtualizer.getTotalSize() }}
+        >
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const startIdx = virtualRow.index * columns;
+            const rowArticles = articles.slice(startIdx, startIdx + columns);
+            return (
+              <div
+                key={virtualRow.key}
+                className="more-stories-row"
+                style={{
+                  transform: `translateY(${virtualRow.start - virtualizer.options.scrollMargin}px)`,
+                }}
+              >
+                {rowArticles.map((article) => (
+                  <ArticleCard key={article.id} article={article} />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="article-grid">
+          {articles.map((article) => (
+            <ArticleCard key={article.id} article={article} />
+          ))}
+        </div>
+      )}
+      <div ref={sentinelRef} className="scroll-sentinel" />
+      {isLoadingMore && (
+        <div className="more-stories__status">
+          <Loader2 size={16} className="animate-spin" />
+          <span>{t("search.loading")}</span>
+        </div>
+      )}
+      {!hasMore && articles.length > 0 && (
+        <div className="more-stories__status">
+          <span>{t("home.allLoaded")}</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function HomePage() {
   const [searchParams] = useSearchParams();
   const { language, setLanguage, t } = useLanguage();
@@ -467,9 +566,9 @@ export default function HomePage() {
         return Promise.resolve({ articles: [], total: 0 } as ArticleListResponse);
       }
       if (effectiveIds.length > 0) {
-        return getArticles({ limit: 100, location_ids: effectiveIds, sort: "ranked" });
+        return getArticles({ limit: 30, location_ids: effectiveIds, sort: "ranked" });
       }
-      return getArticles({ limit: 100, country, sort: "ranked" });
+      return getArticles({ limit: 30, country, sort: "ranked" });
     },
     [effectiveIds, country, sharedLoc],
   );
@@ -492,6 +591,70 @@ export default function HomePage() {
     [trendingData, t],
   );
 
+  // --- Infinite scroll state ---
+  const [moreArticles, setMoreArticles] = useState<Article[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+
+  // Capture cursor from initial fetch & reset on filter change
+  useEffect(() => {
+    setNextCursor(apiData?.next_cursor ?? null);
+    setHasMore(apiData?.has_more ?? false);
+    setMoreArticles([]);
+  }, [apiData]);
+
+  // Deduplication set: IDs already shown in curated sections + trending
+  const initialIdSet = useMemo(() => {
+    const ids = new Set<string>();
+    for (const a of allArticles) ids.add(a.id);
+    for (const a of trendingArticles) ids.add(a.id);
+    return ids;
+  }, [allArticles, trendingArticles]);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !nextCursor) return;
+    setIsLoadingMore(true);
+    try {
+      const params: Parameters<typeof getArticles>[0] = {
+        limit: 20,
+        cursor: nextCursor,
+        sort: "ranked",
+        country: effectiveIds.length > 0 ? undefined : country,
+      };
+      if (effectiveIds.length > 0) {
+        params.location_ids = effectiveIds;
+      }
+      const res = await getArticles(params);
+      const newArticles = res.articles
+        .map((a) => apiToArticle(a, t))
+        .filter((a) => !initialIdSet.has(a.id));
+      // Also deduplicate against already-loaded more articles
+      const existingMore = new Set(moreArticles.map((a) => a.id));
+      const unique = newArticles.filter((a) => !existingMore.has(a.id));
+      setMoreArticles((prev) => [...prev, ...unique]);
+      setNextCursor(res.next_cursor ?? null);
+      setHasMore(res.has_more ?? false);
+    } catch {
+      // Silently fail — user can retry by scrolling
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, nextCursor, effectiveIds, country, t, initialIdSet, moreArticles]);
+
+  // IntersectionObserver for infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
   // Category counts (from fetched articles, before category filtering)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -509,6 +672,12 @@ export default function HomePage() {
     if (selectedCategories.size === 0) return trendingArticles;
     return trendingArticles.filter(a => selectedCategories.has(a.category));
   }, [trendingArticles, selectedCategories]);
+
+  // Filter more articles by selected categories
+  const filteredMore = useMemo(() => {
+    if (selectedCategories.size === 0) return moreArticles;
+    return moreArticles.filter(a => selectedCategories.has(a.category));
+  }, [moreArticles, selectedCategories]);
 
   // Saved location names from explore map picks
   const savedNames = useMemo(() => getSavedLocationNames(), []);
@@ -750,6 +919,18 @@ export default function HomePage() {
               <>
                 <img src="/Line 1.svg" alt="" className="line-divider" />
                 <NewsSection headlines={newsHeadlines} featured={newsFeatured} t={t} />
+              </>
+            )}
+            {(filteredMore.length > 0 || hasMore) && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <MoreStoriesSection
+                  articles={filteredMore}
+                  hasMore={hasMore}
+                  isLoadingMore={isLoadingMore}
+                  sentinelRef={sentinelRef}
+                  t={t}
+                />
               </>
             )}
           </>
