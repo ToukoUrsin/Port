@@ -1,3 +1,6 @@
-# How Do We Tell the Story?
+# Pitch Materials
 
-- [DEMO.md](DEMO.md) — 3-minute script, pre-demo setup, what must work, fallbacks
+- [PITCHDECK_STRATEGY.md](PITCHDECK_STRATEGY.md) — Deck strategy and slide plan
+- [DECK_FLOW_AND_FEEL.md](DECK_FLOW_AND_FEEL.md) — Deck flow and feel
+- [INFOBLAST.md](INFOBLAST.md) — Comprehensive info blast for pitch prep
+- [SOURCE_DIGEST.md](SOURCE_DIGEST.md) — Source digest and references
