@@ -313,6 +313,8 @@ func main() {
 		admin.GET("/admin/stats/stream", h.StreamAdminStats)
 		admin.GET("/admin/stats/history", h.GetHistoricalStats)
 		admin.GET("/admin/stats/paths", h.GetPathHistory)
+		admin.GET("/admin/stats/locations", h.GetLocationHistory)
+		admin.GET("/admin/stats/summary", h.GetHistoricalSummary)
 	}
 
 	// --- Moderation routes ---

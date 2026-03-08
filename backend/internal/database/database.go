@@ -39,6 +39,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Notification{},
 		&models.Bookmark{},
 		&models.StatsHourly{},
+		&models.StatsLocationDaily{},
 		&models.StatsDailyPath{},
 	)
 }

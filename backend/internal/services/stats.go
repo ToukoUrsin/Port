@@ -2,8 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 
@@ -81,6 +83,23 @@ func (s *StatsService) RecordRequest(ctx context.Context, mwEvent middleware.Sta
 
 	// Top paths
 	pipe.HIncrBy(ctx, "stats:paths", mwEvent.Path, 1)
+
+	// HyperLogLog for unique IPs per hour
+	hourKey := fmt.Sprintf("stats:ips:%s", now.Format("2006-01-02T15"))
+	pipe.PFAdd(ctx, hourKey, mwEvent.IP)
+	pipe.Expire(ctx, hourKey, 25*time.Hour)
+
+	// Location counts per day (skip unknown/local)
+	if mwEvent.CityName != "" && mwEvent.CityName != "Unknown" && mwEvent.CityName != "Local" {
+		dateStr := now.Format("2006-01-02")
+		locKey := fmt.Sprintf("stats:locations:%s", dateStr)
+		geoKey := fmt.Sprintf("stats:locgeo:%s", dateStr)
+		pipe.HIncrBy(ctx, locKey, mwEvent.CityName, 1)
+		pipe.Expire(ctx, locKey, 48*time.Hour)
+		coordJSON, _ := json.Marshal(map[string]float64{"lat": mwEvent.Lat, "lng": mwEvent.Lng})
+		pipe.HSet(ctx, geoKey, mwEvent.CityName, string(coordJSON))
+		pipe.Expire(ctx, geoKey, 48*time.Hour)
+	}
 
 	pipe.Exec(ctx)
 
@@ -240,12 +259,18 @@ func (s *StatsService) FlushToPostgres(ctx context.Context) {
 		topPaths[i] = models.PathCountDTO{Path: p.Path, Count: p.Count}
 	}
 
+	// Read unique IPs from HyperLogLog
+	rdb := s.cache.Client()
+	ipKey := fmt.Sprintf("stats:ips:%s", hour.Format("2006-01-02T15"))
+	uniqueIPs, _ := rdb.PFCount(ctx, ipKey).Result()
+
 	// Upsert hourly row
 	hourly := models.StatsHourly{
 		Hour:         hour,
 		RequestCount: snap.RequestsToday,
 		PeakRPM:      peak,
 		UniqueUsers:  snap.ActiveUserCount,
+		UniqueIPs:    int(uniqueIPs),
 		TopPaths:     models.JSONB[[]models.PathCountDTO]{V: topPaths},
 	}
 	s.db.WithContext(ctx).Clauses(clause.OnConflict{
@@ -254,6 +279,7 @@ func (s *StatsService) FlushToPostgres(ctx context.Context) {
 			"request_count": gorm.Expr("GREATEST(stats_hourlies.request_count, ?)", snap.RequestsToday),
 			"peak_rpm":      gorm.Expr("GREATEST(stats_hourlies.peak_rpm, ?)", peak),
 			"unique_users":  gorm.Expr("GREATEST(stats_hourlies.unique_users, ?)", snap.ActiveUserCount),
+			"unique_ips":    gorm.Expr("GREATEST(stats_hourlies.unique_ips, ?)", int(uniqueIPs)),
 			"top_paths":     hourly.TopPaths,
 		}),
 	}).Create(&hourly)
@@ -274,7 +300,43 @@ func (s *StatsService) FlushToPostgres(ctx context.Context) {
 		}).Create(&dp)
 	}
 
-	log.Printf("Stats flushed to PostgreSQL (hour=%s, paths=%d)", hour.Format("2006-01-02T15:00"), len(snap.TopPaths))
+	// Upsert location daily counts
+	dateStr := now.Format("2006-01-02")
+	locKey := fmt.Sprintf("stats:locations:%s", dateStr)
+	geoKey := fmt.Sprintf("stats:locgeo:%s", dateStr)
+	locMap, _ := rdb.HGetAll(ctx, locKey).Result()
+	geoMap, _ := rdb.HGetAll(ctx, geoKey).Result()
+	for city, countStr := range locMap {
+		count, err := strconv.ParseInt(countStr, 10, 64)
+		if err != nil {
+			continue
+		}
+		var lat, lng float64
+		if geoJSON, ok := geoMap[city]; ok {
+			var coords map[string]float64
+			if json.Unmarshal([]byte(geoJSON), &coords) == nil {
+				lat = coords["lat"]
+				lng = coords["lng"]
+			}
+		}
+		locRow := models.StatsLocationDaily{
+			Date:         today,
+			CityName:     city,
+			Lat:          lat,
+			Lng:          lng,
+			RequestCount: count,
+		}
+		s.db.WithContext(ctx).Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "date"}, {Name: "city_name"}},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"request_count": gorm.Expr("GREATEST(stats_location_dailies.request_count, ?)", count),
+				"lat":           lat,
+				"lng":           lng,
+			}),
+		}).Create(&locRow)
+	}
+
+	log.Printf("Stats flushed to PostgreSQL (hour=%s, paths=%d, locations=%d)", hour.Format("2006-01-02T15:00"), len(snap.TopPaths), len(locMap))
 }
 
 // StartPeriodicFlush runs FlushToPostgres every hour and prunes old data.
@@ -296,6 +358,7 @@ func (s *StatsService) StartPeriodicFlush(ctx context.Context) {
 				cutoff := time.Now().Add(-90 * 24 * time.Hour)
 				s.db.Where("hour < ?", cutoff).Delete(&models.StatsHourly{})
 				s.db.Where("date < ?", cutoff).Delete(&models.StatsDailyPath{})
+				s.db.Where("date < ?", cutoff).Delete(&models.StatsLocationDaily{})
 			}
 		}
 	}()

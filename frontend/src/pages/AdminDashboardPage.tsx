@@ -8,6 +8,7 @@ import {
 import StatsMap, { type StatsMapHandle } from "@/components/StatsMap";
 import StatsCards from "@/components/StatsCards";
 import ActiveUsersList from "@/components/ActiveUsersList";
+import HistoricalStats from "@/components/HistoricalStats";
 import Navbar from "@/components/Navbar";
 import "./AdminDashboardPage.css";
 
@@ -88,6 +89,9 @@ export default function AdminDashboardPage() {
             )}
           </div>
         </div>
+
+        <div className="admin-dashboard__divider" />
+        <HistoricalStats />
       </div>
     </>
   );

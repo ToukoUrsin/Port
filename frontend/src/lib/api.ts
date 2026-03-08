@@ -600,3 +600,19 @@ export function deleteNotification(id: string): Promise<void> {
 export function deleteReadNotifications(): Promise<void> {
   return apiFetch<void>("/api/notifications/read", { method: "DELETE" });
 }
+
+// --- Admin stats (historical) ---
+
+import type { StatsHourlyRow, StatsLocationRow, StatsSummary } from "@/lib/adminStats";
+
+export function getStatsHistory(days: number): Promise<StatsHourlyRow[]> {
+  return apiFetch<StatsHourlyRow[]>(`/api/admin/stats/history?days=${days}`);
+}
+
+export function getStatsLocations(days: number): Promise<StatsLocationRow[]> {
+  return apiFetch<StatsLocationRow[]>(`/api/admin/stats/locations?days=${days}`);
+}
+
+export function getStatsSummary(days: number): Promise<StatsSummary> {
+  return apiFetch<StatsSummary>(`/api/admin/stats/summary?days=${days}`);
+}

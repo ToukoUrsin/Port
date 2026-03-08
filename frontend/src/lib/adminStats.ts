@@ -37,6 +37,33 @@ export interface StatsStreamCallbacks {
   onError: (message: string) => void;
 }
 
+export interface StatsHourlyRow {
+  id: string;
+  hour: string;
+  request_count: number;
+  peak_rpm: number;
+  unique_users: number;
+  unique_ips: number;
+  top_paths: PathCount[] | null;
+  created_at: string;
+}
+
+export interface StatsLocationRow {
+  id: string;
+  date: string;
+  city_name: string;
+  lat: number;
+  lng: number;
+  request_count: number;
+}
+
+export interface StatsSummary {
+  total_requests: number;
+  max_peak_rpm: number;
+  total_unique_ips: number;
+  unique_locations: number;
+}
+
 export function streamAdminStats(
   accessToken: string,
   callbacks: StatsStreamCallbacks,
