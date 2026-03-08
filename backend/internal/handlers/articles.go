@@ -358,28 +358,13 @@ func (h *Handler) recalculateKarma(profileID uuid.UUID) {
 // Produces a single SQL subquery: SELECT id FROM locations WHERE id IN (...)
 // OR path LIKE 'prefix1/%' OR path LIKE 'prefix2/%' ...
 // Uses text_pattern_ops btree index for each LIKE condition.
-// linkedLocations maps a location ID to other location IDs that should
-// always be included when filtering. E.g. Espoo includes Kirkkonummi.
-var linkedLocations = map[string][]string{
-	"b1000000-0000-0000-0000-000000000011": {"a0000000-0000-0000-0000-000000000004"}, // Espoo -> Kirkkonummi
-}
-
 func (h *Handler) resolveLocationHierarchy(ids []string) *gorm.DB {
-	// Expand linked locations
-	expanded := make([]string, len(ids))
-	copy(expanded, ids)
-	for _, id := range ids {
-		if linked, ok := linkedLocations[id]; ok {
-			expanded = append(expanded, linked...)
-		}
-	}
-
 	// Fetch paths for the requested locations (single indexed query)
 	var locs []models.Location
-	h.db.Select("id", "path").Where("id IN ?", expanded).Find(&locs)
+	h.db.Select("id", "path").Where("id IN ?", ids).Find(&locs)
 
 	// Build: SELECT id FROM locations WHERE id IN (...) OR path LIKE ...
-	sub := h.db.Model(&models.Location{}).Select("id").Where("id IN ?", expanded)
+	sub := h.db.Model(&models.Location{}).Select("id").Where("id IN ?", ids)
 	for _, loc := range locs {
 		sub = sub.Or("path LIKE ?", loc.Path+"/%")
 	}

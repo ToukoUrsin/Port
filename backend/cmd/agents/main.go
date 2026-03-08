@@ -144,7 +144,7 @@ func main() {
 }
 
 func seedAgentProfile(db *gorm.DB, p agents.Persona, logger *log.Logger) *models.Profile {
-	locationID := models.KirkkonummiLocationID()
+	locationID := models.EspooLocationID()
 	profile := models.Profile{
 		ID:          p.ID,
 		ProfileName: p.ProfileName,

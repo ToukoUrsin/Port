@@ -69,8 +69,8 @@ func (c *APIClient) LikeReply(replyID string) (map[string]any, error) {
 
 func (c *APIClient) CreateArticleBatch(title, content, category string, ownerID uuid.UUID, summary string) (map[string]any, error) {
 	url := fmt.Sprintf("%s/api/admin/batch", c.baseURL)
-	// Use the Kirkkonummi location ID from seed data
-	locationID := uuid.MustParse("a0000000-0000-0000-0000-000000000004")
+	// Use the Espoo location ID from seed data
+	locationID := uuid.MustParse("b1000000-0000-0000-0000-000000000011")
 	article := map[string]any{
 		"title":       title,
 		"content":     content,

@@ -109,7 +109,7 @@ var agentTools = []*genai.Tool{{
 		},
 		{
 			Name:        "create_article",
-			Description: "Write and publish a new local news article. Use this only when you feel inspired to write about something happening in Kirkkonummi.",
+			Description: "Write and publish a new local news article. Use this only when you feel inspired to write about something happening in Espoo.",
 			Parameters: &genai.Schema{
 				Type: genai.TypeObject,
 				Properties: map[string]*genai.Schema{

@@ -47,8 +47,8 @@ func NewJSONB[T any](v T) JSONB[T] {
 }
 
 // Well-known IDs for agent system.
-func KirkkonummiLocationID() uuid.UUID {
-	return uuid.MustParse("a0000000-0000-0000-0000-000000000004")
+func EspooLocationID() uuid.UUID {
+	return uuid.MustParse("b1000000-0000-0000-0000-000000000011")
 }
 
 func AgentAdminID() uuid.UUID {
