@@ -13,6 +13,7 @@ import type {
   ReplyReactionMap,
   FollowStatus,
   FollowCounts,
+  FollowListResponse,
   FileListResponse,
   ApiNotification,
 } from "@/lib/types.ts";
@@ -513,6 +514,14 @@ export function fileToMediaUrl(name: string): string {
 
 export function getFollowCounts(profileId: string): Promise<FollowCounts> {
   return apiFetch<FollowCounts>(`/api/profiles/${profileId}/follow-counts`);
+}
+
+export function getFollowers(profileId: string): Promise<FollowListResponse> {
+  return apiFetch<FollowListResponse>(`/api/profiles/${profileId}/followers`);
+}
+
+export function getFollowing(profileId: string): Promise<FollowListResponse> {
+  return apiFetch<FollowListResponse>(`/api/profiles/${profileId}/following`);
 }
 
 // --- Notifications ---

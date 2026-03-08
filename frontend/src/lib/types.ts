@@ -466,6 +466,17 @@ export interface FollowCounts {
   following: number;
 }
 
+export interface FollowUser {
+  id: string;
+  profile_name: string;
+  followed_at: string;
+}
+
+export interface FollowListResponse {
+  users: FollowUser[];
+  total: number;
+}
+
 // --- Notification types ---
 
 export const NotifType = {

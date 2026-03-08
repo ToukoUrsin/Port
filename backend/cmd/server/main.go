@@ -209,6 +209,8 @@ func main() {
 		public.GET("/locations/:slug/articles", h.LocationArticles)
 		public.GET("/articles/:id/similar", h.SimilarArticles)
 		public.GET("/profiles/:id/follow-counts", h.GetFollowCounts)
+		public.GET("/profiles/:id/followers", h.GetFollowers)
+		public.GET("/profiles/:id/following", h.GetFollowing)
 	}
 
 	// --- Optional auth routes (public but enhanced with auth context) ---
