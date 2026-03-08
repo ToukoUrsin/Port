@@ -1,18 +1,21 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services"
+	"gorm.io/gorm/clause"
 )
 
 type notificationResponse struct {
 	models.Notification
-	ActorName   string `json:"actor_name"`
+	ActorName    string `json:"actor_name"`
 	ArticleTitle string `json:"article_title"`
 }
 
@@ -107,7 +110,14 @@ func (h *Handler) MarkNotificationRead(c *gin.Context) {
 }
 
 // createNotification is a helper used by reaction and reply handlers.
+// Safe to call from a goroutine — recovers from panics and logs errors.
 func (h *Handler) createNotification(recipientID, actorID uuid.UUID, notifType int16, targetID uuid.UUID, targetType int16, articleID uuid.UUID) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("createNotification panic: %v", r)
+		}
+	}()
+
 	// Don't notify yourself
 	if recipientID == actorID {
 		return
@@ -120,6 +130,19 @@ func (h *Handler) createNotification(recipientID, actorID uuid.UUID, notifType i
 		TargetID:   targetID,
 		TargetType: targetType,
 		ArticleID:  articleID,
+		CreatedAt:  time.Now(),
 	}
-	h.db.Create(&notif)
+	result := h.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "profile_id"}, {Name: "actor_id"}, {Name: "type"},
+			{Name: "target_id"}, {Name: "target_type"},
+		},
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"read":       false,
+			"created_at": time.Now(),
+		}),
+	}).Create(&notif)
+	if result.Error != nil {
+		log.Printf("createNotification error: %v", result.Error)
+	}
 }

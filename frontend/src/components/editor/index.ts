@@ -2,6 +2,7 @@ export { EditorialScreen } from "./EditorialScreen";
 export { ArticleEditor, ArticlePreview } from "./ArticleRenderer";
 export { VoiceRecorder } from "./VoiceRecorder";
 export { GateBadge } from "./GateBadge";
+export { StoryStrength } from "./StoryStrength";
 export type {
   EditorialScreenProps,
   GeneralRefinement,

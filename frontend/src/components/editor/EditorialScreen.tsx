@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef, useEffectEvent } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { ArticleEditor } from "./ArticleRenderer";
 import { CoachingPanel } from "./CoachingPanel";
 import { RefinementInput } from "./RefinementInput";
 import { InstructionBar } from "./InstructionBar";
-import { GateBadge } from "./GateBadge";
+import { StoryStrength } from "./StoryStrength";
 import { PublishButton } from "./PublishButton";
 import { VersionInfo } from "./VersionInfo";
 import { useParagraphTap } from "./hooks/useParagraphTap";
@@ -37,14 +38,17 @@ export function EditorialScreen({
   saveStatus,
 }: EditorialScreenProps) {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [activeAnnotation, setActiveAnnotation] = useState<ActiveAnnotation>(null);
   const [highlightParagraph, setHighlightParagraph] = useState<number | undefined>();
+  const [changedParagraphs, setChangedParagraphs] = useState<number[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const articleRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const resizeSessionRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const prevArticleRef = useRef(articleMarkdown);
 
   // Mobile paragraph tap for InstructionBar — desktop text selection uses BubbleMenu AI section
   const paragraphTap = useParagraphTap(articleRef);
@@ -89,6 +93,32 @@ export function EditorialScreen({
     [onContentChange],
   );
 
+  // Capture article state when refinement starts
+  useEffect(() => {
+    if (isRefining) {
+      prevArticleRef.current = articleMarkdown;
+    }
+  }, [isRefining]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Detect changed paragraphs after refinement completes
+  useEffect(() => {
+    if (isRefining || !articleRef.current) return;
+    if (prevArticleRef.current === articleMarkdown) return;
+
+    const oldParas = prevArticleRef.current.split(/\n\n+/).map(s => s.trim()).filter(Boolean);
+    const newParas = articleMarkdown.split(/\n\n+/).map(s => s.trim()).filter(Boolean);
+    const changed: number[] = [];
+    const maxLen = Math.max(oldParas.length, newParas.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (oldParas[i] !== newParas[i]) changed.push(i);
+    }
+    if (changed.length > 0) {
+      setChangedParagraphs(changed);
+      const timer = setTimeout(() => setChangedParagraphs([]), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isRefining, articleMarkdown]);
+
   // BubbleMenu AI action — triggered from text selection popup
   const handleAiAction = useCallback(
     (instruction: string, selectedText: string, paragraphIndex: number) => {
@@ -96,8 +126,9 @@ export function EditorialScreen({
         ? `Regarding "${selectedText}" in paragraph ${paragraphIndex + 1}: `
         : `In paragraph ${paragraphIndex + 1}: `;
       onRefineGeneral({ text_note: prefix + instruction });
+      toast("Sent to AI -- updating article...", "info");
     },
-    [onRefineGeneral],
+    [onRefineGeneral, toast],
   );
 
   // InstructionBar handlers — compose targeted input into general refinement
@@ -107,15 +138,17 @@ export function EditorialScreen({
         ? `Regarding "${r.selected_text}" in paragraph ${r.paragraph_index + 1}: `
         : `In paragraph ${r.paragraph_index + 1}: `;
       onRefineGeneral({ text_note: prefix + r.instruction });
+      toast("Sent to AI -- updating article...", "info");
     },
-    [onRefineGeneral],
+    [onRefineGeneral, toast],
   );
 
   const handleInstructionRephrase = useCallback(
     (r: { selected_text: string; paragraph_index: number }) => {
       onRefineGeneral({ text_note: `Rephrase "${r.selected_text}" in paragraph ${r.paragraph_index + 1}` });
+      toast("Sent to AI -- updating article...", "info");
     },
-    [onRefineGeneral],
+    [onRefineGeneral, toast],
   );
 
   const handleInstructionRemove = useCallback(
@@ -124,8 +157,9 @@ export function EditorialScreen({
         ? `Remove "${selectedText}" from paragraph ${paragraphIndex + 1}`
         : `Remove paragraph ${paragraphIndex + 1}`;
       onRefineGeneral({ text_note: target });
+      toast("Sent to AI -- updating article...", "info");
     },
-    [onRefineGeneral],
+    [onRefineGeneral, toast],
   );
 
   // no-op dismiss (hooks manage their own state via selection change)
@@ -285,7 +319,7 @@ export function EditorialScreen({
         </div>
         <div className="editorial-header-right">
           {statusLabel && <span className={statusClass}>{statusLabel}</span>}
-          <GateBadge gate={review.gate} />
+          <StoryStrength scores={review.scores} />
           <PublishButton gate={review.gate} onPublish={onPublish} />
         </div>
       </div>
@@ -309,6 +343,7 @@ export function EditorialScreen({
             highlightParagraph={highlightParagraph}
             onContentChange={handleContentChange}
             onAiAction={isRefining ? undefined : handleAiAction}
+            changedParagraphs={changedParagraphs}
           />
           {isRefining && (
             <div className="editorial-refining-indicator">

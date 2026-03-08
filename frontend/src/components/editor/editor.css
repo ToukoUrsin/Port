@@ -720,6 +720,19 @@
   background: none;
   box-shadow: none;
 }
+/* Coaching celebration — warm opening */
+.coaching-celebration {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, rgba(56, 102, 65, 0.06), rgba(56, 102, 65, 0.02));
+  border-left: 3px solid var(--color-primary);
+  border-radius: 0 8px 8px 0;
+}
+.coaching-celebration p { margin: 0; }
+
 /* Coaching questions — hero content */
 .coaching-questions {
   display: flex;
@@ -727,6 +740,7 @@
   gap: var(--space-3);
 }
 .coaching-question {
+  position: relative;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-gray-200);
   padding: var(--space-3) var(--space-4);
@@ -735,6 +749,26 @@
   color: var(--color-text);
   font-size: var(--text-base);
   transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.coaching-question__skip {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.12s;
+}
+.coaching-question:hover .coaching-question__skip {
+  opacity: 1;
+}
+.coaching-question__skip:hover {
+  background: var(--color-gray-100);
+  color: var(--color-text);
 }
 .coaching-question__text {
   margin: 0;
@@ -1687,6 +1721,44 @@
   background: #fef08a;
   border-radius: 2px;
   padding: 1px 2px;
+}
+
+/* ===============================================
+   Changed paragraph highlight (AI refinement)
+   =============================================== */
+.paragraph--changed {
+  background: rgba(56, 102, 65, 0.08);
+  border-left: 3px solid var(--color-primary);
+  padding-left: var(--space-3);
+  margin-left: calc(-1 * var(--space-3) - 3px);
+  transition: background 0.5s ease, border-color 0.5s ease;
+}
+
+/* ===============================================
+   Story strength meter
+   =============================================== */
+.story-strength {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.story-strength__bar {
+  width: 80px;
+  height: 6px;
+  background: var(--color-gray-200);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.story-strength__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-warning, #f57f17), var(--color-primary));
+  transition: width 0.6s ease;
+}
+.story-strength__label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }
 
 /* ===============================================

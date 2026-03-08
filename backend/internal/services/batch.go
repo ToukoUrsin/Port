@@ -192,9 +192,8 @@ func (s *BatchService) processArticle(job *BatchJob, index int, input BatchArtic
 		return
 	}
 
-	// Increment location article count
-	s.db.Model(&models.Location{}).Where("id = ?", input.LocationID).
-		Update("article_count", gorm.Expr("article_count + 1"))
+	// Increment location article count (propagate up hierarchy)
+	AdjustArticleCount(s.db, input.LocationID, +1)
 
 	// Invalidate caches
 	if s.cache != nil {

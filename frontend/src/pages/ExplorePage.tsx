@@ -112,20 +112,17 @@ export default function ExplorePage() {
         let levels: number[];
         if (zoom <= 2) levels = [0];
         else if (zoom === 3) levels = [0, 1];
-        else if (zoom <= 5) levels = [1];
-        else if (zoom === 6) levels = [1, 2];
-        else if (zoom <= 8) levels = [2];
-        else if (zoom === 9) levels = [2, 3];
+        else if (zoom === 4) levels = [1];
+        else if (zoom === 5) levels = [1, 2];
+        else if (zoom <= 6) levels = [2];
+        else if (zoom === 7) levels = [2, 3];
         else levels = [3];
 
         const useBbox = zoom > 2;
-        // Only filter by min_articles at city level — higher levels are
-        // navigational and their article_count doesn't include descendants
-        const onlyCities = levels.length === 1 && levels[0] === 3;
         const params: Parameters<typeof getLocations>[0] = {
           level: levels,
           limit: 300,
-          ...(onlyCities && { min_articles: 1 }),
+          min_articles: 1,
           ...(useBbox && {
             south: bounds.getSouth(),
             west: bounds.getWest(),

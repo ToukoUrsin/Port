@@ -1,14 +1,13 @@
 package handlers
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/localnews/backend/internal/models"
 	"github.com/localnews/backend/internal/services"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -53,17 +52,16 @@ func (h *Handler) ReactArticle(c *gin.Context) {
 		DoUpdates: clause.AssignmentColumns([]string{"kind"}),
 	}).Create(&reaction)
 
-	h.updateSubmissionReactions(subID)
+	counts := h.updateAndGetSubmissionReactions(subID)
 	h.cache.Delete(c.Request.Context(), "articles:"+subID.String())
 
-	// Notify article owner
+	// Notify article owner (async)
 	notifType := models.NotifLike
 	if req.Kind == models.ReactionDislike {
 		notifType = models.NotifDislike
 	}
-	h.createNotification(sub.OwnerID, actor.ProfileID, notifType, subID, models.ReactionTargetSubmission, subID)
+	go h.createNotification(sub.OwnerID, actor.ProfileID, notifType, subID, models.ReactionTargetSubmission, subID)
 
-	counts := h.getReactionCounts(subID, models.ReactionTargetSubmission)
 	counts["user_reaction"] = int(req.Kind)
 	c.JSON(http.StatusOK, counts)
 }
@@ -81,10 +79,9 @@ func (h *Handler) UnreactArticle(c *gin.Context) {
 		actor.ProfileID, subID, models.ReactionTargetSubmission).
 		Delete(&models.Reaction{})
 
-	h.updateSubmissionReactions(subID)
+	counts := h.updateAndGetSubmissionReactions(subID)
 	h.cache.Delete(c.Request.Context(), "articles:"+subID.String())
 
-	counts := h.getReactionCounts(subID, models.ReactionTargetSubmission)
 	counts["user_reaction"] = 0
 	c.JSON(http.StatusOK, counts)
 }
@@ -151,16 +148,15 @@ func (h *Handler) ReactReply(c *gin.Context) {
 		DoUpdates: clause.AssignmentColumns([]string{"kind"}),
 	}).Create(&reaction)
 
-	h.updateReplyReactions(replyID)
+	counts := h.updateAndGetReplyReactions(replyID)
 
-	// Notify comment author
+	// Notify comment author (async)
 	notifType := models.NotifLike
 	if req.Kind == models.ReactionDislike {
 		notifType = models.NotifDislike
 	}
-	h.createNotification(reply.ProfileID, actor.ProfileID, notifType, replyID, models.ReactionTargetReply, reply.SubmissionID)
+	go h.createNotification(reply.ProfileID, actor.ProfileID, notifType, replyID, models.ReactionTargetReply, reply.SubmissionID)
 
-	counts := h.getReactionCounts(replyID, models.ReactionTargetReply)
 	counts["user_reaction"] = int(req.Kind)
 	c.JSON(http.StatusOK, counts)
 }
@@ -178,9 +174,8 @@ func (h *Handler) UnreactReply(c *gin.Context) {
 		actor.ProfileID, replyID, models.ReactionTargetReply).
 		Delete(&models.Reaction{})
 
-	h.updateReplyReactions(replyID)
+	counts := h.updateAndGetReplyReactions(replyID)
 
-	counts := h.getReactionCounts(replyID, models.ReactionTargetReply)
 	counts["user_reaction"] = 0
 	c.JSON(http.StatusOK, counts)
 }
@@ -275,16 +270,43 @@ func (h *Handler) getReactionCounts(targetID uuid.UUID, targetType int16) map[st
 	return counts
 }
 
-func (h *Handler) updateSubmissionReactions(subID uuid.UUID) {
-	counts := h.getReactionCounts(subID, models.ReactionTargetSubmission)
-	reactions := map[string]int{"like": counts["likes"], "dislike": counts["dislikes"]}
-	h.db.Model(&models.Submission{}).Where("id = ?", subID).
-		Update("reactions", models.JSONB[map[string]int]{V: reactions})
+// updateAndGetSubmissionReactions counts reactions and denormalizes into submissions.reactions in a single CTE query.
+func (h *Handler) updateAndGetSubmissionReactions(subID uuid.UUID) map[string]int {
+	var likes, dislikes int
+	err := h.db.Raw(`
+		WITH counts AS (
+			SELECT COALESCE(SUM(CASE WHEN kind=1 THEN 1 ELSE 0 END),0) AS likes,
+			       COALESCE(SUM(CASE WHEN kind=-1 THEN 1 ELSE 0 END),0) AS dislikes
+			FROM reactions WHERE target_id = ? AND target_type = ?
+		)
+		UPDATE submissions SET reactions = jsonb_build_object('like',counts.likes,'dislike',counts.dislikes)
+		FROM counts WHERE submissions.id = ?
+		RETURNING counts.likes, counts.dislikes`,
+		subID, models.ReactionTargetSubmission, subID).Row().Scan(&likes, &dislikes)
+	if err != nil {
+		log.Printf("updateAndGetSubmissionReactions: %v", err)
+		return map[string]int{"likes": 0, "dislikes": 0}
+	}
+	return map[string]int{"likes": likes, "dislikes": dislikes}
 }
 
-func (h *Handler) updateReplyReactions(replyID uuid.UUID) {
-	counts := h.getReactionCounts(replyID, models.ReactionTargetReply)
-	h.db.Model(&models.Reply{}).Where("id = ?", replyID).
-		UpdateColumn("meta", gorm.Expr("jsonb_set(COALESCE(meta, '{}'), '{reactions}', ?::jsonb)",
-			fmt.Sprintf(`{"like": %d, "dislike": %d}`, counts["likes"], counts["dislikes"])))
+// updateAndGetReplyReactions counts reactions and denormalizes into replies.meta.reactions in a single CTE query.
+func (h *Handler) updateAndGetReplyReactions(replyID uuid.UUID) map[string]int {
+	var likes, dislikes int
+	err := h.db.Raw(`
+		WITH counts AS (
+			SELECT COALESCE(SUM(CASE WHEN kind=1 THEN 1 ELSE 0 END),0) AS likes,
+			       COALESCE(SUM(CASE WHEN kind=-1 THEN 1 ELSE 0 END),0) AS dislikes
+			FROM reactions WHERE target_id = ? AND target_type = ?
+		)
+		UPDATE replies SET meta = jsonb_set(COALESCE(meta,'{}'), '{reactions}',
+			jsonb_build_object('like',counts.likes,'dislike',counts.dislikes))
+		FROM counts WHERE replies.id = ?
+		RETURNING counts.likes, counts.dislikes`,
+		replyID, models.ReactionTargetReply, replyID).Row().Scan(&likes, &dislikes)
+	if err != nil {
+		log.Printf("updateAndGetReplyReactions: %v", err)
+		return map[string]int{"likes": 0, "dislikes": 0}
+	}
+	return map[string]int{"likes": likes, "dislikes": dislikes}
 }
