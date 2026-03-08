@@ -1,11 +1,16 @@
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Newspaper, Mic, Shield } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import "./Onboarding.css";
 
+const STORAGE_KEY = "onboarding_done";
+
 interface OnboardingProps {
   onComplete: () => void;
+}
+
+export function shouldShowOnboarding(): boolean {
+  return !localStorage.getItem(STORAGE_KEY);
 }
 
 export default function Onboarding({ onComplete }: OnboardingProps) {
@@ -14,12 +19,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
   const steps = [
     {
-      icon: <Newspaper size={36} />,
       title: t("onboard.welcomeTitle"),
       desc: t("onboard.welcomeDesc"),
     },
     {
-      icon: <Mic size={36} />,
       title: t("onboard.howTitle"),
       desc: null,
       bullets: [
@@ -29,7 +32,6 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       ],
     },
     {
-      icon: <Shield size={36} />,
       title: t("onboard.qualityTitle"),
       desc: t("onboard.qualityDesc"),
     },
@@ -38,13 +40,18 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   const current = steps[step];
   const isLast = step === steps.length - 1;
 
+  const finish = useCallback(() => {
+    localStorage.setItem(STORAGE_KEY, "1");
+    onComplete();
+  }, [onComplete]);
+
   const next = useCallback(() => {
     if (isLast) {
-      onComplete();
+      finish();
     } else {
       setStep((s) => s + 1);
     }
-  }, [isLast, onComplete]);
+  }, [isLast, finish]);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -55,7 +62,6 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     <div className="onboarding-page">
       <div className="onboarding-card">
         <div className="onboarding-body" key={step}>
-          <div className="onboarding-icon">{current.icon}</div>
           <h2 className="onboarding-title">{current.title}</h2>
           {current.desc && <p className="onboarding-desc">{current.desc}</p>}
           {"bullets" in current && current.bullets && (
@@ -82,7 +88,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <button className="onboarding-next-btn" onClick={next}>
             {isLast ? t("onboard.getStarted") : t("onboard.next")}
           </button>
-          <button className="onboarding-skip-btn" onClick={onComplete}>
+          <button className="onboarding-skip-btn" onClick={finish}>
             {t("onboard.skip")}
           </button>
         </div>

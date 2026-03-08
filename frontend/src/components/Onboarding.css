@@ -36,16 +36,6 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-.onboarding-icon {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: var(--space-6);
-  color: var(--color-primary);
-}
-
 .onboarding-title {
   font-family: var(--font-heading);
   font-size: var(--text-3xl);
