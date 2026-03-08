@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
+import { Clock, ImageIcon, ChevronDown, MapPin, Loader2, TrendingUp } from "lucide-react";
 import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
@@ -66,6 +66,43 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
           <span>{article.timeAgo}</span>
         </div>
       </div>
+    </Link>
+  );
+}
+
+function TrendingCard({ article, rank }: { article: Article; rank: number }) {
+  const { t } = useLanguage();
+  return (
+    <Link
+      to={`/article/${article.id}`}
+      className="trending-card"
+      style={{ textDecoration: "none", color: "inherit" }}
+    >
+      <span className="trending-card__rank">{rank}</span>
+      <div className="trending-card__body">
+        <span className={`badge ${BADGE_CLASS[article.category]}`}>
+          {t("tag." + article.category)}
+        </span>
+        <h3 className="trending-card__title">{article.title}</h3>
+        <div className="trending-card__meta">
+          <span>{article.author}</span>
+          {article.area && (
+            <>
+              <span>&middot;</span>
+              <MapPin size={11} />
+              <span>{article.area}</span>
+            </>
+          )}
+          <span>&middot;</span>
+          <Clock size={11} />
+          <span>{article.timeAgo}</span>
+        </div>
+      </div>
+      {article.image && (
+        <div className="trending-card__thumb">
+          <img src={article.image} alt={article.title} />
+        </div>
+      )}
     </Link>
   );
 }
@@ -236,6 +273,23 @@ function BestOfWeekSection({ articles, t }: { articles: Article[]; t: (key: stri
       <div className="ranked-list">
         {articles.map((article, i) => (
           <RankedCard key={article.id} article={article} rank={i + 1} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TrendingSection({ articles, t }: { articles: Article[]; t: (key: string) => string }) {
+  if (articles.length === 0) return null;
+  return (
+    <section className="home-section">
+      <div className="home-section__header">
+        <TrendingUp size={20} />
+        <h2 className="home-section__title">{t("home.trending")}</h2>
+      </div>
+      <div className="trending-list">
+        {articles.map((article, i) => (
+          <TrendingCard key={article.id} article={article} rank={i + 1} />
         ))}
       </div>
     </section>
@@ -418,6 +472,17 @@ export default function HomePage() {
     [apiData, t],
   );
 
+  // Fetch global trending articles (no country/location filter)
+  const fetchTrending = useCallback(
+    () => getArticles({ limit: 10, sort: "ranked" }),
+    [],
+  );
+  const { data: trendingData } = useApi<ArticleListResponse>(fetchTrending, []);
+  const trendingArticles = useMemo(
+    () => (trendingData?.articles ?? []).map((a) => apiToArticle(a, t)).slice(0, 5),
+    [trendingData, t],
+  );
+
   // Build filter chips
   const nearbyIdSet = useMemo(() => new Set(nearbyCities.map((l) => l.id)), [nearbyCities]);
   const filterChips = useMemo(() => {
@@ -518,6 +583,12 @@ export default function HomePage() {
             <RecentSection articles={recentArticles} t={t} />
             <img src="/Line 1.svg" alt="" className="line-divider" />
             <AdBanner t={t} />
+            {trendingArticles.length > 0 && (
+              <>
+                <img src="/Line 1.svg" alt="" className="line-divider" />
+                <TrendingSection articles={trendingArticles} t={t} />
+              </>
+            )}
             {bestOfWeek.length > 0 && (
               <>
                 <img src="/Line 1.svg" alt="" className="line-divider" />
