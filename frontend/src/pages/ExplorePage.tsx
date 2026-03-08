@@ -17,9 +17,11 @@ interface Area {
   lng: number;
   articleCount: number;
   slug: string;
+  path: string;
 }
 
 const STORAGE_KEY = "selected_locations";
+const STORAGE_PATHS_KEY = "selected_location_paths";
 
 export function getSavedLocationIds(): string[] {
   try {
@@ -30,18 +32,33 @@ export function getSavedLocationIds(): string[] {
   }
 }
 
+function getSavedLocationPaths(): Map<string, string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_PATHS_KEY);
+    return raw ? new Map(JSON.parse(raw)) : new Map();
+  } catch {
+    return new Map();
+  }
+}
+
 function coverageTier(count: number): string {
   if (count === 0) return "explore-marker--no-coverage";
   if (count <= 2) return "explore-marker--low-coverage";
   return "";
 }
 
-function createAreaIcon(area: Area, selected: boolean) {
+function createAreaIcon(area: Area, selected: boolean, hasSelectedChild: boolean) {
   const tier = coverageTier(area.articleCount);
+  const cls = selected
+    ? "explore-marker--active"
+    : hasSelectedChild
+      ? "explore-marker--has-selected"
+      : "";
   return L.divIcon({
     className: "",
-    html: `<div class="explore-marker ${selected ? "explore-marker--active" : ""} ${tier}">
+    html: `<div class="explore-marker ${cls} ${tier}">
       ${selected ? '<span class="explore-marker__check">&#10003;</span>' : ""}
+      ${hasSelectedChild && !selected ? '<span class="explore-marker__check">&#9679;</span>' : ""}
       <span class="explore-marker__name">${area.name}</span>
     </div>`,
     iconSize: [0, 0],
@@ -59,6 +76,7 @@ function toAreas(locations: ApiLocation[]): Area[] {
       lng: loc.lng!,
       articleCount: loc.article_count,
       slug: loc.slug,
+      path: loc.path,
     }));
 }
 
@@ -89,6 +107,7 @@ export default function ExplorePage() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedPaths, setSelectedPaths] = useState<Map<string, string>>(new Map());
   const [areas, setAreas] = useState<Area[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedLoaded = useRef(false);
@@ -98,6 +117,7 @@ export default function ExplorePage() {
     const saved = getSavedLocationIds();
     if (saved.length > 0) {
       setSelectedIds(new Set(saved));
+      setSelectedPaths(getSavedLocationPaths());
     }
     savedLoaded.current = true;
   }, []);
@@ -139,11 +159,17 @@ export default function ExplorePage() {
     [],
   );
 
-  function toggleArea(id: string) {
+  function toggleArea(area: Area) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(area.id)) next.delete(area.id);
+      else next.add(area.id);
+      return next;
+    });
+    setSelectedPaths((prev) => {
+      const next = new Map(prev);
+      if (next.has(area.id)) next.delete(area.id);
+      else next.set(area.id, area.path);
       return next;
     });
   }
@@ -151,7 +177,17 @@ export default function ExplorePage() {
   function handleApply() {
     const ids = Array.from(selectedIds);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+    localStorage.setItem(STORAGE_PATHS_KEY, JSON.stringify(Array.from(selectedPaths.entries())));
     navigate("/");
+  }
+
+  function hasSelectedDescendant(area: Area): boolean {
+    if (selectedPaths.size === 0) return false;
+    const prefix = area.path + "/";
+    for (const path of selectedPaths.values()) {
+      if (path.startsWith(prefix)) return true;
+    }
+    return false;
   }
 
   const center: [number, number] = [20, 0];
@@ -175,9 +211,9 @@ export default function ExplorePage() {
             <Marker
               key={area.id}
               position={[area.lat, area.lng]}
-              icon={createAreaIcon(area, selectedIds.has(area.id))}
+              icon={createAreaIcon(area, selectedIds.has(area.id), hasSelectedDescendant(area))}
               eventHandlers={{
-                click: () => toggleArea(area.id),
+                click: () => toggleArea(area),
               }}
             />
           ))}

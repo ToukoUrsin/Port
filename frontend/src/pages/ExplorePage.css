@@ -86,6 +86,22 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
+.explore-marker--has-selected {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+  border-width: 2px;
+}
+
+.explore-marker--has-selected .explore-marker__name {
+  color: var(--color-primary);
+}
+
+.explore-marker--has-selected .explore-marker__check {
+  font-size: 8px;
+  color: var(--color-primary);
+  line-height: 1;
+}
+
 /* Coverage tier modifiers */
 .explore-marker--low-coverage {
   border-color: var(--color-warning, #8A7A2B);
