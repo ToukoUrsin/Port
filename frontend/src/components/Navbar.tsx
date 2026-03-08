@@ -46,7 +46,7 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
 
     setIsLoading(true);
     debounceRef.current = setTimeout(() => {
-      search({ q: query.trim() })
+      search({ q: query.trim(), mode: "hybrid" })
         .then((res: SearchResponse) => {
           const articles = (res.submissions || []).map((s) => apiToArticle(s, t)).slice(0, 10);
           setResults(articles);
