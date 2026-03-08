@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
-import Onboarding from "@/components/Onboarding";
+import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import Footer from "@/components/Footer";
@@ -395,14 +395,12 @@ export default function HomePage() {
   const newsHeadlines = allArticles.filter((a) => newsCategories.includes(a.category) && !a.image);
   const newsFeatured = allArticles.filter((a) => newsCategories.includes(a.category) && !!a.image);
 
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
 
   return (
     <>
       {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
       <Navbar />
-      <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
-
       <nav className="city-bar">
         <div className="city-bar__scroll">
           <Link
@@ -425,6 +423,7 @@ export default function HomePage() {
           })}
         </div>
       </nav>
+      <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
 
       <main className="home-container">
         {isLoading ? (

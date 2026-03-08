@@ -82,7 +82,7 @@ THREAD = [
             "We're not replacing journalists. We're covering the gaps where "
             "journalists no longer exist.\n\n"
             "An AI article about a school board meeting > zero coverage of a school board meeting.\n\n"
-            "Check it out (it's free): https://port.news"
+            "Check it out (it's free): https://news.minir.ai"
         ),
     },
 ]
@@ -95,7 +95,7 @@ INDIVIDUAL_TWEETS = [
             "2,500+ US newspapers closed since 2005. "
             "We built a free AI platform that turns community tips into local news articles.\n\n"
             "Already covering 15 towns across 11 states where the paper shut down.\n\n"
-            "https://port.news"
+            "https://news.minir.ai"
         ),
     },
     {
@@ -106,7 +106,7 @@ INDIVIDUAL_TWEETS = [
             "uutisvinkkeja. 33 artikkelia 4 kunnasta.\n\n"
             "Karkkilan Tienoo lakkautettiin 2022. Turkulainen lopetti 2020. "
             "Me tuodaan paikallisuutiset takaisin.\n\n"
-            "https://port.news"
+            "https://news.minir.ai"
         ),
     },
     {
@@ -119,7 +119,7 @@ INDIVIDUAL_TWEETS = [
             "-> Published in ~3 minutes\n"
             "-> Cost: ~$0.05 per article\n\n"
             "Free local news for towns that lost their newspaper.\n\n"
-            "https://port.news"
+            "https://news.minir.ai"
         ),
     },
 ]
@@ -180,13 +180,19 @@ async def post_tweet(page, text: str, reply_to_last: bool = False, dry_run: bool
         print(f"    [DRY RUN]")
         return True
 
+    # Dismiss any overlay/mask that might be blocking clicks
+    mask = await page.query_selector('[data-testid="mask"]')
+    if mask:
+        await page.keyboard.press('Escape')
+        await asyncio.sleep(1)
+
     if reply_to_last:
         # Click on the last tweet to open it, then reply
         await asyncio.sleep(1)
         # Click reply button on the tweet we just posted
         reply_btn = await page.query_selector('[data-testid="reply"]')
         if reply_btn:
-            await reply_btn.click()
+            await reply_btn.evaluate("el => el.click()")
             await asyncio.sleep(2)
     else:
         # Click the "Post" / compose button in sidebar
@@ -195,7 +201,7 @@ async def post_tweet(page, text: str, reply_to_last: bool = False, dry_run: bool
             'a[href="/compose/post"]'
         )
         if compose_btn:
-            await compose_btn.click()
+            await compose_btn.evaluate("el => el.click()")
             await asyncio.sleep(2)
 
     # Find the text editor
@@ -213,8 +219,19 @@ async def post_tweet(page, text: str, reply_to_last: bool = False, dry_run: bool
         print("    [ERROR] Could not find tweet editor")
         return False
 
-    await editor.click()
-    await asyncio.sleep(0.3)
+    await editor.evaluate("el => el.click()")
+    await asyncio.sleep(0.5)
+
+    # Re-query editor in case DOM changed
+    editor = await page.query_selector(
+        '[data-testid="tweetTextarea_0"], '
+        '[role="textbox"][data-testid], '
+        'div[contenteditable="true"][role="textbox"], '
+        'div[contenteditable="true"]'
+    )
+    if not editor:
+        print("    [ERROR] Editor disappeared after click")
+        return False
 
     # Type with slight delays
     for line in text.split('\n'):
@@ -232,7 +249,7 @@ async def post_tweet(page, text: str, reply_to_last: bool = False, dry_run: bool
     )
 
     if post_btn:
-        await post_btn.click()
+        await post_btn.evaluate("el => el.click()")
         await asyncio.sleep(3)
         print("    [OK]")
         return True

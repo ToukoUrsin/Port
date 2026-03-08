@@ -58,7 +58,11 @@ def get_accounts() -> list[str]:
     """List all configured account sessions."""
     if not SESSIONS_DIR.exists():
         return []
-    return sorted([d.name for d in SESSIONS_DIR.iterdir() if d.is_dir()])
+    accounts = sorted([d.name for d in SESSIONS_DIR.iterdir() if d.is_dir()])
+    # Prioritize account2 and account3 first
+    preferred = ["account2", "account3"]
+    rest = [a for a in accounts if a not in preferred]
+    return [a for a in preferred if a in accounts] + rest
 
 
 def get_posted_groups() -> set[str]:
