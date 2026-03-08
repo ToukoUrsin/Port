@@ -161,6 +161,9 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
           )}
 
           {showDropdown && (
+            <div className="search-dropdown__overlay" onClick={clearSearch} />
+          )}
+          {showDropdown && (
             <div className="search-dropdown">
               {isLoading ? (
                 <div className="search-dropdown__loading">
@@ -289,9 +292,6 @@ export default function Navbar({ initialQuery = "" }: NavbarProps) {
         )}
       </div>
 
-      {showDropdown && (
-        <div className="search-dropdown__overlay" onClick={clearSearch} />
-      )}
     </>
   );
 }
