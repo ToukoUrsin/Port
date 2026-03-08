@@ -91,6 +91,94 @@ func (h *Handler) GetFollowCounts(c *gin.Context) {
 	})
 }
 
+type followListItem struct {
+	ID          uuid.UUID `json:"id"`
+	ProfileName string    `json:"profile_name"`
+	CreatedAt   string    `json:"followed_at"`
+}
+
+func (h *Handler) GetFollowers(c *gin.Context) {
+	profileID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var follows []models.Follow
+	h.db.Where("target_id = ? AND target_type = ?", profileID, models.FollowProfile).
+		Order("created_at DESC").Find(&follows)
+
+	if len(follows) == 0 {
+		c.JSON(http.StatusOK, gin.H{"users": []followListItem{}, "total": 0})
+		return
+	}
+
+	ids := make([]uuid.UUID, len(follows))
+	for i, f := range follows {
+		ids[i] = f.ProfileID
+	}
+
+	var profiles []models.Profile
+	h.db.Select("id, profile_name").Where("id IN ?", ids).Find(&profiles)
+
+	nameMap := make(map[uuid.UUID]string, len(profiles))
+	for _, p := range profiles {
+		nameMap[p.ID] = p.ProfileName
+	}
+
+	items := make([]followListItem, 0, len(follows))
+	for _, f := range follows {
+		items = append(items, followListItem{
+			ID:          f.ProfileID,
+			ProfileName: nameMap[f.ProfileID],
+			CreatedAt:   f.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": items, "total": len(items)})
+}
+
+func (h *Handler) GetFollowing(c *gin.Context) {
+	profileID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var follows []models.Follow
+	h.db.Where("profile_id = ? AND target_type = ?", profileID, models.FollowProfile).
+		Order("created_at DESC").Find(&follows)
+
+	if len(follows) == 0 {
+		c.JSON(http.StatusOK, gin.H{"users": []followListItem{}, "total": 0})
+		return
+	}
+
+	ids := make([]uuid.UUID, len(follows))
+	for i, f := range follows {
+		ids[i] = f.TargetID
+	}
+
+	var profiles []models.Profile
+	h.db.Select("id, profile_name").Where("id IN ?", ids).Find(&profiles)
+
+	nameMap := make(map[uuid.UUID]string, len(profiles))
+	for _, p := range profiles {
+		nameMap[p.ID] = p.ProfileName
+	}
+
+	items := make([]followListItem, 0, len(follows))
+	for _, f := range follows {
+		items = append(items, followListItem{
+			ID:          f.TargetID,
+			ProfileName: nameMap[f.TargetID],
+			CreatedAt:   f.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": items, "total": len(items)})
+}
+
 func (h *Handler) DeleteFollow(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

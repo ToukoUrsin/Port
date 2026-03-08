@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, MapPin } from "lucide-react";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import "./ArticleCard.css";
 
 export default function ArticleCard({ article, featured }: { article: Article; featured?: boolean }) {
@@ -42,15 +43,18 @@ export default function ArticleCard({ article, featured }: { article: Article; f
         </h2>
         <p className="article-card__excerpt">{article.excerpt}</p>
         <div className="article-card__footer">
-          {article.area && (
-            <>
-              <MapPin size={12} />
-              <span>{article.area}</span>
-              <span>&middot;</span>
-            </>
-          )}
-          <Clock size={12} />
-          <span>{article.timeAgo}</span>
+          <div className="article-card__footer-left">
+            {article.area && (
+              <>
+                <MapPin size={12} />
+                <span>{article.area}</span>
+                <span>&middot;</span>
+              </>
+            )}
+            <Clock size={12} />
+            <span>{article.timeAgo}</span>
+          </div>
+          <BookmarkButton articleId={article.id} size={14} />
         </div>
       </div>
     </Link>

@@ -181,13 +181,13 @@ def _fallback_body(target: dict) -> str:
             "118 suomalaisessa kunnassa on 0-1 toimittajaa. Rakensimme ilmaisen "
             "paikallislehden johon kuka tahansa voi lahettaa uutisvinkkeja. "
             "Sivustolla on jo 33 artikkelia neljasta kunnasta.\n\n"
-            "https://port.news"
+            "https://news.minir.ai"
         )
     return (
         "2,500+ US newspapers have closed since 2005. We built a free platform "
         "where anyone can submit local news tips and they get turned into articles. "
         f"Already covering 15 towns.\n\n"
-        "https://port.news"
+        "https://news.minir.ai"
     )
 
 

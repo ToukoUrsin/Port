@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
+import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import Footer from "@/components/Footer";
@@ -12,6 +13,7 @@ import { getArticles, getLocations } from "@/lib/api.ts";
 import { apiToArticle } from "@/lib/types.ts";
 import type { ArticleListResponse, ApiLocation } from "@/lib/types.ts";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import { getSavedLocationIds } from "@/pages/ExplorePage";
 import "./HomePage.css";
@@ -303,6 +305,7 @@ function NewsSection({
 export default function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { language, t } = useLanguage();
+  useDocumentHead({ title: "Home" });
   const locationSlug = searchParams.get("location");
 
   // Fetch locations from API, filtered by language/country
@@ -382,7 +385,7 @@ export default function HomePage() {
   const bestOfWeek = useMemo(
     () => [...allArticles]
       .filter((a) => a.image)
-      .sort((a, b) => b.title.localeCompare(a.title))
+      .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
       .slice(0, 5),
     [allArticles],
   );
@@ -392,11 +395,12 @@ export default function HomePage() {
   const newsHeadlines = allArticles.filter((a) => newsCategories.includes(a.category) && !a.image);
   const newsFeatured = allArticles.filter((a) => newsCategories.includes(a.category) && !!a.image);
 
+  const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding);
+
   return (
     <>
+      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
       <Navbar />
-      <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
-
       <nav className="city-bar">
         <div className="city-bar__scroll">
           <Link
@@ -419,6 +423,7 @@ export default function HomePage() {
           })}
         </div>
       </nav>
+      <FilterChips chips={filterChips} onRemove={handleRemoveChip} onClearAll={handleClearAll} />
 
       <main className="home-container">
         {isLoading ? (

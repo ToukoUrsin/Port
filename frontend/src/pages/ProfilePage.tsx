@@ -1,16 +1,18 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck, Music, FolderOpen, Bell, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
+import { User, ImageIcon, FileText, Loader2, LogOut, PenSquare, UserPlus, UserCheck, Music, FolderOpen, Bell, ThumbsUp, ThumbsDown, MessageSquare, X, Bookmark } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
 import AccountSettings from "@/components/AccountSettings";
 import { BADGE_CLASS, type Article } from "@/data/articles";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import { useApi } from "@/hooks/useApi";
-import { getArticles, getProfileBySlug, getSubmissions, getMyFiles, fileToMediaUrl, getFollowStatus, getFollowCounts, followUser, unfollowUser, getNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/api";
+import { getArticles, getProfileBySlug, getSubmissions, getMyFiles, fileToMediaUrl, getFollowStatus, getFollowCounts, followUser, unfollowUser, getNotifications, markAllNotificationsRead, markNotificationRead, getFollowers, getFollowing, getBookmarks } from "@/lib/api";
+import ArticleCard from "@/components/ArticleCard";
 import { apiToArticle, timeAgo, SubmissionStatus, FileType } from "@/lib/types";
-import type { ApiProfile, ApiSubmission, FollowCounts, ApiFile, ApiNotification } from "@/lib/types";
+import type { ApiProfile, ApiSubmission, FollowCounts, ApiFile, ApiNotification, FollowUser } from "@/lib/types";
 import { NotifType, NotifTargetType } from "@/lib/types";
 import "./ProfilePage.css";
 
@@ -149,12 +151,62 @@ function notifText(n: ApiNotification): string {
   return `${actor} replied to your comment`;
 }
 
+function FollowListModal({
+  title,
+  users,
+  loading,
+  onClose,
+}: {
+  title: string;
+  users: FollowUser[];
+  loading: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="follow-modal-overlay" onClick={onClose}>
+      <div className="follow-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="follow-modal__header">
+          <h2 className="follow-modal__title">{title}</h2>
+          <button className="follow-modal__close" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+        <div className="follow-modal__body">
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "var(--space-8)" }}>
+              <Loader2 size={24} className="animate-spin" style={{ color: "var(--color-text-tertiary)" }} />
+            </div>
+          ) : users.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)", fontSize: "var(--text-sm)" }}>
+              No users yet
+            </div>
+          ) : (
+            <ul className="follow-modal__list">
+              {users.map((u) => (
+                <li key={u.id}>
+                  <Link to={`/profile/${u.profile_name}`} className="follow-modal__user" onClick={onClose}>
+                    <div className="follow-modal__avatar">
+                      <User size={16} />
+                    </div>
+                    <span className="follow-modal__name">{u.profile_name}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { slug } = useParams<{ slug: string }>();
-  const [tab, setTab] = useState<"posts" | "drafts" | "files" | "notifications" | "settings">("posts");
+  const [tab, setTab] = useState<"posts" | "drafts" | "saved" | "files" | "notifications" | "settings">("posts");
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  useDocumentHead({ title: "Profile" });
   const isOwnProfile = !slug;
 
   // Fetch profile for other users
@@ -172,6 +224,23 @@ export default function ProfilePage() {
   const [followId, setFollowId] = useState<string | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
   const [followCnts, setFollowCnts] = useState<FollowCounts>({ followers: 0, following: 0 });
+
+  // Follow list modal
+  const [followModal, setFollowModal] = useState<"followers" | "following" | null>(null);
+  const [followModalUsers, setFollowModalUsers] = useState<FollowUser[]>([]);
+  const [followModalLoading, setFollowModalLoading] = useState(false);
+
+  const openFollowModal = (type: "followers" | "following") => {
+    if (!profileId) return;
+    setFollowModal(type);
+    setFollowModalUsers([]);
+    setFollowModalLoading(true);
+    const fetcher = type === "followers" ? getFollowers : getFollowing;
+    fetcher(profileId)
+      .then((res) => setFollowModalUsers(res.users))
+      .catch(() => {})
+      .finally(() => setFollowModalLoading(false));
+  };
 
   useEffect(() => {
     if (!profileId) return;
@@ -239,6 +308,17 @@ export default function ProfilePage() {
   const allFiles = filesData?.files ?? [];
   const photoFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Photo), [allFiles]);
   const audioFiles = useMemo(() => allFiles.filter((f) => f.file_type === FileType.Audio), [allFiles]);
+
+  // Fetch bookmarks for own profile
+  const fetchBookmarks = useCallback(
+    () => isOwnProfile ? getBookmarks({ limit: 100 }) : Promise.resolve({ articles: [], total: 0 }),
+    [isOwnProfile],
+  );
+  const { data: bookmarksData, isLoading: bookmarksLoading } = useApi(fetchBookmarks, [isOwnProfile]);
+  const savedArticles = useMemo(
+    () => (bookmarksData?.articles ?? []).map((s) => apiToArticle(s, t)),
+    [bookmarksData],
+  );
 
   // Notifications for own profile
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
@@ -344,14 +424,14 @@ export default function ProfilePage() {
             <span className="profile-stat__value">{publishedPosts.length}</span>
             <span className="profile-stat__label">{t("profile.published")}</span>
           </div>
-          <div className="profile-stat">
+          <button className="profile-stat profile-stat--clickable" onClick={() => openFollowModal("followers")}>
             <span className="profile-stat__value">{followCnts.followers}</span>
             <span className="profile-stat__label">{t("profile.followers")}</span>
-          </div>
-          <div className="profile-stat">
+          </button>
+          <button className="profile-stat profile-stat--clickable" onClick={() => openFollowModal("following")}>
             <span className="profile-stat__value">{followCnts.following}</span>
             <span className="profile-stat__label">{t("profile.following")}</span>
-          </div>
+          </button>
           {isOwnProfile && (
             <div className="profile-stat">
               <span className="profile-stat__value">{drafts.length}</span>
@@ -373,6 +453,14 @@ export default function ProfilePage() {
           >
             {t("profile.published")}
           </button>
+          {isOwnProfile && (
+            <button
+              className={`profile-tab ${tab === "saved" ? "profile-tab--active" : ""}`}
+              onClick={() => setTab("saved")}
+            >
+              Saved
+            </button>
+          )}
           {isOwnProfile && (
             <button
               className={`profile-tab ${tab === "drafts" ? "profile-tab--active" : ""}`}
@@ -448,6 +536,23 @@ export default function ProfilePage() {
             <div className="profile-empty">
               <div className="profile-empty__icon"><Bell size={32} /></div>
               <p className="profile-empty__text">No notifications yet</p>
+            </div>
+          )
+        ) : tab === "saved" ? (
+          bookmarksLoading ? (
+            <div style={{ textAlign: "center", padding: "var(--space-8)", color: "var(--color-text-tertiary)" }}>
+              <Loader2 size={24} className="animate-spin" />
+            </div>
+          ) : savedArticles.length > 0 ? (
+            <div className="profile-saved-grid">
+              {savedArticles.map((article) => (
+                <ArticleCard key={article.id} article={article} />
+              ))}
+            </div>
+          ) : (
+            <div className="profile-empty">
+              <div className="profile-empty__icon"><Bookmark size={32} /></div>
+              <p className="profile-empty__text">No saved articles yet</p>
             </div>
           )
         ) : tab === "files" ? (
@@ -529,6 +634,16 @@ export default function ProfilePage() {
           </div>
         )}
       </main>
+
+      {followModal && (
+        <FollowListModal
+          title={followModal === "followers" ? t("profile.followers") : t("profile.following")}
+          users={followModalUsers}
+          loading={followModalLoading}
+          onClose={() => setFollowModal(null)}
+        />
+      )}
+
       <BottomBar />
     </>
   );

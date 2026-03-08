@@ -13,6 +13,7 @@ import type {
   ReplyReactionMap,
   FollowStatus,
   FollowCounts,
+  FollowListResponse,
   FileListResponse,
   ApiNotification,
 } from "@/lib/types.ts";
@@ -153,6 +154,7 @@ export function getArticles(params?: {
   category?: string;
   country?: string;
   owner_id?: string;
+  sort?: "recent" | "popular";
   limit?: number;
   offset?: number;
 }): Promise<ArticleListResponse> {
@@ -162,6 +164,7 @@ export function getArticles(params?: {
   if (params?.category) qs.set("category", params.category);
   if (params?.country) qs.set("country", params.country);
   if (params?.owner_id) qs.set("owner_id", params.owner_id);
+  if (params?.sort) qs.set("sort", params.sort);
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.offset) qs.set("offset", String(params.offset));
   const query = qs.toString();
@@ -176,6 +179,28 @@ export function getArticle(id: string): Promise<ApiSubmission> {
 
 export function getSimilarArticles(id: string): Promise<{ articles: ApiSubmission[] }> {
   return apiFetch<{ articles: ApiSubmission[] }>(`/api/articles/${id}/similar`);
+}
+
+// --- Bookmark endpoints ---
+
+export function bookmarkArticle(id: string): Promise<{ bookmarked: boolean }> {
+  return apiFetch<{ bookmarked: boolean }>(`/api/articles/${id}/bookmark`, { method: "POST" });
+}
+
+export function unbookmarkArticle(id: string): Promise<{ bookmarked: boolean }> {
+  return apiFetch<{ bookmarked: boolean }>(`/api/articles/${id}/bookmark`, { method: "DELETE" });
+}
+
+export function getBookmarkStatus(id: string): Promise<{ bookmarked: boolean }> {
+  return apiFetch<{ bookmarked: boolean }>(`/api/articles/${id}/bookmark`);
+}
+
+export function getBookmarks(params?: { limit?: number; offset?: number }): Promise<ArticleListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  const query = qs.toString();
+  return apiFetch<ArticleListResponse>(`/api/profiles/me/bookmarks${query ? `?${query}` : ""}`);
 }
 
 // --- Submission endpoints ---
@@ -513,6 +538,14 @@ export function fileToMediaUrl(name: string): string {
 
 export function getFollowCounts(profileId: string): Promise<FollowCounts> {
   return apiFetch<FollowCounts>(`/api/profiles/${profileId}/follow-counts`);
+}
+
+export function getFollowers(profileId: string): Promise<FollowListResponse> {
+  return apiFetch<FollowListResponse>(`/api/profiles/${profileId}/followers`);
+}
+
+export function getFollowing(profileId: string): Promise<FollowListResponse> {
+  return apiFetch<FollowListResponse>(`/api/profiles/${profileId}/following`);
 }
 
 // --- Notifications ---

@@ -5,12 +5,14 @@ import ReactMarkdown from "react-markdown";
 import { BADGE_CLASS } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
-import { getArticle, getSimilarArticles, getReplies, createReply, deleteReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
+import { getArticle, getSimilarArticles, getReplies, createReply, deleteReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply, bookmarkArticle as apiBookmark, unbookmarkArticle as apiUnbookmark, getBookmarkStatus } from "@/lib/api";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { apiToArticle, timeAgo, computeOverallScore } from "@/lib/types";
 import type { ApiSubmission, ApiReply, ReactionCounts, ReplyReactionMap } from "@/lib/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { QualityPanel } from "@/components/QualityPanel";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useDocumentHead } from "@/hooks/useDocumentHead";
 import Navbar from "@/components/Navbar";
 import Modal from "@/components/Modal";
 import "./ArticlePage.css";
@@ -503,6 +505,12 @@ export default function ArticlePage() {
   const similarSubmissions = similarData?.articles ?? [];
   const similar = similarSubmissions.slice(0, 5);
 
+  useDocumentHead({
+    title: article?.title,
+    description: article?.excerpt,
+    image: article?.image || undefined,
+  });
+
   if (isLoading) {
     return (
       <>
@@ -592,7 +600,10 @@ export default function ArticlePage() {
           )}
         </div>
 
-        <ArticleReactions articleId={id!} />
+        <div className="article-actions-row">
+          <ArticleReactions articleId={id!} />
+          <BookmarkButton articleId={id!} size={20} />
+        </div>
 
         {isAuthenticated && !reportDone && (
           <div className="report-section">

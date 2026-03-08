@@ -210,6 +210,8 @@ func main() {
 		public.GET("/locations/:slug/articles", h.LocationArticles)
 		public.GET("/articles/:id/similar", h.SimilarArticles)
 		public.GET("/profiles/:id/follow-counts", h.GetFollowCounts)
+		public.GET("/profiles/:id/followers", h.GetFollowers)
+		public.GET("/profiles/:id/following", h.GetFollowing)
 	}
 
 	// --- Optional auth routes (public but enhanced with auth context) ---
@@ -260,6 +262,12 @@ func main() {
 		authed.DELETE("/articles/:id/react", h.UnreactArticle)
 		authed.POST("/replies/:id/react", h.ReactReply)
 		authed.DELETE("/replies/:id/react", h.UnreactReply)
+
+		// Bookmarks
+		authed.POST("/articles/:id/bookmark", h.BookmarkArticle)
+		authed.DELETE("/articles/:id/bookmark", h.UnbookmarkArticle)
+		authed.GET("/articles/:id/bookmark", h.GetBookmarkStatus)
+		authed.GET("/profiles/me/bookmarks", h.ListBookmarks)
 
 		// Notifications
 		authed.GET("/notifications", h.ListNotifications)
