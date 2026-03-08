@@ -19,7 +19,7 @@ const (
 func DefaultPermissions(role int16) int64 {
 	switch role {
 	case RoleContributor:
-		return PermSubmit
+		return PermSubmit | PermPublish
 	case RoleEditor:
 		return PermSubmit | PermPublish | PermModerate
 	case RoleAdmin:
