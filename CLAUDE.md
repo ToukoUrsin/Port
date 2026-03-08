@@ -35,27 +35,30 @@ archive/                        Previous project (Preflight) and research report
 
 ## Tech Stack
 
-- **Backend:** Go 1.22+, Gin, PostgreSQL, GORM, pgvector, Redis (cache, 30min TTL)
+- **Backend:** Go 1.24+, Gin, PostgreSQL, GORM, pgvector, Redis (cache, 30min TTL)
 - **Frontend:** Vite 7 + React 19 (TypeScript), Tailwind CSS v4 (via `@tailwindcss/vite` plugin), shadcn/ui (base-nova style), react-router-dom v7, Lucide React icons, Leaflet maps
 - **AI:** ElevenLabs STT (transcription), Gemini API via `google.golang.org/genai` SDK (article generation + review + embeddings)
 - **Auth:** JWT (HS256, 15min access / 30d refresh), bcrypt passwords, Google OAuth, Redis-backed cache
 
 ## Architecture
 
-Single Gin backend serving a React SPA frontend. Core AI pipeline runs synchronously for the hackathon:
+Single Gin backend serving a React SPA frontend. Core AI pipeline uses SSE for real-time progress:
 
 ```
 POST /api/submissions -> save files -> return { submission_id }
 GET  /api/submissions/{id}/stream -> SSE connection:
-  -> ElevenLabs transcribe -> event: status "transcribing"
-  -> Gemini generate       -> event: status "generating"
-  -> Gemini review         -> event: status "reviewing"
-  -> save to DB            -> event: complete { article, review }
+  -> GATHER     (parallel: transcribe audio + describe photos + resolve location)
+  -> RESEARCH   (web search via Gemini function calling)
+  -> QUESTIONING (generate follow-up questions if gaps found)
+  -> GENERATE   (article from PipelineContext, with language following)
+  -> REVIEW     (editorial quality gate: GREEN/YELLOW/RED)
+  -> AUTO-FIX   (up to 2 rounds if fixable red triggers like hallucinations)
+  -> save to DB -> event: complete { article, review }
 ```
 
-Two-request pattern: POST saves files and returns immediately, then frontend opens SSE stream for real-time pipeline progress (~20-30 seconds). See `3_how/TECH_SPEC.md` for detailed API endpoints, DB schema, and service structure.
+Two-request pattern: POST saves files and returns immediately, then frontend opens SSE stream for real-time pipeline progress. Pipeline stages share state via `PipelineContext` struct. See `3_how/TECH_SPEC.md` for detailed API endpoints, DB schema, and service structure.
 
-**Current state:** Generation and review use Gemini when `GEMINI_API_KEY` is set, otherwise stub implementations. Transcription is still a stub (replace with ElevenLabs when ready).
+**Current state:** Generation, review, and research use Gemini with function calling when `GEMINI_API_KEY` is set. Transcription uses ElevenLabs when `ELEVENLABS_API_KEY` is set, otherwise stub.
 
 ### Backend Structure
 
@@ -71,8 +74,8 @@ backend/
     middleware/auth.go             JWT auth, OptionalAuth, RequireRole, RequirePerm
     middleware/cors.go             CORS setup
     models/                        GORM models + constants (status codes, tag bitmasks, permission flags)
-    handlers/                      Gin route handlers (one file per domain: articles, auth, submissions, etc.)
-    services/                      Business logic (auth, pipeline, media, access, transcription, generation, review)
+    handlers/                      Gin route handlers (one file per domain: articles, auth, submissions, reactions, bookmarks, follows, etc.)
+    services/                      Business logic (pipeline, generation, review, research, questioning, transcription, embedding, chunker, reranker, auth, media, access, notification, stats, georesolver, etc.)
   migrations/                      SQL seed files (run on startup after GORM AutoMigrate)
 ```
 
@@ -90,12 +93,13 @@ Key patterns:
 frontend/src/
   App.tsx                          Router with auth-guarded routes
   contexts/AuthContext.tsx          Auth state, login/signup/logout, silent refresh on mount
+  contexts/LanguageContext.tsx      i18n / language selection
   lib/api.ts                       API client with auto-refresh on 401, token in memory (not localStorage)
   lib/types.ts                     TypeScript types mirroring Go backend structs + display helpers
   lib/sse.ts                       SSE stream helper for pipeline events
   lib/utils.ts                     cn() for Tailwind class merging
   pages/                           Page components
-  components/                      Shared components (Navbar, BottomBar, Toast, ProtectedRoute)
+  components/                      Shared components (Navbar, BottomBar, Toast, ProtectedRoute, ConfirmDialog)
   components/ui/                   shadcn components
   styles/                          tokens.css, components.css, index.css (Tailwind theme), reset.css
 ```
@@ -149,12 +153,18 @@ The frontend has **two coexisting CSS systems** — understand both before writi
 ```
 /                  HomePage
 /article/:id       ArticlePage
+/search            SearchPage
+/tag/:slug         TagPage
 /explore           ExplorePage (with Leaflet map)
 /login             LoginPage (public-only, redirects if logged in)
 /signup            SignupPage (public-only, redirects if logged in)
+/auth/callback     AuthCallbackPage (Google OAuth)
+/onboarding        OnboardingPage (protected)
 /post              PostPage (protected, requires auth)
-/profile           ProfilePage (own profile)
-/profile/:slug     ProfilePage (other user)
+/post/:id          PostPage edit mode (protected)
+/profile           ProfilePage (own profile, protected)
+/profile/:slug     ProfilePage (other user, public)
+/admin/dashboard   AdminDashboardPage (admin-only)
 /design-system     DesignSystem (token reference page)
 ```
 
@@ -164,7 +174,7 @@ Backend reads from `.env` (loaded via godotenv). All have defaults for local dev
 - `DATABASE_URL` — PostgreSQL connection string (default `postgresql://user:pass@localhost:5432/localnews`)
 - `PORT` — server port (default `8000`)
 - `GEMINI_API_KEY` — for Gemini article generation, review, and embeddings
-- `GENERATION_MODEL` — Gemini model for generation/review (default `gemini-3.1-pro`)
+- `GENERATION_MODEL` — Gemini model for generation/review (default `gemini-3.1-pro-preview`)
 - `ELEVENLABS_API_KEY` — for speech-to-text transcription
 - `MEDIA_STORAGE_PATH` — local file uploads (default `./uploads`)
 - `REDIS_URL` — Redis connection (default `redis://localhost:6379/0`)
