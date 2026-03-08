@@ -69,10 +69,7 @@ func (s *GeminiResearchService) researchWithFunctionCall(ctx context.Context, pc
 			SystemInstruction: &genai.Content{
 				Parts: []*genai.Part{genai.NewPartFromText(prompts.ResearchSystem)},
 			},
-			Tools: []*genai.Tool{
-				{GoogleSearch: &genai.GoogleSearch{}},
-				researchTool,
-			},
+			Tools: []*genai.Tool{researchTool},
 			ToolConfig: &genai.ToolConfig{
 				FunctionCallingConfig: &genai.FunctionCallingConfig{
 					Mode: genai.FunctionCallingConfigModeAny,
@@ -87,9 +84,6 @@ func (s *GeminiResearchService) researchWithFunctionCall(ctx context.Context, pc
 		return nil, fmt.Errorf("gemini research (function call): %w", err)
 	}
 
-	// Extract grounding sources from GoogleSearch
-	webSources := extractGroundingSources(resp)
-
 	_, args, fcErr := extractFunctionCall(resp)
 	if fcErr != nil {
 		return nil, fmt.Errorf("no function call in research response: %w", fcErr)
@@ -99,9 +93,6 @@ func (s *GeminiResearchService) researchWithFunctionCall(ctx context.Context, pc
 	if unmarshalErr != nil {
 		return nil, fmt.Errorf("unmarshal research args: %w", unmarshalErr)
 	}
-
-	// Merge grounding sources not already in parsed result
-	mergeWebSources(result, webSources)
 
 	return result, nil
 }

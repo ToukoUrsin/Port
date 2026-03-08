@@ -101,10 +101,7 @@ func (s *GeminiReviewService) reviewWithFunctionCall(ctx context.Context, pctx *
 			SystemInstruction: &genai.Content{
 				Parts: []*genai.Part{genai.NewPartFromText(prompts.ReviewSystem)},
 			},
-			Tools: []*genai.Tool{
-				{GoogleSearch: &genai.GoogleSearch{}},
-				reviewTool,
-			},
+			Tools: []*genai.Tool{reviewTool},
 			ToolConfig: &genai.ToolConfig{
 				FunctionCallingConfig: &genai.FunctionCallingConfig{
 					Mode: genai.FunctionCallingConfigModeAny,
@@ -119,8 +116,6 @@ func (s *GeminiReviewService) reviewWithFunctionCall(ctx context.Context, pctx *
 		return nil, fmt.Errorf("gemini review (function call): %w", err)
 	}
 
-	webSources := extractGroundingSources(resp)
-
 	_, args, fcErr := extractFunctionCall(resp)
 	if fcErr != nil {
 		return nil, fmt.Errorf("no function call in review response: %w", fcErr)
@@ -129,10 +124,6 @@ func (s *GeminiReviewService) reviewWithFunctionCall(ctx context.Context, pctx *
 	result, unmarshalErr := unmarshalFunctionArgs[models.ReviewResult](args)
 	if unmarshalErr != nil {
 		return nil, fmt.Errorf("unmarshal review args: %w", unmarshalErr)
-	}
-
-	if len(webSources) > 0 {
-		result.WebSources = webSources
 	}
 
 	return result, nil
