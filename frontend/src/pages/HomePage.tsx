@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, ChevronDown, MapPin, Loader2, TrendingUp } from "lucide-react";
+import { Clock, ImageIcon, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import Onboarding, { shouldShowOnboarding } from "@/components/Onboarding";
 import Navbar from "@/components/Navbar";
 import BottomBar from "@/components/BottomBar";
@@ -70,7 +70,7 @@ function RankedCard({ article, rank }: { article: Article; rank: number }) {
   );
 }
 
-function TrendingCard({ article, rank }: { article: Article; rank: number }) {
+function TrendingCard({ article }: { article: Article }) {
   const { t } = useLanguage();
   return (
     <Link
@@ -78,31 +78,28 @@ function TrendingCard({ article, rank }: { article: Article; rank: number }) {
       className="trending-card"
       style={{ textDecoration: "none", color: "inherit" }}
     >
-      <span className="trending-card__rank">{rank}</span>
+      {article.image && (
+        <div className="trending-card__thumb">
+          <img src={article.image} alt={article.title} />
+        </div>
+      )}
       <div className="trending-card__body">
         <span className={`badge ${BADGE_CLASS[article.category]}`}>
           {t("tag." + article.category)}
         </span>
         <h3 className="trending-card__title">{article.title}</h3>
         <div className="trending-card__meta">
-          <span>{article.author}</span>
           {article.area && (
             <>
-              <span>&middot;</span>
               <MapPin size={11} />
               <span>{article.area}</span>
+              <span>&middot;</span>
             </>
           )}
-          <span>&middot;</span>
           <Clock size={11} />
           <span>{article.timeAgo}</span>
         </div>
       </div>
-      {article.image && (
-        <div className="trending-card__thumb">
-          <img src={article.image} alt={article.title} />
-        </div>
-      )}
     </Link>
   );
 }
@@ -284,12 +281,11 @@ function TrendingSection({ articles, t }: { articles: Article[]; t: (key: string
   return (
     <section className="home-section">
       <div className="home-section__header">
-        <TrendingUp size={20} />
         <h2 className="home-section__title">{t("home.trending")}</h2>
       </div>
       <div className="trending-list">
         {articles.map((article, i) => (
-          <TrendingCard key={article.id} article={article} rank={i + 1} />
+          <TrendingCard key={article.id} article={article} />
         ))}
       </div>
     </section>

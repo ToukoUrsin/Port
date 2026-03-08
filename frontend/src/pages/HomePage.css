@@ -721,22 +721,12 @@
   background: var(--color-surface-hover);
 }
 
-.trending-card__rank {
-  font-family: var(--font-sans);
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
-  color: var(--color-primary);
-  min-width: 32px;
-  text-align: center;
-  flex-shrink: 0;
-  line-height: 1;
-}
-
 .trending-card__body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-1);
 }
 
@@ -780,11 +770,6 @@
 @media (min-width: 768px) {
   .trending-card {
     padding: var(--space-4) var(--space-4);
-  }
-
-  .trending-card__rank {
-    font-size: var(--text-3xl);
-    min-width: 40px;
   }
 
   .trending-card__title {
