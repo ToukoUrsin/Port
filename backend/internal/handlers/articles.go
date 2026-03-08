@@ -106,6 +106,23 @@ func (h *Handler) ListArticles(c *gin.Context) {
 				karmaMap[kr.ID] = kr.Karma
 			}
 
+			// Identify system accounts (e.g. LocalNews) for freshness boost + diversity cap
+			type profileNameRow struct {
+				ID          uuid.UUID
+				ProfileName string
+			}
+			var pnRows []profileNameRow
+			h.db.Model(&models.Profile{}).
+				Select("id, profile_name").
+				Where("id IN ?", ownerIDs).
+				Scan(&pnRows)
+			systemOwnerIDs := make(map[uuid.UUID]bool)
+			for _, pn := range pnRows {
+				if systemAccountNames[pn.ProfileName] {
+					systemOwnerIDs[pn.ID] = true
+				}
+			}
+
 			// Load personalization if user is logged in
 			var perso *FeedPersonalization
 			if pidRaw, exists := c.Get("profile_id"); exists {
@@ -116,7 +133,7 @@ func (h *Handler) ListArticles(c *gin.Context) {
 				}
 			}
 
-			h.rankArticles(articles, karmaMap, replyCountMap, perso)
+			h.rankArticles(articles, karmaMap, replyCountMap, perso, systemOwnerIDs)
 		}
 
 		// Apply pagination after ranking
