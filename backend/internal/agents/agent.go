@@ -44,8 +44,12 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 
 	// Kick off the agent
+	city := a.persona.City
+	if city == "" {
+		city = "Espoo"
+	}
 	resp, err := session.SendMessage(ctx, *genai.NewPartFromText(
-		"You're now active on the local news platform for Espoo. "+
+		"You're now active on the local news platform for "+city+". "+
 			"FIRST: Check your notifications to see if anyone has liked your comments, replied to you, or interacted with your content. "+
 			"If someone replied to your comment, read the article's comments and reply back to them naturally — have a conversation! "+
 			"If someone liked your comment, you might check what they've been writing too. "+

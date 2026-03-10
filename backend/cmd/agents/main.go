@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/localnews/backend/internal/agents"
 	"github.com/localnews/backend/internal/cache"
@@ -151,7 +152,10 @@ func main() {
 }
 
 func seedAgentProfile(db *gorm.DB, p agents.Persona, logger *log.Logger) *models.Profile {
-	locationID := models.EspooLocationID()
+	locationID := p.LocationID
+	if locationID == uuid.Nil {
+		locationID = models.EspooLocationID()
+	}
 	profile := models.Profile{
 		ID:          p.ID,
 		ProfileName: p.ProfileName,
