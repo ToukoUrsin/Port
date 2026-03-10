@@ -27,7 +27,8 @@ func main() {
 	baseURL := flag.String("base-url", "http://localhost:8000", "Backend API base URL")
 	model := flag.String("model", "gemini-2.5-flash", "Gemini model for rewriting")
 	perSource := flag.Int("per-source", 3, "Number of articles to fetch per source")
-	srcList := flag.String("sources", "wikipedia,yle,seiska,iltasanomat,iltalehti,kauppalehti", "Comma-separated sources")
+	srcList := flag.String("sources", "wikipedia,yle,seiska,iltasanomat,iltalehti,kauppalehti", "Comma-separated sources (also: puskaradio)")
+	fbDataDir := flag.String("fb-data", "../scripts/fb_output", "Path to fb_scraper output dir (for puskaradio source)")
 	dryRun := flag.Bool("dry-run", false, "Fetch and rewrite without publishing")
 	flag.Parse()
 
@@ -102,6 +103,8 @@ func main() {
 			srcs = append(srcs, sources.NewIltalehti())
 		case "kauppalehti":
 			srcs = append(srcs, sources.NewKauppalehti())
+		case "puskaradio":
+			srcs = append(srcs, sources.NewPuskaradio(*fbDataDir))
 		default:
 			logger.Printf("Unknown source: %s (skipping)", name)
 		}

@@ -78,6 +78,14 @@ Jos aiheessa on paikallinen kytkös, tuo se esiin.`,
 Korosta taloudellisia vaikutuksia paikallisiin yrityksiin ja asukkaisiin.
 Käytä ammattimaista sävyä. Selitä taloudelliset käsitteet selkeästi.
 Tee aiheesta relevantti tavalliselle espoolaiselle lukijalle.`,
+
+	"puskaradio": `Tämä on Facebook-puskaradioryhmästä poimittu kansalaisviesti.
+Muunna tämä epämuodollinen yhteisöviesti laadukkaaksi paikallisartikkeliksi.
+Säilytä alkuperäisen viestin ydinasia ja paikallisuus.
+Paranna rakennetta ja luettavuutta — muuta some-postaus journalistiseksi artikkeliksi.
+Älä keksi faktoja joita viestissä ei ole. Jos viesti on lyhyt tai epäselvä, kirjoita tiivis artikkeli.
+Lisää kontekstia ja taustaa jos mahdollista, mutta merkitse selvästi mikä on alkuperäistä tietoa.
+Käytä lämmintä, yhteisöllistä sävyä — tämä on kansalaisten ääni.`,
 }
 
 const baseSystemPrompt = `Olet paikallislehden toimittaja Espoossa, Suomessa. Kirjoitat artikkeleita espoolaisille lukijoille.

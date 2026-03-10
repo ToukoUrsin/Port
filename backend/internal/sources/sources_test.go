@@ -2,6 +2,8 @@ package sources
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -144,6 +146,7 @@ func TestSourceNames(t *testing.T) {
 		NewIltalehti(),
 		NewKauppalehti(),
 		NewSeiska(),
+		NewPuskaradio("/tmp/nonexistent"),
 	}
 
 	names := map[string]bool{}
@@ -158,10 +161,133 @@ func TestSourceNames(t *testing.T) {
 		names[name] = true
 	}
 
-	expected := []string{"wikipedia", "yle", "iltasanomat", "iltalehti", "kauppalehti", "seiska"}
+	expected := []string{"wikipedia", "yle", "iltasanomat", "iltalehti", "kauppalehti", "seiska", "puskaradio"}
 	for _, e := range expected {
 		if !names[e] {
 			t.Errorf("missing expected source: %s", e)
+		}
+	}
+}
+
+// --- Puskaradio tests (no network, uses temp files) ---
+
+func TestPuskaradioFetch(t *testing.T) {
+	// Create temp dir with sample scraped data
+	dir := t.TempDir()
+	groupDir := dir + "/turku_puskaradio"
+	os.MkdirAll(groupDir, 0755)
+
+	data := `{
+		"group_url": "https://www.facebook.com/groups/turkupuskaradio",
+		"group_name": "Puskaradio Turku",
+		"post_count": 3,
+		"posts": [
+			{
+				"text": "Onko kukaan huomannut että Leppävaaran aseman parkkipaikka on taas täynnä jo aamuyhdeksältä? Tämä on ollut ongelma jo kuukausia.",
+				"images": ["https://scontent.example.com/img1.jpg"],
+				"author": "Matti Meikäläinen",
+				"timestamp": "2 t"
+			},
+			{
+				"text": "Lyhyt",
+				"images": [],
+				"author": "Test",
+				"timestamp": "1 h"
+			},
+			{
+				"text": "Tapiolan uimahallin remontti etenee hienosti! Kävin katsomassa ja uudet tilat näyttävät todella upeilta. Erityisesti lasten allasosasto on nyt paljon isompi kuin ennen.",
+				"images": [],
+				"author": "Liisa Korhonen",
+				"timestamp": "5 t"
+			}
+		]
+	}`
+	os.WriteFile(groupDir+"/posts.json", []byte(data), 0644)
+
+	src := NewPuskaradio(dir)
+	items, err := src.Fetch(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("Puskaradio fetch failed: %v", err)
+	}
+
+	// Should skip the short post ("Lyhyt" < 50 chars)
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items (short post filtered), got %d", len(items))
+	}
+
+	for _, item := range items {
+		if item.SourceName != "puskaradio" {
+			t.Errorf("expected SourceName 'puskaradio', got %q", item.SourceName)
+		}
+		if item.Language != "fi" {
+			t.Errorf("expected Language 'fi', got %q", item.Language)
+		}
+		if item.Title == "" {
+			t.Error("item should have a title")
+		}
+		if item.FullText == "" {
+			t.Error("item should have FullText")
+		}
+	}
+}
+
+func TestPuskaradioNoFiles(t *testing.T) {
+	dir := t.TempDir()
+	src := NewPuskaradio(dir)
+	_, err := src.Fetch(context.Background(), 5)
+	if err == nil {
+		t.Error("expected error when no posts.json files exist")
+	}
+}
+
+func TestPuskaradioLimit(t *testing.T) {
+	dir := t.TempDir()
+	groupDir := dir + "/test_group"
+	os.MkdirAll(groupDir, 0755)
+
+	// Create 5 posts
+	posts := make([]map[string]any, 5)
+	for i := range posts {
+		posts[i] = map[string]any{
+			"text":   fmt.Sprintf("Tämä on testiviesti numero %d ja se on riittävän pitkä ylittääkseen viisikymmentä merkkiä.", i+1),
+			"images": []string{},
+			"author": "Testaaja",
+		}
+	}
+	data, _ := json.Marshal(map[string]any{
+		"group_url":  "https://facebook.com/groups/test",
+		"group_name": "Test Group",
+		"post_count": 5,
+		"posts":      posts,
+	})
+	os.WriteFile(groupDir+"/posts.json", data, 0644)
+
+	src := NewPuskaradio(dir)
+	items, err := src.Fetch(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("fetch failed: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items (limited), got %d", len(items))
+	}
+}
+
+func TestExtractTitle(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string // just check non-empty and reasonable length
+	}{
+		{"Tämä on lyhyt viesti.", "Tämä on lyhyt viesti."},
+		{"Leppävaaran aseman parkkipaikka on taas täynnä. Tämä on ollut ongelma kuukausia.", "Leppävaaran aseman parkkipaikka on taas täynnä."},
+		{"Lyhyt", "Lyhyt"},
+	}
+	for _, tt := range tests {
+		got := extractTitle(tt.input)
+		if got == "" {
+			t.Errorf("extractTitle(%q) returned empty", tt.input)
+		}
+		if len(got) > 110 {
+			t.Errorf("extractTitle produced too long title: %d chars", len(got))
 		}
 	}
 }
