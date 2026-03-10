@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, MapPin } from "lucide-react";
-import { BADGE_CLASS, type Article } from "@/data/articles";
+import { Clock, ImageIcon, MapPin, Sparkles } from "lucide-react";
+import { BADGE_CLASS, isAIGenerated, type Article } from "@/data/articles";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import "./ArticleCard.css";
@@ -37,6 +37,12 @@ export default function ArticleCard({ article, featured }: { article: Article; f
           >
             {t("tag." + article.category)}
           </span>
+          {isAIGenerated(article.author) && (
+            <span className="badge badge--sm badge-ai">
+              <Sparkles size={10} style={{ display: "inline", marginRight: "2px", verticalAlign: "middle" }} />
+              {t("article.aiGenerated")}
+            </span>
+          )}
         </div>
         <h2 className="article-card__title">
           {article.title}

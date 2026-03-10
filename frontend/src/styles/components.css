@@ -152,6 +152,7 @@ textarea.input {
 .badge-community { background: #451A3810; color: var(--color-cat-community); }
 .badge-opinion   { background: #3B2D5C10; color: var(--color-cat-opinion); }
 .badge-news      { background: #2A3A4A10; color: var(--color-cat-news); }
+.badge-ai        { background: #4A7A6A10; color: var(--color-info); }
 
 .badge--clickable {
   cursor: pointer;

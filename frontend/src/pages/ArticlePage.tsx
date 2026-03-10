@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Reply as ReplyIcon, Trash2 } from "lucide-react";
+import { Clock, ImageIcon, MessageSquare, User, Send, Loader2, Flag, ChevronDown, ThumbsUp, ThumbsDown, Reply as ReplyIcon, Trash2, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { BADGE_CLASS } from "@/data/articles";
+import { BADGE_CLASS, isAIGenerated } from "@/data/articles";
 import type { Article } from "@/data/articles";
 import { useApi } from "@/hooks/useApi";
 import { getArticle, getSimilarArticles, getReplies, createReply, deleteReply, flagArticle, getArticleReactions, reactArticle, unreactArticle, getReplyReactions, reactReply, unreactReply } from "@/lib/api";
@@ -575,6 +575,12 @@ export default function ArticlePage() {
         <h1 className="article-title">{article.title}</h1>
         <p className="article-author">
           {t("article.by")} <Link to={`/profile/${article.authorId}`} className="article-author__link">{article.author}</Link>
+          {isAIGenerated(article.author) && (
+            <span className="badge badge--sm badge-ai" style={{ marginLeft: "var(--space-2)", verticalAlign: "middle" }}>
+              <Sparkles size={10} style={{ display: "inline", marginRight: "2px", verticalAlign: "middle" }} />
+              {t("article.aiGenerated")}
+            </span>
+          )}
         </p>
 
         <div className="article-body">
@@ -590,7 +596,15 @@ export default function ArticlePage() {
         {/* Contributor card */}
         <div className="contributor-card">
           <div className="contributor-info">
-            <span className="contributor-name">{t("article.by")} {article.author}</span>
+            <span className="contributor-name">
+              {t("article.by")} {article.author}
+              {isAIGenerated(article.author) && (
+                <span className="badge badge--sm badge-ai" style={{ marginLeft: "var(--space-2)", verticalAlign: "middle" }}>
+                  <Sparkles size={10} style={{ display: "inline", marginRight: "2px", verticalAlign: "middle" }} />
+                  {t("article.aiGenerated")}
+                </span>
+              )}
+            </span>
             <span className="contributor-date">{article.timeAgo}</span>
           </div>
           {apiData?.meta?.article_metadata?.category && (

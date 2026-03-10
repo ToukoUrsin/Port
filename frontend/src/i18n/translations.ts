@@ -150,6 +150,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "article.submitReport": "Lähetä ilmianto",
     "article.reportThanks": "Kiitos ilmiannosta. Tiimimme tarkistaa sen.",
     "article.liked": "piti tästä",
+    "article.aiGenerated": "Tekoäly",
 
     // Explore
     "explore.allAreas": "Kaikki alueet",
@@ -606,6 +607,7 @@ export const translations: Record<"fi" | "en", Record<string, string>> = {
     "article.submitReport": "Submit report",
     "article.reportThanks": "Thank you for your report. Our team will review it.",
     "article.liked": "liked",
+    "article.aiGenerated": "AI-generated",
 
     // Explore
     "explore.allAreas": "All Areas",
