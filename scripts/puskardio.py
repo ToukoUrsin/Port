@@ -1,15 +1,26 @@
 """
 Puskardio: Automated tabloid-style article generator.
 
-Sources trending ideas from Reddit/Ylilauta, generates engaging Finnish tabloid
-articles with Gemini, creates photorealistic images with Imagen, and publishes
-via the admin batch API.
+Sources trending ideas from Reddit, YLE, Wikipedia, Seiska, Ilta-Sanomat,
+Iltalehti, Kauppalehti, and Gemini brainstorming. Generates engaging Finnish
+tabloid articles with Gemini, creates photorealistic images with Imagen, and
+publishes via the admin batch API.
 
 Usage:
     GEMINI_API_KEY=... ADMIN_API_TOKEN=... python scripts/puskardio.py
     GEMINI_API_KEY=... python scripts/puskardio.py --dry-run
     GEMINI_API_KEY=... ADMIN_API_TOKEN=... PUSKARDIO_COUNT=10 python scripts/puskardio.py
-    GEMINI_API_KEY=... ADMIN_API_TOKEN=... PUSKARDIO_SOURCES=gemini python scripts/puskardio.py
+    GEMINI_API_KEY=... ADMIN_API_TOKEN=... PUSKARDIO_SOURCES=gemini,yle python scripts/puskardio.py
+
+Sources (PUSKARDIO_SOURCES env, comma-separated):
+    reddit       Reddit r/suomi, r/finland trending posts
+    gemini       Gemini brainstorming with Google Search
+    yle          YLE Uutiset RSS feed
+    wikipedia    Random Finnish Wikipedia articles
+    iltasanomat  Ilta-Sanomat RSS feed
+    iltalehti    Iltalehti RSS feed
+    kauppalehti  Taloussanomat/business news RSS feed
+    seiska       Seiska RSS (fallback: YLE viihde)
 """
 
 import json
@@ -37,7 +48,7 @@ PUSKARDIO_COUNT = int(os.environ.get("PUSKARDIO_COUNT", "5"))
 PUSKARDIO_LOCATION_ID = os.environ.get("PUSKARDIO_LOCATION_ID", "")
 PUSKARDIO_OWNER_ID = os.environ.get("PUSKARDIO_OWNER_ID", "00000000-0000-0000-0000-000000000001")
 PUSKARDIO_LANGUAGE = os.environ.get("PUSKARDIO_LANGUAGE", "fi")
-PUSKARDIO_SOURCES = os.environ.get("PUSKARDIO_SOURCES", "reddit,gemini").split(",")
+PUSKARDIO_SOURCES = os.environ.get("PUSKARDIO_SOURCES", "reddit,gemini,yle,wikipedia,iltasanomat,iltalehti,kauppalehti,seiska").split(",")
 PUSKARDIO_REDDIT_SUBS = os.environ.get("PUSKARDIO_REDDIT_SUBS", "suomi,finland").split(",")
 GENERATION_MODEL = os.environ.get("GENERATION_MODEL", "gemini-3.1-flash-lite-preview")
 IMAGEN_MODEL = os.environ.get("IMAGEN_MODEL", "gemini-3.1-flash-image-preview")
@@ -307,6 +318,125 @@ Return ONLY the JSON array, no markdown fences."""
 
 
 # ---------------------------------------------------------------------------
+# External news sources (YLE, Wikipedia, Seiska, IS, IL, Kauppalehti)
+# ---------------------------------------------------------------------------
+
+import xml.etree.ElementTree as ET
+
+
+def fetch_rss_ideas(feed_url, source_name, limit=10):
+    """Fetch ideas from an RSS feed."""
+    ideas = []
+    try:
+        resp = requests.get(feed_url, headers={"User-Agent": "puskardio/1.0"}, timeout=15)
+        if resp.status_code != 200:
+            print(f"  {source_name}: HTTP {resp.status_code}")
+            return ideas
+
+        root = ET.fromstring(resp.content)
+        items = root.findall(".//item")
+        random.shuffle(items)
+
+        for item in items[:limit]:
+            title = (item.findtext("title") or "").strip()
+            desc = (item.findtext("description") or "").strip()
+            link = (item.findtext("link") or "").strip()
+            if not title or len(title) < 10:
+                continue
+            ideas.append({
+                "topic": title,
+                "context": desc[:1000] if desc else title,
+                "source": source_name,
+                "source_url": link,
+                "language": "fi",
+            })
+
+        print(f"  {source_name}: {len(ideas)} ideas")
+    except Exception as e:
+        print(f"  {source_name}: ERROR {e}")
+    return ideas
+
+
+def fetch_yle_ideas(limit=10):
+    """Fetch ideas from YLE Uutiset RSS."""
+    return fetch_rss_ideas(
+        "https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET",
+        "yle", limit,
+    )
+
+
+def fetch_iltasanomat_ideas(limit=10):
+    """Fetch ideas from Ilta-Sanomat RSS."""
+    return fetch_rss_ideas(
+        "https://www.is.fi/rss/tuoreimmat.xml",
+        "iltasanomat", limit,
+    )
+
+
+def fetch_iltalehti_ideas(limit=10):
+    """Fetch ideas from Iltalehti RSS."""
+    return fetch_rss_ideas(
+        "https://www.iltalehti.fi/rss/uutiset.xml",
+        "iltalehti", limit,
+    )
+
+
+def fetch_kauppalehti_ideas(limit=10):
+    """Fetch ideas from Taloussanomat (business news) RSS."""
+    return fetch_rss_ideas(
+        "https://www.is.fi/rss/taloussanomat.xml",
+        "kauppalehti", limit,
+    )
+
+
+def fetch_seiska_ideas(limit=10):
+    """Fetch ideas from Seiska RSS, falling back to YLE viihde."""
+    ideas = fetch_rss_ideas("https://www.seiska.fi/rss", "seiska", limit)
+    if not ideas:
+        # Fallback: YLE entertainment
+        ideas = fetch_rss_ideas(
+            "https://feeds.yle.fi/uutiset/v1/recent.rss?publisherIds=YLE_UUTISET&concepts=18-36066",
+            "seiska", limit,
+        )
+    return ideas
+
+
+def fetch_wikipedia_ideas(limit=5):
+    """Fetch random Finnish Wikipedia articles as idea seeds."""
+    ideas = []
+    for _ in range(limit + 3):  # fetch extra to compensate for stubs
+        if len(ideas) >= limit:
+            break
+        try:
+            resp = requests.get(
+                "https://fi.wikipedia.org/api/rest_v1/page/random/summary",
+                headers={"User-Agent": "puskardio/1.0"},
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                continue
+            data = resp.json()
+            extract = data.get("extract", "")
+            title = data.get("title", "")
+            if len(extract) < 100:
+                continue  # skip stubs
+            page_url = data.get("content_urls", {}).get("desktop", {}).get("page", "")
+            ideas.append({
+                "topic": title,
+                "context": extract[:1000],
+                "source": "wikipedia",
+                "source_url": page_url,
+                "language": "fi",
+            })
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"  Wikipedia: ERROR {e}")
+
+    print(f"  Wikipedia: {len(ideas)} ideas")
+    return ideas
+
+
+# ---------------------------------------------------------------------------
 # Article generation
 # ---------------------------------------------------------------------------
 
@@ -510,6 +640,18 @@ def main():
         all_ideas.extend(fetch_reddit_ideas(PUSKARDIO_REDDIT_SUBS))
     if "gemini" in PUSKARDIO_SOURCES:
         all_ideas.extend(fetch_gemini_ideas(client, city_names, count=PUSKARDIO_COUNT, existing_titles=existing_titles))
+    if "yle" in PUSKARDIO_SOURCES:
+        all_ideas.extend(fetch_yle_ideas(limit=PUSKARDIO_COUNT))
+    if "wikipedia" in PUSKARDIO_SOURCES:
+        all_ideas.extend(fetch_wikipedia_ideas(limit=max(3, PUSKARDIO_COUNT // 2)))
+    if "iltasanomat" in PUSKARDIO_SOURCES:
+        all_ideas.extend(fetch_iltasanomat_ideas(limit=PUSKARDIO_COUNT))
+    if "iltalehti" in PUSKARDIO_SOURCES:
+        all_ideas.extend(fetch_iltalehti_ideas(limit=PUSKARDIO_COUNT))
+    if "kauppalehti" in PUSKARDIO_SOURCES:
+        all_ideas.extend(fetch_kauppalehti_ideas(limit=PUSKARDIO_COUNT))
+    if "seiska" in PUSKARDIO_SOURCES:
+        all_ideas.extend(fetch_seiska_ideas(limit=PUSKARDIO_COUNT))
 
     if not all_ideas:
         print("ERROR: No ideas sourced. Check your sources config.")
