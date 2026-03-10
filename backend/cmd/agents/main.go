@@ -25,7 +25,7 @@ func main() {
 	baseURL := flag.String("base-url", "http://localhost:8000", "Backend API base URL")
 	agentNames := flag.String("agents", "", "Comma-separated agent names to run (default: random subset)")
 	maxIter := flag.Int("max-iter", 20, "Max tool-call rounds per agent")
-	model := flag.String("model", "gemini-2.5-flash", "Gemini model for agents")
+	model := flag.String("model", "gemini-3.1-flash-lite-preview", "Gemini model for agents")
 	minAgents := flag.Int("min", 5, "Minimum number of random agents to activate")
 	maxAgents := flag.Int("max", 10, "Maximum number of random agents to activate")
 	delay := flag.Duration("delay", 10*time.Second, "Delay between agents (e.g. 10s, 1m)")
